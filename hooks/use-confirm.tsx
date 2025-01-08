@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
 export const useConfirm = (
     title: string,
     message: string,
-): [() => JSX.Element, () => Promise<unknown>] => {
+): [() => ReactNode, () => Promise<unknown>] => {
     const [promise, setPromise] = useState<{
         resolve: (value: boolean) =>
             void

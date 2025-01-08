@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function convertAmountFromMiliunits(amount: number) {
-  return Math.round(amount / 1000);
+  return amount / 1000;
 }
 
 export function convertAmountToMiliunits(amount: number) {
@@ -15,9 +15,10 @@ export function convertAmountToMiliunits(amount: number) {
 }
 
 export function formatCurrency(value: number) {
+  console.log('format currenct', value)
   return Intl.NumberFormat("en-us", {
     style: "currency",
-    currency: "USD",
+    currency: "EUR",
     minimumFractionDigits: 2,
   }).format(value);
 }

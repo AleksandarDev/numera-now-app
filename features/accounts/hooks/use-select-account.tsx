@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 
 import { Select } from "@/components/select";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { useCreateAccount } from "@/features/accounts/api/use-create-account";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 
 export const useSelectAccount = (): [
-  () => JSX.Element,
+  () => ReactNode,
   () => Promise<unknown>,
 ] => {
   const accountQuery = useGetAccounts();
@@ -34,7 +34,7 @@ export const useSelectAccount = (): [
     resolve: (value: string | undefined) => void;
   } | null>(null);
 
-  const selectValue = useRef<string>();
+  const selectValue = useRef<string>(undefined);
 
   const confirm = () =>
     new Promise((resolve) => {

@@ -5,10 +5,7 @@ export const HeaderLogo = () => {
     return (
         <Link href="/">
             <div className="items-center hidden lg:flex">
-                <Image src="/wired.svg" alt="logo" height={28} width={28} />
-                <p className="font-semibold text-white text-2xl ml-2.5">
-                    Wired
-                </p>
+                <Image src="/NumeraNowLight.svg" alt="logo" height={32} width={200} />
             </div>
         </Link>
     )

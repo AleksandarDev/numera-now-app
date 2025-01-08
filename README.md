@@ -8,17 +8,17 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 - **Categorize Transactions:** Organize your transactions by categories for better clarity.
 - **Account Management:** Assign transactions to specific accounts.
 - **CSV Import:** Import transactions from CSV files for quick data entry.
-- **Bank Integration:** Connect to your bank account using Plaid.
-- **Monetization:** Monetize your platform using Lemon Squeezy.
+- (Planned) **Bank Integration:** Connect to your bank account using Plaid.
+- (Planned) **Monetization:** Monetize your platform using Lemon Squeezy.
 
 ## Tech Stack
 
 - **Frontend:** Next.js, React
 - **Backend:** Hono.js
 - **CSV Upload:** Integrated CSV upload functionality
-- **Database:** PostgreSQL
-- **Bank Integration:** Plaid
-- **Payment Processing:** Lemon Squeezy
+- **Database:** [Neon PostgreSQL](https://neon.tech)
+- (Planned) **Bank Integration:** Plaid
+- (Planned) **Payment Processing:** Lemon Squeezy
 
 ## Installation
 
@@ -26,18 +26,12 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 
    ```bash
    git clone https://github.com/thounny/finance-tracker.git
-   cd finance-platform
+   cd finance-tracker
    ```
 
 2. **Install dependencies:**
 
    ```bash
-   # For backend
-   cd backend
-   npm install
-
-   # For frontend
-   cd ../frontend
    npm install
    ```
 
@@ -46,22 +40,15 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
    Create a `.env` file in the root directory and add the following:
 
    ```env
-   PLAID_CLIENT_ID=your_plaid_client_id
-   PLAID_SECRET=your_plaid_secret
-   LEMON_SQUEEZY_API_KEY=your_lemon_squeezy_api_key
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+   CLERK_SECRET_KEY=your_clerk_secret_key
    DATABASE_URL=your_postgresql_database_url
    ```
 
 4. **Run the application:**
 
    ```bash
-   # For backend
-   cd backend
-   npm start
-
-   # For frontend
-   cd ../frontend
-   npm start
+   npm run dev
    ```
 
 ## Usage
@@ -82,9 +69,9 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 
    - Import transactions using a CSV file by navigating to the import section and uploading your file.
 
-5. **Bank Integration:**
+5. (Planned) **Bank Integration:**
 
    - Connect your bank account using Plaid to automatically import and sync transactions.
 
-6. **Monetization:**
+6. (Planned) **Monetization:**
    - Monetize your platform by integrating Lemon Squeezy for payment processing.

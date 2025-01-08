@@ -12,11 +12,10 @@ import { Loader2, Plus } from "lucide-react";
 import { columns } from "./columns";
 import { DataTable } from "@/components/data-table";
 import { useGetCategories } from "@/features/categories/api/use-get-categories";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useBulkDeleteCategories } from "@/features/categories/api/use-bulk-delete-categories";
+import { Suspense } from "react";
 
-const CategoriesPage = () => {
-    const newCategory = useNewCategory();
+function CategoriesDataTable() {
     const deleteCategories = useBulkDeleteCategories();
     const categoriesQuery = useGetCategories();
     const categories = categoriesQuery.data || [];
@@ -25,22 +24,22 @@ const CategoriesPage = () => {
         categoriesQuery.isLoading ||
         deleteCategories.isPending;
 
-    if (categoriesQuery.isLoading) {
-        return (
-            <div className="max-w-screen-2xl mx-auto w-full pb-10 -mt-24">
-                <Card className="border-none drop-shadow-sm">
-                    <CardHeader>
-                        <Skeleton className="h-8 w-48" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[500px] w-full flex items-center justify-center">
-                            <Loader2 className="size-6 text-slate-300 animate-spin" />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
+    return (
+        <DataTable
+            filterKey="name"
+            columns={columns}
+            data={categories}
+            onDelete={(row) => {
+                const ids = row.map((r) => r.original.id);
+                deleteCategories.mutate({ ids });
+            }}
+            disabled={isDisabled}
+        />
+    );
+}
+
+export default function CategoriesPage() {
+    const newCategory = useNewCategory();
 
     return (
         <div className="max-w-screen-2xl mx-auto w-full pb-10 -mt-24">
@@ -50,25 +49,20 @@ const CategoriesPage = () => {
                         Categories Page
                     </CardTitle>
                     <Button onClick={newCategory.onOpen} size="sm">
-                        <Plus className="size-4 mr-2"/>
+                        <Plus className="size-4 mr-2" />
                         Add new
                     </Button>
                 </CardHeader>
                 <CardContent>
-                    <DataTable
-                        filterKey="name"
-                        columns={columns}
-                        data={categories}
-                        onDelete={(row) => {
-                            const ids = row.map((r) => r.original.id);
-                            deleteCategories.mutate({ ids });
-                        }}
-                        disabled={isDisabled}
-                    />
+                    <Suspense fallback={(
+                        <div className="h-[500px] w-full flex items-center justify-center">
+                            <Loader2 className="size-6 text-slate-300 animate-spin" />
+                        </div>
+                    )}>
+                        <CategoriesDataTable />
+                    </Suspense>
                 </CardContent>
             </Card>
         </div>
     );
-};
-
-export default CategoriesPage;
+}

@@ -1,13 +1,12 @@
 "use client";
 
 import { Loader2, Plus } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { transactions as transactionSchema } from "@/db/schema";
 import { useSelectAccount } from "@/features/accounts/hooks/use-select-account";
 import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-create-transactions";
@@ -30,16 +29,35 @@ const INITIAL_IMPORT_RESULTS = {
   meta: [],
 };
 
-const TransactionsPage = () => {
+function TransactionsDataTable() {
+  const deleteTransactions = useBulkDeleteTransactions();
+  const transactionsQuery = useGetTransactions();
+  const transactions = transactionsQuery.data || [];
+
+  const isDisabled = transactionsQuery.isLoading || deleteTransactions.isPending;
+
+  return (
+    <DataTable
+      filterKey="payee"
+      columns={columns}
+      data={transactions}
+      onDelete={(row) => {
+        const ids = row.map((r) => r.original.id);
+
+        deleteTransactions.mutate({ ids });
+      }}
+      disabled={isDisabled}
+    />
+  )
+}
+
+export default function TransactionsPage() {
   const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
   const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
 
   const [AccountDialog, confirm] = useSelectAccount();
   const newTransaction = useNewTransaction();
   const createTransactions = useBulkCreateTransactions();
-  const deleteTransactions = useBulkDeleteTransactions();
-  const transactionsQuery = useGetTransactions();
-  const transactions = transactionsQuery.data || [];
 
   const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
     setImportResults(results);
@@ -72,27 +90,6 @@ const TransactionsPage = () => {
     });
   };
 
-  const isDisabled =
-    transactionsQuery.isLoading || deleteTransactions.isPending;
-
-  if (transactionsQuery.isLoading) {
-    return (
-      <div className="mx-auto -mt-6 w-full max-w-screen-2xl pb-10">
-        <Card className="border-none drop-shadow-sm">
-          <CardHeader>
-            <Skeleton className="h-8 w-48" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="flex h-[500px] w-full items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-slate-300" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   if (variant === VARIANTS.IMPORT) {
     return (
       <>
@@ -101,8 +98,7 @@ const TransactionsPage = () => {
         <ImportCard
           data={importResults.data}
           onCancel={onCancelImport}
-          onSubmit={onSubmitImport}
-        />
+          onSubmit={onSubmitImport} />
       </>
     );
   }
@@ -114,7 +110,6 @@ const TransactionsPage = () => {
           <CardTitle className="line-clamp-1 text-xl">
             Transaction History
           </CardTitle>
-
           <div className="flex flex-col items-center gap-x-2 gap-y-2 lg:flex-row">
             <Button
               size="sm"
@@ -123,27 +118,20 @@ const TransactionsPage = () => {
             >
               <Plus className="mr-2 size-4" /> Add new
             </Button>
-
             <UploadButton onUpload={onUpload} />
           </div>
         </CardHeader>
 
         <CardContent>
-          <DataTable
-            filterKey="payee"
-            columns={columns}
-            data={transactions}
-            onDelete={(row) => {
-              const ids = row.map((r) => r.original.id);
-
-              deleteTransactions.mutate({ ids });
-            }}
-            disabled={isDisabled}
-          />
+          <Suspense fallback={(
+            <div className="flex h-[500px] w-full items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-slate-300" />
+            </div>
+          )}>
+            <TransactionsDataTable />
+          </Suspense>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default TransactionsPage;
+}
