@@ -9,7 +9,10 @@ import { db } from "@/db/drizzle";
 import { accounts, insertAccountSchema } from "@/db/schema";
 
 const app = new Hono()
-  .get("/", clerkMiddleware(), async (ctx) => {
+  .get(
+    "/",
+    clerkMiddleware(),
+    async (ctx) => {
     const auth = getAuth(ctx);
 
     if (!auth?.userId) {
