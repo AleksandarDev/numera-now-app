@@ -16,7 +16,9 @@ export const Header = () => {
         <div className="mb-14 flex w-full items-center justify-between">
           <div className="flex items-center lg:gap-x-16">
             <HeaderLogo />
-            <Navigation />
+            <Suspense>
+              <Navigation />
+            </Suspense>
           </div>
 
           <div className="flex items-center gap-x-2">

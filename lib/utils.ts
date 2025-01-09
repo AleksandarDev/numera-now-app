@@ -15,7 +15,6 @@ export function convertAmountToMiliunits(amount: number) {
 }
 
 export function formatCurrency(value: number) {
-  console.log('format currenct', value)
   return Intl.NumberFormat("en-us", {
     style: "currency",
     currency: "EUR",
