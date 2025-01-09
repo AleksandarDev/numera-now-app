@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 export default function DashboardPage() {
   return (
-    <div className="max-w-screen-2xl mx-auto w-full pb-10 -mt-24">
+    <div className="max-w-screen-2xl mx-auto w-full pb-10 -mt-12 lg:-mt-24">
       <Suspense>
         <DataGrid />
       </Suspense>
