@@ -2,13 +2,14 @@
   "name": "finance-tracker",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate:pg --schema db/schema.ts --out ./drizzle",
-    "db:migrate": "node ./scripts/migrate.ts --experimental-strip-types",
+    "db:migrate": "node --experimental-strip-types ./scripts/migrate.ts",
     "db:studio": "drizzle-kit studio"
   },
   "engines": {
