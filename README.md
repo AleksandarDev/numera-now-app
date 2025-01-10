@@ -20,35 +20,40 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 - (Planned) **Bank Integration:** Plaid
 - (Planned) **Payment Processing:** Lemon Squeezy
 
+## Prerequisites
+
+- [Node.js (^v22.6.0)](https://nodejs.org/en)
+- [pnpm](https://pnpm.io/installation)
+- [Vercel CLI](https://vercel.com/docs/cli)
+
 ## Installation
 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/thounny/finance-tracker.git
-   cd finance-tracker
+   git clone https://github.com/AleksandarDev/numera-now-app.git
+   cd numera-now-app
    ```
 
 2. **Install dependencies:**
 
    ```bash
-   npm install
+   pnpm i
    ```
 
 3. **Set up environment variables:**
 
-   Create a `.env` file in the root directory and add the following:
+   Link the app to Vercel project and pull development environmental variables to `.env.local` file from Vercel.
 
    ```env
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-   CLERK_SECRET_KEY=your_clerk_secret_key
-   DATABASE_URL=your_postgresql_database_url
+   vercel link
+   vercel env pull .env.local
    ```
 
 4. **Run the application:**
 
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 ## Usage
