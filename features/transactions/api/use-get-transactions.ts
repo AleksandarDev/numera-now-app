@@ -6,9 +6,9 @@ import { convertAmountFromMiliunits } from "@/lib/utils";
 
 export const useGetTransactions = () => {
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") || "";
-  const to = searchParams.get("to") || "";
-  const accountId = searchParams.get("accountId") || "";
+  const from = searchParams.get("from") ?? undefined;
+  const to = searchParams.get("to") ?? undefined;
+  const accountId = searchParams.get("accountId") ?? undefined;
 
   const query = useQuery({
     queryKey: ["transactions", { from, to, accountId }],
@@ -21,7 +21,8 @@ export const useGetTransactions = () => {
         },
       });
 
-      if (!response.ok) throw new Error("Failed to fetch transactions.");
+      if (!response.ok)
+        throw new Error("Failed to fetch transactions.");
 
       const { data } = await response.json();
 
@@ -29,7 +30,7 @@ export const useGetTransactions = () => {
         ...transaction,
         amount: convertAmountFromMiliunits(transaction.amount),
       }));
-    },
+    }
   });
 
   return query;
