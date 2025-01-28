@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { FaPiggyBank } from "react-icons/fa";
+import { FaBalanceScale, FaBalanceScaleLeft, FaBalanceScaleRight, FaPiggyBank, FaWeight } from "react-icons/fa";
 import { FaArrowTrendUp, FaArrowTrendDown } from "react-icons/fa6";
 
 import { useGetSummary } from "@/features/summary/api/use-get-summary";
@@ -26,17 +26,19 @@ export const DataGrid = () => {
       </div>
     );
 
+  const balanced = Math.abs(data?.remainingAmount ?? 0) < 100;
+  const balancePositive = (data?.remainingAmount ?? 0) > 100;
+
   return (
     <div className="mb-8 grid grid-cols-1 gap-8 pb-2 lg:grid-cols-3">
       <DataCard
-        title="Remaining"
+        title="Balance"
         value={data?.remainingAmount}
         percentageChange={data?.remainingChange}
-        icon={FaPiggyBank}
-        variant="default"
+        icon={(balanced ? FaBalanceScale : (balancePositive ? FaBalanceScaleRight : FaBalanceScaleLeft))}
+        variant={balanced ? "default" : (balancePositive ? "success" : "danger")}
         dateRange={dateRangeLabel}
       />
-
       <DataCard
         title="Income"
         value={data?.incomeAmount}
@@ -45,7 +47,6 @@ export const DataGrid = () => {
         variant="success"
         dateRange={dateRangeLabel}
       />
-
       <DataCard
         title="Expenses"
         value={data?.expensesAmount}
