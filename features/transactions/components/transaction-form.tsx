@@ -38,7 +38,7 @@ type ApiFormValues = z.input<typeof apiSchema>;
 
 type TransactionFormProps = {
   id?: string;
-  defaultValues?: FormValues;
+  defaultValues?: Partial<FormValues>;
   onSubmit: (values: ApiFormValues) => void;
   onDelete?: () => void;
   disabled?: boolean;

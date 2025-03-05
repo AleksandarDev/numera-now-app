@@ -1,7 +1,7 @@
 import { format, parse } from "date-fns";
 import { useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Button } from "@/components/ui/button";
 import { convertAmountToMiliunits } from "@/lib/utils";
 
@@ -103,9 +103,9 @@ export const ImportCard = ({ data, onCancel, onSubmit }: ImportCardProps) => {
 
   return (
     <div className="mx-auto -mt-6 w-full max-w-screen-2xl pb-10">
-      <Card className="border-none drop-shadow-sm">
+      <Card>
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
-          <CardTitle className="line-clamp-1 text-xl">
+          <CardTitle>
             Import Transaction
           </CardTitle>
 

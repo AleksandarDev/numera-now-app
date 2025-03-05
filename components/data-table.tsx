@@ -86,7 +86,7 @@ export function DataTable<TData, TValue>({
                         disabled={disabled}
                         size="sm"
                         variant="outline"
-                        className="ml-auto font-normal text-xs"
+                        className="ml-auto"
                         onClick={async () => {
                             const ok = await confirm();
 

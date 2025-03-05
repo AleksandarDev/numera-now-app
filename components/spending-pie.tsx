@@ -1,7 +1,7 @@
 import { FileSearch, Loader2, PieChart, Radar, Target } from "lucide-react";
 import { useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/card";
 import {
   Select,
   SelectContent,
@@ -30,9 +30,9 @@ export const SpendingPie = ({ data = [] }: SpendingPieProps) => {
     setChartType(type);
   };
   return (
-    <Card className="border-none drop-shadow-sm">
+    <Card>
       <CardHeader className="flex justify-between space-y-2 lg:flex-row lg:items-center lg:space-y-0">
-        <CardTitle className="line-clamp-1 text-xl">Categories</CardTitle>
+        <CardTitle>Categories</CardTitle>
 
         <Select defaultValue={chartType} onValueChange={onTypeChange}>
           <SelectTrigger className="h-9 rounded-md px-3 lg:w-auto">
@@ -90,7 +90,7 @@ export const SpendingPie = ({ data = [] }: SpendingPieProps) => {
 
 export const SpendingPieLoading = () => {
   return (
-    <Card className="border-none drop-shadow-sm">
+    <Card>
       <CardHeader className="flex justify-between space-y-2 lg:flex-row lg:items-center lg:space-y-0">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-8 w-full lg:w-[120px]" />

@@ -4,10 +4,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@signalco/ui-primitives/Card";
+import { Typography } from "@signalco/ui-primitives/Typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 
@@ -62,14 +62,14 @@ export const DataCard = ({
   dateRange,
 }: DataCardProps) => {
   return (
-    <Card className="border-none drop-shadow-sm">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-x-4">
         <div className="space-y-2">
-          <CardTitle className="line-clamp-1 text-2xl">{title}</CardTitle>
+          <CardTitle>{title}</CardTitle>
 
-          <CardDescription className="line-clamp-1">
+          <Typography level="body2" className="line-clamp-1">
             {dateRange}
-          </CardDescription>
+          </Typography>
         </div>
 
         <div className={cn(boxVariant({ variant }))}>
@@ -106,7 +106,7 @@ export const DataCard = ({
 
 export const DataCardLoading = () => {
   return (
-    <Card className="h-[192px] border-none drop-shadow-sm">
+    <Card className="h-[192px]">
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-6 w-24" />

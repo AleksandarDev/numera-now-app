@@ -5,7 +5,7 @@ import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { transactions as transactionSchema } from "@/db/schema";
 import { useSelectAccount } from "@/features/accounts/hooks/use-select-account";
 import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-create-transactions";
@@ -80,9 +80,9 @@ export default function TransactionsPage() {
 
   return (
     <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
-      <Card className="border-none drop-shadow-sm">
+      <Card>
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
-          <CardTitle className="line-clamp-1 text-xl">
+          <CardTitle>
             Transaction History
           </CardTitle>
           <div className="flex flex-col items-center gap-x-2 gap-y-2 lg:flex-row">
