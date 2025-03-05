@@ -1,7 +1,7 @@
 import { FileSearch, Loader2, PieChart, Radar, Target } from "lucide-react";
 import { useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import {
   Select,
   SelectContent,
