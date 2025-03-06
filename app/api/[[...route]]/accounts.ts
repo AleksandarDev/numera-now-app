@@ -23,6 +23,7 @@ const app = new Hono()
       .select({
         id: accounts.id,
         name: accounts.name,
+        code: accounts.code,
       })
       .from(accounts)
       .where(eq(accounts.userId, auth.userId));
@@ -54,6 +55,7 @@ const app = new Hono()
         .select({
           id: accounts.id,
           name: accounts.name,
+          code: accounts.code,
         })
         .from(accounts)
         .where(and(eq(accounts.userId, auth.userId), eq(accounts.id, id)));
@@ -89,6 +91,32 @@ const app = new Hono()
           userId: auth.userId,
           ...values,
         })
+        .returning();
+
+      return ctx.json({ data });
+    }
+  )
+  .post(
+    "/bulk-create",
+    clerkMiddleware(),
+    zValidator("json", z.array(insertAccountSchema.omit({ id: true, userId: true }))),
+    async (ctx) => {
+      const auth = getAuth(ctx);
+      const values = ctx.req.valid("json");
+
+      if (!auth?.userId) {
+        return ctx.json({ error: "Unauthorized." }, 401);
+      }
+
+      const data = await db
+        .insert(accounts)
+        .values(
+          values.map((value) => ({
+            id: createId(),
+            userId: auth.userId,
+            ...value,
+          }))
+        )
         .returning();
 
       return ctx.json({ data });

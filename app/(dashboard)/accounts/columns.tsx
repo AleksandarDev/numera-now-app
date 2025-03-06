@@ -34,6 +34,20 @@ export const columns: ColumnDef<ResponseType>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "code",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Code
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    }
+  },
+  {
     accessorKey: "name",
     header: ({ column }) => {
       return (
