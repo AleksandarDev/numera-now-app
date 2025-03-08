@@ -4,7 +4,7 @@ import "./globals.css";
 import QueryProvider from "@/providers/query-provider";
 import { SheetProvider } from "@/providers/sheet-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, Suspense } from "react";
 import Head from "next/head";
 import { Metadata } from "next";
 import { siteConfig } from "@/config";
@@ -22,7 +22,9 @@ export default function RootLayout({ children }: PropsWithChildren) {
         </Head>
         <body className={inter.className}>
           <QueryProvider>
-            <SheetProvider />
+            <Suspense>
+              <SheetProvider />
+            </Suspense>
             <Toaster />
             {children}
           </QueryProvider>

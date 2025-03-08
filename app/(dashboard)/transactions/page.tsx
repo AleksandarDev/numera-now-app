@@ -26,23 +26,9 @@ const INITIAL_IMPORT_RESULTS = {
   meta: [],
 };
 
-export default function TransactionsPage() {
-  const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
-  const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
-
+function TransactionsImportView({ importResults, onDone }: { importResults: typeof INITIAL_IMPORT_RESULTS, onDone: () => void }) {
   const [AccountDialog, confirm] = useSelectAccount();
-  const newTransaction = useNewTransaction();
   const createTransactions = useBulkCreateTransactions();
-
-  const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
-    setImportResults(results);
-    setVariant(VARIANTS.IMPORT);
-  };
-
-  const onCancelImport = () => {
-    setImportResults(INITIAL_IMPORT_RESULTS);
-    setVariant(VARIANTS.LIST);
-  };
 
   const onSubmitImport = async (
     values: (typeof transactionSchema.$inferInsert)[]
@@ -60,22 +46,43 @@ export default function TransactionsPage() {
 
     createTransactions.mutate(data, {
       onSuccess: () => {
-        onCancelImport();
+        onDone();
       },
     });
   };
 
-  if (variant === VARIANTS.IMPORT) {
-    return (
-      <>
-        <AccountDialog />
+  return (
+    <>
+      <AccountDialog />
 
-        <ImportCard
-          data={importResults.data}
-          onCancel={onCancelImport}
-          onSubmit={onSubmitImport} />
-      </>
-    );
+      <ImportCard
+        data={importResults.data}
+        onCancel={onDone}
+        onSubmit={onSubmitImport} />
+    </>
+  );
+}
+
+export default function TransactionsPage() {
+  const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
+  const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
+
+  const newTransaction = useNewTransaction();
+
+  const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
+    setImportResults(results);
+    setVariant(VARIANTS.IMPORT);
+  };
+
+  if (variant === VARIANTS.IMPORT) {
+    <Suspense>
+      <TransactionsImportView
+        importResults={importResults}
+        onDone={() => {
+          setImportResults(INITIAL_IMPORT_RESULTS);
+          setVariant(VARIANTS.LIST);
+        }} />
+    </Suspense>
   }
 
   return (
