@@ -17,13 +17,14 @@ import { useCreateTransaction } from "@/features/transactions/api/use-create-tra
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 
 import { TransactionForm } from "./transaction-form";
+import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
 
 const formSchema = insertTransactionSchema.omit({ id: true });
 
 type FormValues = z.infer<typeof formSchema>;
 
 export const NewTransactionSheet = () => {
-    const { isOpen, onClose } = useNewTransaction();
+    const { doubleEntry, isOpen, onClose } = useNewTransaction();
 
     const createMutation = useCreateTransaction();
     const categoryMutation = useCreateCategory();
@@ -34,8 +35,16 @@ export const NewTransactionSheet = () => {
     }));
 
     const accountMutation = useCreateAccount();
-    const accountQuery = useGetAccounts();
-    const accountOptions = (accountQuery.data ?? []).map((account) => ({
+    const accountsQuery = useGetAccounts();
+    const accountOptions = (accountsQuery.data ?? []).map((account) => ({
+        label: account.name,
+        value: account.id,
+    }));
+    const creditAccountOptions = (accountsQuery.data ?? []).map((account) => ({
+        label: account.name,
+        value: account.id,
+    }));
+    const debitAccountOptions = (accountsQuery.data ?? []).map((account) => ({
         label: account.name,
         value: account.id,
     }));
@@ -47,7 +56,7 @@ export const NewTransactionSheet = () => {
         createMutation.isPending ||
         categoryMutation.isPending ||
         accountMutation.isPending;
-    const isLoading = categoryQuery.isLoading || accountQuery.isLoading;
+    const isLoading = categoryQuery.isLoading || accountsQuery.isLoading;
 
     const onSubmit = (values: FormValues) => {
         createMutation.mutate(values, {
@@ -71,17 +80,34 @@ export const NewTransactionSheet = () => {
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <TransactionForm
-                        onSubmit={onSubmit}
-                        disabled={isPending}
-                        categoryOptions={categoryOptions}
-                        onCreateCategory={onCreateCategory}
-                        accountOptions={accountOptions}
-                        onCreateAccount={onCreateAccount}
-                            defaultValues={{
-                                date: new Date()
-                            }}
-                    />
+                        <>
+                            {doubleEntry ? (
+                                <TransactionDoubleEntryForm
+                                    onSubmit={onSubmit}
+                                    disabled={isPending}
+                                    categoryOptions={categoryOptions}
+                                    onCreateCategory={onCreateCategory}
+                                    creditAccountOptions={creditAccountOptions}
+                                    debitAccountOptions={debitAccountOptions}
+                                    onCreateAccount={onCreateAccount}
+                                    defaultValues={{
+                                        date: new Date()
+                                    }}
+                                />
+                            ) : (
+                                    <TransactionForm
+                                        onSubmit={onSubmit}
+                                        disabled={isPending}
+                                        categoryOptions={categoryOptions}
+                                        onCreateCategory={onCreateCategory}
+                                        accountOptions={accountOptions}
+                                        onCreateAccount={onCreateAccount}
+                                        defaultValues={{
+                                            date: new Date()
+                                        }}
+                                    />
+                            )}
+                        </>
                 )}
             </SheetContent>
         </Sheet>

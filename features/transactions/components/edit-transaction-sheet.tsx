@@ -20,6 +20,7 @@ import { useOpenTransaction } from "@/features/transactions/hooks/use-open-trans
 import { useConfirm } from "@/hooks/use-confirm";
 
 import { TransactionForm } from "./transaction-form";
+import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
 
 const formSchema = insertTransactionSchema.omit({ id: true });
 
@@ -45,11 +46,20 @@ export const EditTransactionSheet = () => {
   }));
 
   const accountMutation = useCreateAccount();
-  const accountQuery = useGetAccounts();
-  const accountOptions = (accountQuery.data ?? []).map((account) => ({
+  const accountsQuery = useGetAccounts();
+  const accountOptions = (accountsQuery.data ?? []).map((account) => ({
     label: account.name,
     value: account.id,
   }));
+  // TODO: Move options to custom select component
+  const creditAccountOptions = (accountsQuery.data ?? []).map((account) => ({
+    label: account.name,
+    value: account.id,
+  }));
+  const debitAccountOptions = (accountsQuery.data ?? []).map((account) => ({
+    label: account.name,
+    value: account.id,
+  }));  
 
   const onCreateAccount = (name: string) => accountMutation.mutate({ name });
   const onCreateCategory = (name: string) => categoryMutation.mutate({ name });
@@ -64,7 +74,7 @@ export const EditTransactionSheet = () => {
   const isLoading =
     transactionQuery.isLoading ||
     categoryQuery.isLoading ||
-    accountQuery.isLoading;
+    accountsQuery.isLoading;
 
   const onSubmit = (values: FormValues) => {
     editMutation.mutate(values, {
@@ -76,23 +86,27 @@ export const EditTransactionSheet = () => {
 
   const defaultValues = transactionQuery.data
     ? {
-        accountId: transactionQuery.data.accountId,
-        categoryId: transactionQuery.data.categoryId,
-        amount: transactionQuery.data.amount.toString(),
-        date: transactionQuery.data.date
-          ? new Date(transactionQuery.data.date)
-          : new Date(),
-        payee: transactionQuery.data.payee,
-        notes: transactionQuery.data.notes,
-      }
+      accountId: transactionQuery.data.accountId ?? undefined,
+      creditAccountId: transactionQuery.data.creditAccountId ?? undefined,
+      debitAccountId: transactionQuery.data.debitAccountId ?? undefined,
+      categoryId: transactionQuery.data.categoryId,
+      amount: transactionQuery.data.amount.toString(),
+      date: transactionQuery.data.date
+        ? new Date(transactionQuery.data.date)
+        : new Date(),
+      payee: transactionQuery.data.payee,
+      notes: transactionQuery.data.notes,
+    }
     : {
-        accountId: "",
-        categoryId: "",
-        amount: "",
-        date: new Date(),
-        payee: "",
-        notes: "",
-      };
+      accountId: "",
+      creditAccountId: "",
+      debitAccountId: "",
+      categoryId: "",
+      amount: "",
+      date: new Date(),
+      payee: "",
+      notes: "",
+    };
 
   const onDelete = async () => {
     const ok = await confirm();
@@ -122,17 +136,33 @@ export const EditTransactionSheet = () => {
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <TransactionForm
-              id={id}
-              defaultValues={defaultValues}
-              onSubmit={onSubmit}
-              disabled={isPending}
-              categoryOptions={categoryOptions}
-              onCreateCategory={onCreateCategory}
-              accountOptions={accountOptions}
-              onCreateAccount={onCreateAccount}
-              onDelete={onDelete}
-            />
+              <>
+                {transactionQuery.data && transactionQuery.data.accountId ? (
+                  <TransactionForm
+                    id={id}
+                    defaultValues={defaultValues}
+                    onSubmit={onSubmit}
+                    disabled={isPending}
+                    categoryOptions={categoryOptions}
+                    onCreateCategory={onCreateCategory}
+                    accountOptions={accountOptions}
+                    onCreateAccount={onCreateAccount}
+                    onDelete={onDelete}
+                  />
+                ) : (
+                  <TransactionDoubleEntryForm
+                    id={id}
+                    defaultValues={defaultValues}
+                    onSubmit={onSubmit}
+                    disabled={isPending}
+                    categoryOptions={categoryOptions}
+                    onCreateCategory={onCreateCategory}
+                    creditAccountOptions={creditAccountOptions}
+                    debitAccountOptions={debitAccountOptions}
+                    onCreateAccount={onCreateAccount}
+                    onDelete={onDelete} />
+                )}
+              </>
           )}
         </SheetContent>
       </Sheet>

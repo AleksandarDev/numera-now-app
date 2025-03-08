@@ -1,10 +1,11 @@
 import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
 import { zValidator } from "@hono/zod-validator";
 import { createId } from "@paralleldrive/cuid2";
-import { parse, subDays } from "date-fns";
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { endOfDay, parse, subDays } from "date-fns";
+import { aliasedTable, and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { UTCDate } from "@date-fns/utc";
 
 import { db } from "@/db/drizzle";
 import {
@@ -34,14 +35,15 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
-      const defaultTo = new Date();
-      const defaultFrom = subDays(defaultTo, 30);
-
       const startDate = from
-        ? parse(from, "yyyy-MM-dd", new Date())
-        : defaultFrom;
-      const endDate = to ? parse(to, "yyyy-MM-dd", new Date()) : defaultTo;
+        ? parse(from, "yyyy-MM-dd", new UTCDate())
+        : subDays(new UTCDate(), 30);
+      const endDate = to
+        ? endOfDay(parse(to, "yyyy-MM-dd", new UTCDate()))
+        : new UTCDate();
 
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
       const data = await db
         .select({
           id: transactions.id,
@@ -52,15 +54,33 @@ const app = new Hono()
           amount: transactions.amount,
           notes: transactions.notes,
           account: accounts.name,
+          accountCode: accounts.code,
           accountId: transactions.accountId,
+          creditAccount: creditAccounts.name,
+          creditAccountCode: creditAccounts.code,
+          creditAccountId: transactions.creditAccountId,
+          debitAccount: debitAccounts.name,
+          debitAccountCode: debitAccounts.code,
+          debitAccountId: transactions.debitAccountId,
         })
         .from(transactions)
-        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+        .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
         .leftJoin(categories, eq(transactions.categoryId, categories.id))
         .where(
           and(
-            accountId ? eq(transactions.accountId, accountId) : undefined,
-            eq(accounts.userId, auth.userId),
+            accountId
+              ? or(
+                eq(transactions.accountId, accountId),
+                eq(transactions.creditAccountId, accountId),
+                eq(transactions.debitAccountId, accountId))
+              : undefined,
+            or(
+              eq(accounts.userId, auth.userId),
+              eq(creditAccounts.userId, auth.userId),
+              eq(debitAccounts.userId, auth.userId)
+            ),
             gte(transactions.date, startDate),
             lte(transactions.date, endDate)
           )
@@ -91,6 +111,8 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
       const [data] = await db
         .select({
           id: transactions.id,
@@ -100,10 +122,23 @@ const app = new Hono()
           amount: transactions.amount,
           notes: transactions.notes,
           accountId: transactions.accountId,
+          creditAccountId: transactions.creditAccountId,
+          debitAccountId: transactions.debitAccountId,
         })
         .from(transactions)
-        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-        .where(and(eq(transactions.id, id), eq(accounts.userId, auth.userId)));
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+        .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
+        .where(
+          and(
+            eq(transactions.id, id),
+            or(
+              eq(accounts.userId, auth.userId),
+              eq(creditAccounts.userId, auth.userId),
+              eq(debitAccounts.userId, auth.userId)
+            ),
+          )
+        );
 
       if (!data) {
         return ctx.json({ error: "Not found." }, 404);
@@ -129,6 +164,11 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      if (values.amount < 0 && !values.accountId) {
+        return ctx.json({ error: "When using debit and credit accounts, amount must be positive or zero." }, 400);
+      }
+
+      // TODO: Fix users being able to create transactions with other users' accounts
       const [data] = await db
         .insert(transactions)
         .values({
@@ -152,6 +192,11 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      if (values.some((value) => value.amount < 0 && !value.accountId)) {
+        return ctx.json({ error: "When using debit and credit accounts, amount must be positive or zero." }, 400);
+      }
+
+      // TODO: Fix users being able to create transactions with other users' accounts
       const data = await db
         .insert(transactions)
         .values(
@@ -182,15 +227,23 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
       const transactionsToDelete = db.$with("transactions_to_delete").as(
         db
           .select({ id: transactions.id })
           .from(transactions)
-          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+          .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+          .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+          .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
           .where(
             and(
               inArray(transactions.id, values.ids),
-              eq(accounts.userId, auth.userId)
+              or(
+                eq(accounts.userId, auth.userId),
+                eq(creditAccounts.userId, auth.userId),
+                eq(debitAccounts.userId, auth.userId)
+              ),
             )
           )
       );
@@ -239,13 +292,28 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
       const transactionsToUpdate = db.$with("transactions_to_update").as(
         db
           .select({ id: transactions.id })
           .from(transactions)
-          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-          .where(and(eq(transactions.id, id), eq(accounts.userId, auth.userId)))
+          .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+          .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+          .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
+          .where(
+            and(
+              eq(transactions.id, id),
+              or(
+                eq(accounts.userId, auth.userId),
+                eq(creditAccounts.userId, auth.userId),
+                eq(debitAccounts.userId, auth.userId)
+              ),
+            )
+          )
       );
+
+      console.log('transactionsToUpdate', transactionsToUpdate.id);
 
       const [data] = await db
         .with(transactionsToUpdate)
@@ -287,12 +355,25 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
       const transactionsToDelete = db.$with("transactions_to_delete").as(
         db
           .select({ id: transactions.id })
           .from(transactions)
-          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-          .where(and(eq(transactions.id, id), eq(accounts.userId, auth.userId)))
+          .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+          .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+          .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
+          .where(
+            and(
+              eq(transactions.id, id),
+              or(
+                eq(accounts.userId, auth.userId),
+                eq(creditAccounts.userId, auth.userId),
+                eq(debitAccounts.userId, auth.userId)
+              ),
+            )
+          )
       );
 
       const [data] = await db

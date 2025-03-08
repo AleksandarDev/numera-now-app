@@ -1,18 +1,18 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 
-import accounts from "./accounts";
-import categories from "./categories";
-import summary from "./summary";
-import transactions from "./transactions";
+import accountsRoutes from "./accountsRoutes";
+import categoriesRoutes from "./categoriesRoutes";
+import summaryRoutes from "./summaryRoutes";
+import transactionsRoutes from "./transactionsRoutes";
 
 const app = new Hono().basePath("/api");
 
 const routes = app
-  .route("/accounts", accounts)
-  .route("/categories", categories)
-  .route("/summary", summary)
-  .route("/transactions", transactions);
+  .route("/accounts", accountsRoutes)
+  .route("/categories", categoriesRoutes)
+  .route("/summary", summaryRoutes)
+  .route("/transactions", transactionsRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);

@@ -12,8 +12,8 @@ import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 
 import { ImportCard } from "./import-card";
-import { UploadButton } from "./upload-button";
 import { TransactionsDataTable } from "./TransactionsDataTable";
+import { ImportButton } from "@/components/import-button";
 
 enum VARIANTS {
   LIST = "LIST",
@@ -85,15 +85,22 @@ export default function TransactionsPage() {
           <CardTitle>
             Transaction History
           </CardTitle>
-          <div className="flex flex-col items-center gap-x-2 gap-y-2 lg:flex-row">
+          <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
             <Button
               size="sm"
-              onClick={newTransaction.onOpen}
+              onClick={() => newTransaction.onOpen(false)}
               className="w-full lg:w-auto"
             >
               <Plus className="mr-2 size-4" /> Add new
             </Button>
-            <UploadButton onUpload={onUpload} />
+            <Button
+              size="sm"
+              onClick={() => newTransaction.onOpen(true)}
+              className="w-full lg:w-auto"
+            >
+              <Plus className="mr-2 size-4" /> Add new double entry
+            </Button>
+            <ImportButton onUpload={onUpload} />
           </div>
         </CardHeader>
 

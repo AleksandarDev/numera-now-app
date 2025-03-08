@@ -5,6 +5,7 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Input } from "./input"
 
 const Select = SelectPrimitive.Root
 
@@ -26,7 +27,7 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
+      <ChevronDown className="min-w-4 size-4 opacity-50" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ))
@@ -69,8 +70,13 @@ SelectScrollDownButton.displayName =
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    viewportRef?: React.RefObject<HTMLDivElement | null>,
+    viewportClassName?: string,
+    startDecorator?: React.ReactNode,
+    endDecorator?: React.ReactNode,
+  }
+>(({ className, children, position = "popper", viewportRef, viewportClassName, startDecorator, endDecorator, ...props }, ref) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
@@ -83,17 +89,21 @@ const SelectContent = React.forwardRef<
       position={position}
       {...props}
     >
+      {startDecorator}
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
+        ref={viewportRef}
         className={cn(
           "p-1",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+          viewportClassName  
         )}
       >
         {children}
       </SelectPrimitive.Viewport>
       <SelectScrollDownButton />
+      {endDecorator}
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ))

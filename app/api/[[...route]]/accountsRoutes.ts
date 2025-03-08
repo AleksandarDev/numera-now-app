@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
 import { zValidator } from "@hono/zod-validator";
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -11,25 +11,53 @@ import { accounts, insertAccountSchema } from "@/db/schema";
 const app = new Hono()
   .get(
     "/",
+    zValidator(
+      "query",
+      z.object({
+        search: z.string().optional(),
+        page: z.string().optional(),
+        pageSize: z.string().optional(),
+        accountId: z.string().optional(),
+      })
+    ),
     clerkMiddleware(),
     async (ctx) => {
-    const auth = getAuth(ctx);
+      const auth = getAuth(ctx);
+      const { page, pageSize, accountId, search } = ctx.req.valid("query");
+      if ((page && !Number.isInteger(Number(page))) ||
+        (pageSize && !Number.isInteger(Number(pageSize)))) {
+        return ctx.json({ error: "Invalid page or pageSize." }, 400);
+      }
 
-    if (!auth?.userId) {
-      return ctx.json({ error: "Unauthorized." }, 401);
-    }
+      if (!auth?.userId) {
+        return ctx.json({ error: "Unauthorized." }, 401);
+      }
 
-    const data = await db
-      .select({
-        id: accounts.id,
-        name: accounts.name,
-        code: accounts.code,
-      })
-      .from(accounts)
-      .where(eq(accounts.userId, auth.userId));
+      // Split keywords by space, group when in quotes
+      const keywords = search?.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+      const searchAccountNameSql = keywords.map((keyword) =>
+        or(
+          ilike(accounts.name, `%${keyword.replace(/"/g, "")}%`),
+          ilike(accounts.code, `%${keyword.replace(/"/g, "")}%`)
+        )
+      );
 
-    return ctx.json({ data });
-  })
+      const data = await db
+        .select({
+          id: accounts.id,
+          name: accounts.name,
+          code: accounts.code,
+        })
+        .from(accounts)
+        .where(and(
+          and(...searchAccountNameSql),
+          eq(accounts.userId, auth.userId),
+          accountId ? eq(accounts.id, accountId) : undefined))
+        .offset(page ? Number(page) * Number(pageSize) : 0)
+        .limit(pageSize ? Number(pageSize) : 10);
+
+      return ctx.json({ data });
+    })
   .get(
     "/:id",
     zValidator(

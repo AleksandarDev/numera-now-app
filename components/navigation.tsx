@@ -15,6 +15,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import Link from "next/link";
+import { Row } from "@signalco/ui-primitives/Row";
 
 const routes = [
     {
@@ -39,6 +40,8 @@ const routes = [
     },
 ]
 
+const mobileRoutes = [routes[0], routes[1]]; // Only show Overview and Transactions on mobile
+
 export const Navigation = () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -48,6 +51,7 @@ export const Navigation = () => {
 
     if (isMobile) {
         return (
+            <Row spacing={1}>
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetTrigger asChild>
                     <Button
@@ -89,6 +93,16 @@ export const Navigation = () => {
                     </nav>
                 </SheetContent>
             </Sheet>
+                {mobileRoutes.map((route) => (
+                    <NavButton
+                        key={route.href}
+                        href={route.href}
+                        query={searchParams.toString()}
+                        label={route.label}
+                        isActive={pathname === route.href}
+                    />
+                ))}
+            </Row>
         );
     };
 

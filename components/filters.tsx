@@ -3,7 +3,7 @@ import { DateFilter } from "./date-filter";
 
 export const Filters = () => {
   return (
-    <div className="flex flex-col items-center gap-y-2 lg:flex-row lg:gap-x-2 lg:gap-y-0">
+    <div className="flex flex-col items-stretch gap-y-2 md:flex-row md:gap-x-2 md:gap-y-0 dark">
       <AccountFilter />
       <DateFilter />
     </div>

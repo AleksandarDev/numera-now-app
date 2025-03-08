@@ -1,21 +1,29 @@
-import { useOpenAccount } from "@/features/accounts/hooks/use-open-account";
+import { AccountName } from "@/components/account-name";
+import { Row } from "@signalco/ui-primitives/Row";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { ChevronRight } from "lucide-react";
 
 type AccountColumnProps = {
-  account: string;
-  accountId: string;
+  account?: string | null;
+  accountCode?: string | null;
+  creditAccount?: string | null;
+  creditAccountCode?: string | null;
+  debitAccount?: string | null;
+  debitAccountCode?: string | null;
 };
 
-export const AccountColumn = ({ account, accountId }: AccountColumnProps) => {
-  const { onOpen: onOpenAccount } = useOpenAccount();
+export const AccountColumn = ({ account, accountCode, creditAccount, creditAccountCode, debitAccount, debitAccountCode }: AccountColumnProps) => {
+  if (account)
+    return <AccountName account={account} accountCode={accountCode} />;
 
-  const onClick = () => onOpenAccount(accountId);
-
+  if (creditAccount && debitAccount)
   return (
-    <button
-      onClick={onClick}
-      className="flex cursor-pointer items-center hover:underline"
-    >
-      {account}
-    </button>
+    <Row spacing={1}>
+      <AccountName account={creditAccount} accountCode={creditAccountCode} />
+      <ChevronRight className="size-4 min-w-4" />
+      <AccountName account={debitAccount} accountCode={debitAccountCode} />
+    </Row>
   );
+
+  return <Typography level="body1" semiBold color="danger">Invalid accounts</Typography>;
 };
