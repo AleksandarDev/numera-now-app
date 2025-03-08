@@ -23,7 +23,8 @@ import { AccountSelect } from "@/components/account-select";
 
 const formSchema = z.object({
   date: z.coerce.date(),
-  accountId: z.string(),
+  creditAccountId: z.string(),
+  debitAccountId: z.string(),
   categoryId: z.string().nullable().optional(),
   payee: z.string(),
   amount: z.string(),
@@ -37,29 +38,31 @@ const apiSchema = insertTransactionSchema.omit({
 type FormValues = z.input<typeof formSchema>;
 type ApiFormValues = z.input<typeof apiSchema>;
 
-type TransactionFormProps = {
+type TransactionDoubleEntryFormProps = {
   id?: string;
   defaultValues?: Partial<FormValues>;
   onSubmit: (values: ApiFormValues) => void;
   onDelete?: () => void;
   disabled?: boolean;
-  accountOptions: { label: string; value: string }[];
+  creditAccountOptions: { label: string; value: string }[];
+  debitAccountOptions: { label: string; value: string }[];
   categoryOptions: { label: string; value: string }[];
   onCreateAccount: (name: string) => void;
   onCreateCategory: (name: string) => void;
 };
 
-export const TransactionForm = ({
+export const TransactionDoubleEntryForm = ({
   id,
   defaultValues,
   onSubmit,
   onDelete,
   disabled,
-  accountOptions,
+  creditAccountOptions,
+  debitAccountOptions,
   categoryOptions,
   onCreateAccount,
   onCreateCategory,
-}: TransactionFormProps) => {
+}: TransactionDoubleEntryFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
@@ -127,15 +130,19 @@ export const TransactionForm = ({
         />
 
         <FormField
-          name="accountId"
+          name="creditAccountId"
           control={form.control}
           disabled={disabled}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Account</FormLabel>
+              <FormLabel>Credit Account</FormLabel>
 
               <FormControl>
-                <AccountSelect value={field.value} onChange={field.onChange} disabled={disabled} />
+                <AccountSelect
+                  placeholder="Select an credit account"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled} />
               </FormControl>
 
               <FormMessage />
@@ -157,6 +164,27 @@ export const TransactionForm = ({
                   disabled={disabled}
                   placeholder="0.00"
                 />
+              </FormControl>
+
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="debitAccountId"
+          control={form.control}
+          disabled={disabled}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Debit Account</FormLabel>
+
+              <FormControl>
+                <AccountSelect
+                  placeholder="Select an debit account"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled} />
               </FormControl>
 
               <FormMessage />

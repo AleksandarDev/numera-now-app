@@ -12,8 +12,8 @@ import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 
 import { ImportCard } from "./import-card";
-import { UploadButton } from "./upload-button";
 import { TransactionsDataTable } from "./TransactionsDataTable";
+import { ImportButton } from "@/components/import-button";
 
 enum VARIANTS {
   LIST = "LIST",
@@ -26,23 +26,9 @@ const INITIAL_IMPORT_RESULTS = {
   meta: [],
 };
 
-export default function TransactionsPage() {
-  const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
-  const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
-
+function TransactionsImportView({ importResults, onDone }: { importResults: typeof INITIAL_IMPORT_RESULTS, onDone: () => void }) {
   const [AccountDialog, confirm] = useSelectAccount();
-  const newTransaction = useNewTransaction();
   const createTransactions = useBulkCreateTransactions();
-
-  const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
-    setImportResults(results);
-    setVariant(VARIANTS.IMPORT);
-  };
-
-  const onCancelImport = () => {
-    setImportResults(INITIAL_IMPORT_RESULTS);
-    setVariant(VARIANTS.LIST);
-  };
 
   const onSubmitImport = async (
     values: (typeof transactionSchema.$inferInsert)[]
@@ -60,22 +46,43 @@ export default function TransactionsPage() {
 
     createTransactions.mutate(data, {
       onSuccess: () => {
-        onCancelImport();
+        onDone();
       },
     });
   };
 
-  if (variant === VARIANTS.IMPORT) {
-    return (
-      <>
-        <AccountDialog />
+  return (
+    <>
+      <AccountDialog />
 
-        <ImportCard
-          data={importResults.data}
-          onCancel={onCancelImport}
-          onSubmit={onSubmitImport} />
-      </>
-    );
+      <ImportCard
+        data={importResults.data}
+        onCancel={onDone}
+        onSubmit={onSubmitImport} />
+    </>
+  );
+}
+
+export default function TransactionsPage() {
+  const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
+  const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
+
+  const newTransaction = useNewTransaction();
+
+  const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
+    setImportResults(results);
+    setVariant(VARIANTS.IMPORT);
+  };
+
+  if (variant === VARIANTS.IMPORT) {
+    <Suspense>
+      <TransactionsImportView
+        importResults={importResults}
+        onDone={() => {
+          setImportResults(INITIAL_IMPORT_RESULTS);
+          setVariant(VARIANTS.LIST);
+        }} />
+    </Suspense>
   }
 
   return (
@@ -85,15 +92,22 @@ export default function TransactionsPage() {
           <CardTitle>
             Transaction History
           </CardTitle>
-          <div className="flex flex-col items-center gap-x-2 gap-y-2 lg:flex-row">
+          <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
             <Button
               size="sm"
-              onClick={newTransaction.onOpen}
+              onClick={() => newTransaction.onOpen(false)}
               className="w-full lg:w-auto"
             >
               <Plus className="mr-2 size-4" /> Add new
             </Button>
-            <UploadButton onUpload={onUpload} />
+            <Button
+              size="sm"
+              onClick={() => newTransaction.onOpen(true)}
+              className="w-full lg:w-auto"
+            >
+              <Plus className="mr-2 size-4" /> Add new double entry
+            </Button>
+            <ImportButton onUpload={onUpload} />
           </div>
         </CardHeader>
 

@@ -25,14 +25,15 @@ import {
 import { useConfirm } from "@/hooks/use-confirm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Trash } from "lucide-react"
+import { ChevronLeft, ChevronRight, Trash } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
-    filterKey: string
+    filterKey?: string
     onDelete: (rows: Row<TData>[]) => void;
     disabled?: boolean;
+    loading?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +42,7 @@ export function DataTable<TData, TValue>({
     filterKey,
     onDelete,
     disabled,
+    loading
 }: DataTableProps<TData, TValue>) {
     const [ConfirmationDialog, confirm] = useConfirm(
         "Are you sure?",
@@ -74,13 +76,15 @@ export function DataTable<TData, TValue>({
         <div>
             <ConfirmationDialog />
             <div className="flex items-center py-4">
-                <Input
-                    placeholder={`Filter ${filterKey}...`}
-                    value={(table.getColumn(filterKey)?.getFilterValue() as string) ?? ""}
-                    onChange={(event) =>
-                        table.getColumn(filterKey)?.setFilterValue(event.target.value)
-                    }
-                    className="max-w-sm" />
+                {filterKey && (
+                    <Input
+                        placeholder={`Filter ${filterKey}...`}
+                        value={(table.getColumn(filterKey)?.getFilterValue() as string) ?? ""}
+                        onChange={(event) =>
+                            table.getColumn(filterKey)?.setFilterValue(event.target.value)
+                        }
+                        className="max-w-sm" />
+                )}
                 {table.getFilteredSelectedRowModel().rows.length > 0 && (
                     <Button
                         disabled={disabled}
@@ -122,25 +126,35 @@ export function DataTable<TData, TValue>({
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        ) : (
+                        {loading ? (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No results.
+                                    Loading...
                                 </TableCell>
                             </TableRow>
+                        ) : (
+                            <>
+                                    {table.getRowModel().rows?.length ? (
+                                        table.getRowModel().rows.map((row) => (
+                                            <TableRow
+                                                key={row.id}
+                                                data-state={row.getIsSelected() && "selected"}
+                                            >
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <TableCell key={cell.id}>
+                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                                                No results.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </>
                         )}
                     </TableBody>
                 </Table>
@@ -154,18 +168,20 @@ export function DataTable<TData, TValue>({
                 <Button
                     variant="outline"
                     size="sm"
+                    className="px-2"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                 >
-                    Previous
+                    <ChevronLeft className="size-4" />
                 </Button>
                 <Button
                     variant="outline"
                     size="sm"
+                    className="px-2"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                 >
-                    Next
+                    <ChevronRight className="size-4" />
                 </Button>
             </div>
         </div>

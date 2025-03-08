@@ -139,7 +139,11 @@ export const columns: ColumnDef<ResponseType>[] = [
       return (
         <AccountColumn
           account={row.original.account}
-          accountId={row.original.accountId}
+          accountCode={row.original.accountCode}
+          creditAccount={row.original.creditAccount}
+          creditAccountCode={row.original.creditAccountCode}
+          debitAccount={row.original.debitAccount}
+          debitAccountCode={row.original.debitAccountCode}
         />
       )
     }
