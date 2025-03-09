@@ -8,14 +8,14 @@ import {
 import { cn } from "@/lib/utils";
 
 type TableHeadSelectProps = {
+  options: string[];
   columnIndex: number;
   selectedColumns: Record<string, string | null>;
   onChange: (columnIndex: number, value: string | null) => void;
 };
 
-const options = ["name", "code"];
-
 export const TableHeadSelect = ({
+  options,
   columnIndex,
   selectedColumns,
   onChange,
@@ -30,7 +30,7 @@ export const TableHeadSelect = ({
       <SelectTrigger
         className={cn(
           "border-none bg-transparent capitalize outline-none focus:ring-transparent focus:ring-offset-0",
-          currentSelection && "text-blue-500"
+          currentSelection && "font-bold text-black"
         )}
       >
         <SelectValue placeholder="Skip" />
@@ -48,6 +48,7 @@ export const TableHeadSelect = ({
               key={index}
               value={option}
               disabled={disabled}
+              // TODO: Replace sign signalco string helper
               className="capitalize"
             >
               {option}

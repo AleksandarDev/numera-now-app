@@ -11,9 +11,9 @@ import { useSelectAccount } from "@/features/accounts/hooks/use-select-account";
 import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-create-transactions";
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 
-import { ImportCard } from "./import-card";
 import { TransactionsDataTable } from "./TransactionsDataTable";
 import { ImportButton } from "@/components/import-button";
+import { ImportCard } from "@/components/import/import-card";
 
 enum VARIANTS {
   LIST = "LIST",
@@ -56,6 +56,8 @@ function TransactionsImportView({ importResults, onDone }: { importResults: type
       <AccountDialog />
 
       <ImportCard
+        header="Import transactions"
+        requiredOptions={["date", "description", "amount"]}
         data={importResults.data}
         onCancel={onDone}
         onSubmit={onSubmitImport} />

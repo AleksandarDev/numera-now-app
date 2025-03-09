@@ -7,7 +7,7 @@ import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { useNewAccount } from "@/features/accounts/hooks/use-new-accounts";
 import { Suspense, useRef, useState } from "react";
 import { accounts as accountsSchema } from "@/db/schema";
-import { ImportCard } from "./import-card";
+import { ImportCard } from "../../../components/import/import-card";
 import { useBulkCreateAccounts } from "@/features/accounts/api/use-bulk-create-accounts";
 import { ImportButton } from "@/components/import-button";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -153,6 +153,8 @@ export default function AccountsPage() {
         return (
             <>
                 <ImportCard
+                    header="Accounts Import"
+                    requiredOptions={["name", "code"]}
                     data={importResults.data}
                     onCancel={onCancelImport}
                     onSubmit={onSubmitImport} />

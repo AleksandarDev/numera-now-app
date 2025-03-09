@@ -10,19 +10,19 @@ import {
     FormControl,
     FormField,
     FormItem,
-    FormLabel,
-    FormMessage,
+    FormLabel
 } from "@/components/ui/form";
 
 const formSchema = insertAccountSchema.pick({
     name: true,
+    code: true
 });
 
 type FormValues = z.input<typeof formSchema>;
 
 type Props = {
     id?: string;
-    defaultValues?: FormValues;
+    defaultValues?: Partial<FormValues>;
     onSubmit: (values: FormValues) => void;
     onDelete?: () => void;
     disabled?: boolean;
@@ -41,7 +41,10 @@ export const AccountForm = ({
     });
 
     const handleSubmit = (values: FormValues) => {
-        onSubmit(values);
+        onSubmit({
+            ...values,
+            code: (values.code?.length ?? 0) > 0 ? values.code : null,
+        });
     };
 
     const handleDelete = () => {
@@ -64,6 +67,25 @@ export const AccountForm = ({
                                     disabled={disabled}
                                     placeholder="e.g. Cash, Credit Card, Bank"
                                     {...field}
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="code"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>
+                                Code
+                            </FormLabel>
+                            <FormControl>
+                                <Input
+                                    disabled={disabled}
+                                    placeholder="e.g. 0001, CASH, VISA"
+                                    {...field}
+                                    value={field.value || ""}
                                 />
                             </FormControl>
                         </FormItem>

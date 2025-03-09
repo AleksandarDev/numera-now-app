@@ -7,7 +7,7 @@ import { useEditAccount } from "@/features/accounts/api/use-edit-account";
 import { useDeleteAccount } from "@/features/accounts/api/use-delete-account";
 import { useConfirm } from "@/hooks/use-confirm";
 
-import { 
+import {
     Sheet,
     SheetContent,
     SheetDescription,
@@ -62,9 +62,11 @@ export const EditAccountSheet = () => {
     };
 
     const defaultValues = accountQuery.data ? {
-        name: accountQuery.data.name
+        name: accountQuery.data.name,
+        code: accountQuery.data.code,
     } : {
         name: "",
+            code: null,
     }
 
     return (
@@ -77,7 +79,7 @@ export const EditAccountSheet = () => {
                             Edit Account
                         </SheetTitle>
                         <SheetDescription>
-                            Edit an existing account.
+                            Edit the account details.
                         </SheetDescription>
                     </SheetHeader>
                     {isLoading
@@ -87,16 +89,16 @@ export const EditAccountSheet = () => {
                             </div>
                         ) : (
                             <AccountForm
-                        id={id}
-                        onSubmit={onSubmit} 
-                        disabled={isPending}
-                        defaultValues={defaultValues}
-                        onDelete={onDelete}
-                    />
+                                id={id}
+                                onSubmit={onSubmit}
+                                disabled={isPending}
+                                defaultValues={defaultValues}
+                                onDelete={onDelete}
+                            />
                         )
                     }
                 </SheetContent>
-                </Sheet>
-            </>
+            </Sheet>
+        </>
     );
 };

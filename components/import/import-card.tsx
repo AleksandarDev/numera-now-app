@@ -5,19 +5,19 @@ import { Button } from "@/components/ui/button";
 
 import { ImportTable } from "./import-table";
 
-const requiredOptions = ["name", "code"];
-
 type SelectedColumnsState = {
   [key: string]: string | null;
 };
 
 type ImportCardProps = {
+  header: string;
+  requiredOptions: string[];
   data: string[][];
   onCancel: () => void;
   onSubmit: (data: any) => void;
 };
 
-export const ImportCard = ({ data, onCancel, onSubmit }: ImportCardProps) => {
+export const ImportCard = ({ header, requiredOptions, data, onCancel, onSubmit }: ImportCardProps) => {
   const [selectedColumns, setSelectedColumns] = useState<SelectedColumnsState>(
     {}
   );
@@ -94,11 +94,11 @@ export const ImportCard = ({ data, onCancel, onSubmit }: ImportCardProps) => {
   };
 
   return (
-    <div className="mx-auto -mt-6 w-full max-w-screen-2xl pb-10">
+    <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
       <Card>
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>
-            Import Accounts
+            {header}
           </CardTitle>
 
           <div className="flex flex-col items-center gap-x-2 gap-y-2 lg:flex-row">
