@@ -47,13 +47,13 @@ export const transactions = pgTable("transactions", {
     notes: text("notes"),
     date: timestamp("date", { mode: "date" }).notNull(),
     accountId: text("account_id").references(() => accounts.id, {
-        onDelete: "cascade",
+        onDelete: "set null",
     }),
     creditAccountId: text("credit_account_id").references(() => accounts.id, {
-        onDelete: "cascade",
+        onDelete: "set null",
     }),
     debitAccountId: text("debit_account_id").references(() => accounts.id, {
-        onDelete: "cascade",
+        onDelete: "set null",
     }),
     categoryId: text("category_id").references(() => categories.id, {
         onDelete: "set null",
