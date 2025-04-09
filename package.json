@@ -1,5 +1,5 @@
 {
-  "name": "finance-tracker",
+  "name": "numera-now-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,6 +15,7 @@
   "engines": {
     "node": "22.x"
   },
+  "packageManager": "pnpm@10.8.0",
   "dependencies": {
     "@clerk/backend": "1.25.1",
     "@clerk/nextjs": "6.12.4",
@@ -75,6 +76,5 @@
     "postcss": "^8.5.3",
     "tailwindcss": "3.4.17",
     "typescript": "^5.8.2"
-  },
-  "packageManager": "pnpm@9.15.2+sha512.93e57b0126f0df74ce6bff29680394c0ba54ec47246b9cf321f0121d8d9bb03f750a705f24edc3c1180853afd7c2c3b94196d0a3d53d3e069d9e2793ef11f321"
+  }
 }

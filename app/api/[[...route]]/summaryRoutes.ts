@@ -1,13 +1,14 @@
 import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
 import { zValidator } from "@hono/zod-validator";
-import { differenceInDays, parse, subDays } from "date-fns";
-import { and, desc, eq, gte, lt, lte, sql, sum } from "drizzle-orm";
+import { differenceInDays, endOfDay, parse, subDays } from "date-fns";
+import { aliasedTable, and, desc, eq, gte, lt, lte, ne, or, sql, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import { db } from "@/db/drizzle";
 import { accounts, categories, transactions } from "@/db/schema";
 import { calculatePercentageChange, fillMissingDays } from "@/lib/utils";
+import { UTCDate } from "@date-fns/utc";
 
 const app = new Hono().get(
   "/",
@@ -28,13 +29,12 @@ const app = new Hono().get(
       return ctx.json({ error: "Unauthorized." }, 401);
     }
 
-    const defaultTo = new Date();
-    const defaultFrom = subDays(defaultTo, 30);
-
     const startDate = from
-      ? parse(from, "yyyy-MM-dd", new Date())
-      : defaultFrom;
-    const endDate = to ? parse(to, "yyyy-MM-dd", new Date()) : defaultTo;
+      ? parse(from, "yyyy-MM-dd", new UTCDate())
+      : subDays(new UTCDate(), 30);
+    const endDate = to
+      ? endOfDay(parse(to, "yyyy-MM-dd", new UTCDate()))
+      : new UTCDate();
 
     const periodLength = differenceInDays(endDate, startDate) + 1;
     const lastPeriodStart = subDays(startDate, periodLength);
@@ -45,6 +45,8 @@ const app = new Hono().get(
       startDate: Date,
       endDate: Date
     ) {
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
       return await db
         .select({
           income:
@@ -58,11 +60,22 @@ const app = new Hono().get(
           remaining: sum(transactions.amount).mapWith(Number),
         })
         .from(transactions)
-        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+        .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
         .where(
           and(
-            accountId ? eq(transactions.accountId, accountId) : undefined,
-            eq(accounts.userId, userId),
+            accountId
+              ? or(
+                eq(transactions.accountId, accountId),
+                eq(transactions.creditAccountId, accountId),
+                eq(transactions.debitAccountId, accountId))
+              : undefined,
+            or(
+              eq(accounts.userId, userId),
+              eq(creditAccounts.userId, userId),
+              eq(debitAccounts.userId, userId)
+            ),
             gte(transactions.date, startDate),
             lte(transactions.date, endDate)
           )
@@ -95,19 +108,32 @@ const app = new Hono().get(
       lastPeriod.remaining
     );
 
+    const creditAccounts = aliasedTable(accounts, "creditAccounts");
+    const debitAccounts = aliasedTable(accounts, "debitAccounts");
     const category = await db
       .select({
         name: categories.name,
         value: sql`SUM(ABS(${transactions.amount}))`.mapWith(Number),
       })
       .from(transactions)
-      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+      .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+      .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+      .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
       .innerJoin(categories, eq(transactions.categoryId, categories.id))
       .where(
         and(
-          accountId ? eq(transactions.accountId, accountId) : undefined,
-          eq(accounts.userId, auth.userId),
-          lt(transactions.amount, 0),
+          accountId
+            ? or(
+              eq(transactions.accountId, accountId),
+              eq(transactions.creditAccountId, accountId),
+              eq(transactions.debitAccountId, accountId))
+            : undefined,
+          or(
+            eq(accounts.userId, auth.userId),
+            eq(creditAccounts.userId, auth.userId),
+            eq(debitAccounts.userId, auth.userId)
+          ),
+          ne(transactions.amount, 0),
           gte(transactions.date, startDate),
           lte(transactions.date, endDate)
         )
@@ -140,11 +166,22 @@ const app = new Hono().get(
           ),
       })
       .from(transactions)
-      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+      .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+      .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+      .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
       .where(
         and(
-          accountId ? eq(transactions.accountId, accountId) : undefined,
-          eq(accounts.userId, auth.userId),
+          accountId
+            ? or(
+              eq(transactions.accountId, accountId),
+              eq(transactions.creditAccountId, accountId),
+              eq(transactions.debitAccountId, accountId))
+            : undefined,
+          or(
+            eq(accounts.userId, auth.userId),
+            eq(creditAccounts.userId, auth.userId),
+            eq(debitAccounts.userId, auth.userId)
+          ),
           gte(transactions.date, startDate),
           lte(transactions.date, endDate)
         )
