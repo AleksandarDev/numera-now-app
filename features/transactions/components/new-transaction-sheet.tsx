@@ -80,34 +80,42 @@ export const NewTransactionSheet = () => {
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                        <>
-                            {doubleEntry ? (
-                                <TransactionDoubleEntryForm
-                                    onSubmit={onSubmit}
-                                    disabled={isPending}
-                                    categoryOptions={categoryOptions}
-                                    onCreateCategory={onCreateCategory}
-                                    creditAccountOptions={creditAccountOptions}
-                                    debitAccountOptions={debitAccountOptions}
-                                    onCreateAccount={onCreateAccount}
-                                    defaultValues={{
-                                        date: new Date()
-                                    }}
-                                />
-                            ) : (
-                                    <TransactionForm
-                                        onSubmit={onSubmit}
-                                        disabled={isPending}
-                                        categoryOptions={categoryOptions}
-                                        onCreateCategory={onCreateCategory}
-                                        accountOptions={accountOptions}
-                                        onCreateAccount={onCreateAccount}
-                                        defaultValues={{
-                                            date: new Date()
-                                        }}
-                                    />
-                            )}
-                        </>
+                    <>
+                        {doubleEntry ? (
+                            <TransactionDoubleEntryForm
+                                onSubmit={onSubmit}
+                                disabled={isPending}
+                                categoryOptions={categoryOptions}
+                                onCreateCategory={onCreateCategory}
+                                creditAccountOptions={creditAccountOptions}
+                                debitAccountOptions={debitAccountOptions}
+                                onCreateAccount={onCreateAccount}
+                                defaultValues={{
+                                    date: new Date(),
+                                    amount: "",
+                                    notes: "",
+                                    creditAccountId: "",
+                                    debitAccountId: "",
+                                }}
+                            />
+                        ) : (
+                            <TransactionForm
+                                onSubmit={onSubmit}
+                                disabled={isPending}
+                                categoryOptions={categoryOptions}
+                                onCreateCategory={onCreateCategory}
+                                accountOptions={accountOptions}
+                                onCreateAccount={onCreateAccount}
+                                defaultValues={{
+                                    date: new Date(),
+                                    payeeCustomerId: "",
+                                    amount: "",
+                                    notes: "",
+                                    accountId: "",
+                                }}
+                            />
+                        )}
+                    </>
                 )}
             </SheetContent>
         </Sheet>

@@ -20,14 +20,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { insertTransactionSchema } from "@/db/schema";
 import { convertAmountToMiliunits } from "@/lib/utils";
 import { AccountSelect } from "@/components/account-select";
+import { CustomerSelect } from "@/components/customer-select";
 
 const formSchema = z.object({
   date: z.coerce.date(),
   accountId: z.string(),
   categoryId: z.string().nullable().optional(),
-  payee: z.string(),
+  payeeCustomerId: z.string().optional(),
+  payee: z.string().optional(), // Keep for backward compatibility
   amount: z.string(),
   notes: z.string().nullable().optional(),
+}).refine((data) => {
+  // Ensure either payee or payeeCustomerId is provided, but not both
+  return (data.payee && !data.payeeCustomerId) || (!data.payee && data.payeeCustomerId) || (!data.payee && !data.payeeCustomerId);
+}, {
+  message: "Either payee or customer must be selected",
 });
 
 const apiSchema = insertTransactionSchema.omit({
@@ -106,18 +113,19 @@ export const TransactionForm = ({
         />
 
         <FormField
-          name="payee"
+          name="payeeCustomerId"
           control={form.control}
           disabled={disabled}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Payee</FormLabel>
+              <FormLabel>Customer</FormLabel>
 
               <FormControl>
-                <Input
+                <CustomerSelect
+                  value={field.value}
+                  onChange={field.onChange}
                   disabled={disabled}
-                  placeholder="Add a payee"
-                  {...field}
+                  placeholder="Select customer..."
                 />
               </FormControl>
 
