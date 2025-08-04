@@ -52,47 +52,45 @@ export const Navigation = () => {
     if (isMobile) {
         return (
             <Row spacing={1}>
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                <SheetTrigger asChild>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="font-normal bg-white/10 hover:bg-white/20 hover:text-white border-none focus-visible:ring-offset-0 focus-visible:ring-transparent outline-none text-white focus:bg-white/30 transition"
-                        aria-label="Toggle navigation"
-                    >
-                        <Menu className="size-4" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="px-2">
-                    <SheetHeader>
-                        <SheetTitle className="hidden">Navigation</SheetTitle>
-                        <SheetDescription className="hidden">Quickly navigate to different sections</SheetDescription>
-                    </SheetHeader>
-                    <nav className="flex flex-col gap-y-2 pt-6">
-                        {routes.map((route) => (
-                            <Link
-                                key={route.href}
-                                href={{
-                                    pathname: route.href,
-                                    query: searchParams.toString()
-                                }}
-                                passHref
-                                legacyBehavior
-                                prefetch
-                            >
-                                <Button
-                                    variant={route.href === pathname ? "secondary" : "ghost"}
+                <Sheet open={isOpen} onOpenChange={setIsOpen}>
+                    <SheetTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="font-normal bg-white/10 hover:bg-white/20 hover:text-white border-none focus-visible:ring-offset-0 focus-visible:ring-transparent outline-none text-white focus:bg-white/30 transition"
+                            aria-label="Toggle navigation"
+                        >
+                            <Menu className="size-4" />
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="px-2">
+                        <SheetHeader>
+                            <SheetTitle className="hidden">Navigation</SheetTitle>
+                            <SheetDescription className="hidden">Quickly navigate to different sections</SheetDescription>
+                        </SheetHeader>
+                        <nav className="flex flex-col gap-y-2 pt-6">
+                            {routes.map((route) => (
+                                <Link
                                     key={route.href}
-                                    onClick={() => setIsOpen(false)}
-                                    className="w-full justify-start"
+                                    href={{
+                                        pathname: route.href,
+                                        query: searchParams.toString()
+                                    }}
+                                    prefetch
                                 >
-                                    {route.label}
-                                </Button>
-                            </Link>
-                        ))}
-                    </nav>
-                </SheetContent>
-            </Sheet>
+                                    <Button
+                                        variant={route.href === pathname ? "secondary" : "ghost"}
+                                        key={route.href}
+                                        onClick={() => setIsOpen(false)}
+                                        className="w-full justify-start"
+                                    >
+                                        {route.label}
+                                    </Button>
+                                </Link>
+                            ))}
+                        </nav>
+                    </SheetContent>
+                </Sheet>
                 {mobileRoutes.map((route) => (
                     <NavButton
                         key={route.href}

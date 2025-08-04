@@ -43,11 +43,11 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 
 3. **Set up environment variables:**
 
-   Link the app to Vercel project and pull development environmental variables to `.env.local` file from Vercel.
+   Link the app to Vercel project and pull development environmental variables to `.env` file from Vercel.
 
    ```env
    vercel link
-   vercel env pull .env.local
+   vercel env pull .env
    ```
 
 4. **Run the application:**
@@ -79,4 +79,5 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
    - Connect your bank account using Plaid to automatically import and sync transactions.
 
 6. (Planned) **Monetization:**
+
    - Monetize your platform by integrating Lemon Squeezy for payment processing.
