@@ -71,6 +71,13 @@
       "when": 1741542210952,
       "tag": "0009_aberrant_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1754311848140,
+      "tag": "0010_petite_shadow_king",
+      "breakpoints": true
     }
   ]
 }

@@ -3,20 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { useSearchParams } from "next/navigation";
 
-export const useGetAccounts = (options?: { search?: string, page?: number, pageSize?: number, accountId?: string | null }) => {
+export const useGetAccounts = (options?: { search?: string, page?: number, pageSize?: number, accountId?: string | null, showClosed?: boolean }) => {
     const searchParams = useSearchParams();
     const paramsAccountId = searchParams.get("accountId") ?? undefined;
-    const { page, pageSize, accountId, search } = options || {};
+    const { page, pageSize, accountId, search, showClosed } = options || {};
     const resolvedAccountId = typeof accountId === 'undefined' ? paramsAccountId : accountId;
     const query = useQuery({
-        queryKey: ["accounts", { search, page, pageSize, accountId: resolvedAccountId }],
+        queryKey: ["accounts", { search, page, pageSize, accountId: resolvedAccountId, showClosed }],
         queryFn: async () => {
             const response = await client.api.accounts.$get({
                 query: {
                     search,
                     page: page?.toString(),
                     pageSize: pageSize?.toString(),
-                    accountId: resolvedAccountId ?? undefined
+                    accountId: resolvedAccountId ?? undefined,
+                    showClosed: showClosed?.toString(),
                 },
             });
 

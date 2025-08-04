@@ -18,6 +18,8 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = insertAccountSchema.pick({
     name: true,
+    code: true,
+    isOpen: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -64,9 +66,11 @@ export const EditAccountSheet = () => {
     const defaultValues = accountQuery.data ? {
         name: accountQuery.data.name,
         code: accountQuery.data.code,
+        isOpen: accountQuery.data.isOpen,
     } : {
         name: "",
-            code: null,
+        code: null,
+        isOpen: true,
     }
 
     return (

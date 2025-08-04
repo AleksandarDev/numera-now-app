@@ -15,6 +15,53 @@ import {
   transactions,
 } from "@/db/schema";
 
+// Helper function to open an account and all its parent accounts
+const openAccountAndParents = async (accountId: string, userId: string) => {
+  if (!accountId) return;
+
+  // Get the account to check its code and current status
+  const [account] = await db
+    .select({ code: accounts.code, isOpen: accounts.isOpen })
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+
+  if (!account) return;
+
+  // Get all accounts that need to be opened (this account and its parents)
+  const accountsToOpen: string[] = [];
+
+  if (account.code) {
+    // Find all parent accounts by code prefix
+    for (let i = 1; i <= account.code.length; i++) {
+      const codePrefix = account.code.substring(0, i);
+      const parentAccounts = await db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(
+          eq(accounts.code, codePrefix),
+          eq(accounts.userId, userId),
+          eq(accounts.isOpen, false) // Only get closed accounts
+        ));
+
+      accountsToOpen.push(...parentAccounts.map(acc => acc.id));
+    }
+  } else if (!account.isOpen) {
+    // If account has no code but is closed, open it
+    accountsToOpen.push(accountId);
+  }
+
+  // Open all the accounts that need to be opened
+  if (accountsToOpen.length > 0) {
+    await db
+      .update(accounts)
+      .set({ isOpen: true })
+      .where(and(
+        inArray(accounts.id, accountsToOpen),
+        eq(accounts.userId, userId)
+      ));
+  }
+};
+
 const app = new Hono()
   .get(
     "/",
@@ -169,6 +216,18 @@ const app = new Hono()
       }
 
       // TODO: Fix users being able to create transactions with other users' accounts
+
+      // Open accounts and their parents if they are closed
+      if (values.accountId) {
+        await openAccountAndParents(values.accountId, auth.userId);
+      }
+      if (values.creditAccountId) {
+        await openAccountAndParents(values.creditAccountId, auth.userId);
+      }
+      if (values.debitAccountId) {
+        await openAccountAndParents(values.debitAccountId, auth.userId);
+      }
+
       const [data] = await db
         .insert(transactions)
         .values({
@@ -197,6 +256,20 @@ const app = new Hono()
       }
 
       // TODO: Fix users being able to create transactions with other users' accounts
+
+      // Open accounts and their parents for all transactions
+      for (const value of values) {
+        if (value.accountId) {
+          await openAccountAndParents(value.accountId, auth.userId);
+        }
+        if (value.creditAccountId) {
+          await openAccountAndParents(value.creditAccountId, auth.userId);
+        }
+        if (value.debitAccountId) {
+          await openAccountAndParents(value.debitAccountId, auth.userId);
+        }
+      }
+
       const data = await db
         .insert(transactions)
         .values(

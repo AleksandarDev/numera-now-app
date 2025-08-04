@@ -4,7 +4,7 @@ import { insertAccountSchema } from "@/db/schema";
 import { z } from "zod";
 import { useCreateAccount } from "@/features/accounts/api/use-create-account";
 
-import { 
+import {
     Sheet,
     SheetContent,
     SheetDescription,
@@ -14,6 +14,8 @@ import {
 
 const formSchema = insertAccountSchema.pick({
     name: true,
+    code: true,
+    isOpen: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -43,10 +45,12 @@ export const NewAccountSheet = () => {
                     </SheetDescription>
                 </SheetHeader>
                 <AccountForm
-                    onSubmit={onSubmit} 
+                    onSubmit={onSubmit}
                     disabled={mutation.isPending}
                     defaultValues={{
                         name: "",
+                        code: "",
+                        isOpen: true,
                     }}
                 />
             </SheetContent>

@@ -4,8 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { insertAccountSchema } from "@/db/schema";
-import { 
+import {
     Form,
     FormControl,
     FormField,
@@ -15,7 +16,8 @@ import {
 
 const formSchema = insertAccountSchema.pick({
     name: true,
-    code: true
+    code: true,
+    isOpen: true
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -53,7 +55,7 @@ export const AccountForm = ({
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4 pt-4">
+                className="space-y-4 pt-4">
                 <FormField
                     name="name"
                     control={form.control}
@@ -88,6 +90,26 @@ export const AccountForm = ({
                                     value={field.value || ""}
                                 />
                             </FormControl>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="isOpen"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={disabled}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                    Account is open
+                                </FormLabel>
+                            </div>
                         </FormItem>
                     )}
                 />

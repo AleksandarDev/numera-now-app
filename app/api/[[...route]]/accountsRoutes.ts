@@ -18,12 +18,13 @@ const app = new Hono()
         page: z.string().optional(),
         pageSize: z.string().optional(),
         accountId: z.string().optional(),
+        showClosed: z.string().optional().transform((val) => val === "true"),
       })
     ),
     clerkMiddleware(),
     async (ctx) => {
       const auth = getAuth(ctx);
-      const { page, pageSize, accountId, search } = ctx.req.valid("query");
+      const { page, pageSize, accountId, search, showClosed } = ctx.req.valid("query");
       if ((page && !Number.isInteger(Number(page))) ||
         (pageSize && !Number.isInteger(Number(pageSize)))) {
         return ctx.json({ error: "Invalid page or pageSize." }, 400);
@@ -47,12 +48,15 @@ const app = new Hono()
           id: accounts.id,
           name: accounts.name,
           code: accounts.code,
+          isOpen: accounts.isOpen,
         })
         .from(accounts)
         .where(and(
           and(...searchAccountNameSql),
           eq(accounts.userId, auth.userId),
-          accountId ? eq(accounts.id, accountId) : undefined))
+          accountId ? eq(accounts.id, accountId) : undefined,
+          // If showClosed is not explicitly true, only show open accounts
+          showClosed ? undefined : eq(accounts.isOpen, true)))
         .offset(page ? Number(page) * Number(pageSize) : 0)
         .limit(pageSize ? Number(pageSize) : 10);
 
@@ -84,6 +88,7 @@ const app = new Hono()
           id: accounts.id,
           name: accounts.name,
           code: accounts.code,
+          isOpen: accounts.isOpen,
         })
         .from(accounts)
         .where(and(eq(accounts.userId, auth.userId), eq(accounts.id, id)));
@@ -102,6 +107,8 @@ const app = new Hono()
       "json",
       insertAccountSchema.pick({
         name: true,
+        code: true,
+        isOpen: true,
       })
     ),
     async (ctx) => {
@@ -195,6 +202,8 @@ const app = new Hono()
       "json",
       insertAccountSchema.pick({
         name: true,
+        code: true,
+        isOpen: true,
       })
     ),
     async (ctx) => {

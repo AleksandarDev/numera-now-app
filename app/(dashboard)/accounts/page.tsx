@@ -2,6 +2,7 @@
 
 import { Loader2, Plus, ChevronDown, ChevronRight, Expand, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { useNewAccount } from "@/features/accounts/hooks/use-new-accounts";
@@ -29,8 +30,9 @@ const INITIAL_IMPORT_RESULTS = {
 
 function AccountsDataTable() {
     const [search, setSearch] = useState("");
+    const [showClosed, setShowClosed] = useState(false);
     const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
-    const accountsQuery = useGetAccounts({ search, pageSize: 9999 });
+    const accountsQuery = useGetAccounts({ search, pageSize: 9999, showClosed });
     const allAccounts = accountsQuery.data || [];
 
     const isDisabled = accountsQuery.isLoading;
@@ -102,11 +104,27 @@ function AccountsDataTable() {
     return (
         <Stack spacing={2}>
             <div className="flex flex-col sm:flex-row justify-between gap-2">
-                <Input
-                    placeholder={`Filter accounts...`}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="max-w-sm" />
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                        placeholder={`Filter accounts...`}
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        className="max-w-sm" />
+
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            checked={showClosed}
+                            onCheckedChange={(checked) => setShowClosed(checked === true)}
+                            id="show-closed"
+                        />
+                        <label
+                            htmlFor="show-closed"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                            Show closed accounts
+                        </label>
+                    </div>
+                </div>
 
                 <div className="flex gap-2">
                     <Button
@@ -187,15 +205,22 @@ function AccountsDataTable() {
 
                                         {/* Account Info */}
                                         <Stack>
-                                            <Typography
-                                                title={name}
-                                                level="body1"
-                                                className="line-clamp-1"
-                                                style={{
-                                                    fontWeight: accountHasChildren ? 'bold' : 'normal',
-                                                }}>
-                                                {name}
-                                            </Typography>
+                                            <div className="flex items-center gap-2">
+                                                <Typography
+                                                    title={name}
+                                                    level="body1"
+                                                    className="line-clamp-1"
+                                                    style={{
+                                                        fontWeight: accountHasChildren ? 'bold' : 'normal',
+                                                    }}>
+                                                    {name}
+                                                </Typography>
+                                                {!account.isOpen && (
+                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                                                        Closed
+                                                    </span>
+                                                )}
+                                            </div>
                                             <Typography level="body2" mono>
                                                 {code}
                                             </Typography>

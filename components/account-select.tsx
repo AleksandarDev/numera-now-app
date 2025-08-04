@@ -22,10 +22,11 @@ export type AccountSelectProps = {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  showClosed?: boolean;
 };
 
 export const AccountSelect = ({
-  value, onChange, selectAll, className, placeholder, disabled
+  value, onChange, selectAll, className, placeholder, disabled, showClosed = false
 }: AccountSelectProps) => {
   const [open, setOpen] = useState(false);
   const [accountsFilter, setAccountsFilter] = useState("");
@@ -33,7 +34,8 @@ export const AccountSelect = ({
   // TODO: Don't load all accounts if filter is not open, load only the selected one
   const { data: accounts, isLoading: isLoadingAccounts } = useGetAccounts({
     pageSize: 9999,
-    accountId: null
+    accountId: null,
+    showClosed
   });
 
   const resolvedAccounts = useMemo(() => selectAll

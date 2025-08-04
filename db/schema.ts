@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -9,6 +9,7 @@ export const accounts = pgTable("accounts", {
     name: text("name").notNull(),
     userId: text("user_id").notNull(),
     code: text("code"),
+    isOpen: boolean("is_open").notNull().default(true),
 }, (table) => [
     index('accounts_userid_idx').on(table.userId)
 ]);
