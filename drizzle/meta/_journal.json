@@ -85,6 +85,13 @@
       "when": 1754312762913,
       "tag": "0011_steady_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1754312762914,
+      "tag": "0012_update_account_status",
+      "breakpoints": true
     }
   ]
 }
