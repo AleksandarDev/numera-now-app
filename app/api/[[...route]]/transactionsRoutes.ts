@@ -15,6 +15,7 @@ import {
   customers,
   insertTransactionSchema,
   transactions,
+  settings,
 } from "@/db/schema";
 
 // Helper function to open an account and all its parent accounts
@@ -215,6 +216,28 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      // Check if double-entry mode is enabled
+      const [userSettings] = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.userId, auth.userId));
+
+      const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+
+      // Validate double-entry mode requirements
+      if (doubleEntryMode) {
+        if (!values.creditAccountId || !values.debitAccountId) {
+          return ctx.json({ 
+            error: "Double-entry mode is enabled. Both credit and debit accounts are required." 
+          }, 400);
+        }
+        if (values.accountId) {
+          return ctx.json({ 
+            error: "Double-entry mode is enabled. Use creditAccountId and debitAccountId instead of accountId." 
+          }, 400);
+        }
+      }
+
       if (values.amount < 0 && !values.accountId) {
         return ctx.json({ error: "When using debit and credit accounts, amount must be positive or zero." }, 400);
       }
@@ -365,6 +388,28 @@ const app = new Hono()
 
       if (!auth?.userId) {
         return ctx.json({ error: "Unauthorized." }, 401);
+      }
+
+      // Check if double-entry mode is enabled
+      const [userSettings] = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.userId, auth.userId));
+
+      const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+
+      // Validate double-entry mode requirements
+      if (doubleEntryMode) {
+        if (!values.creditAccountId || !values.debitAccountId) {
+          return ctx.json({ 
+            error: "Double-entry mode is enabled. Both credit and debit accounts are required." 
+          }, 400);
+        }
+        if (values.accountId) {
+          return ctx.json({ 
+            error: "Double-entry mode is enabled. Use creditAccountId and debitAccountId instead of accountId." 
+          }, 400);
+        }
       }
 
       const creditAccounts = aliasedTable(accounts, "creditAccounts");

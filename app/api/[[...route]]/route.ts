@@ -6,6 +6,7 @@ import categoriesRoutes from "./categoriesRoutes";
 import customersRoutes from "./customersRoutes";
 import summaryRoutes from "./summaryRoutes";
 import transactionsRoutes from "./transactionsRoutes";
+import settingsRoutes from "./settingsRoutes";
 
 const app = new Hono().basePath("/api");
 
@@ -14,7 +15,8 @@ const routes = app
   .route("/categories", categoriesRoutes)
   .route("/customers", customersRoutes)
   .route("/summary", summaryRoutes)
-  .route("/transactions", transactionsRoutes);
+  .route("/transactions", transactionsRoutes)
+  .route("/settings", settingsRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);
