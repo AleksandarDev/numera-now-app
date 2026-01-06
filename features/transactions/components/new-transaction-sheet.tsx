@@ -10,6 +10,12 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
 import { insertTransactionSchema } from "@/db/schema";
 import { useCreateAccount } from "@/features/accounts/api/use-create-account";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
@@ -30,6 +36,7 @@ type FormValues = z.infer<typeof formSchema>;
 export const NewTransactionSheet = () => {
     const { doubleEntry, isOpen, onClose, splitMode: initialSplitMode, prefillSplit } = useNewTransaction();
     const [splitMode, setSplitMode] = useState(initialSplitMode);
+    const [activeTab, setActiveTab] = useState("details");
 
     useEffect(() => {
         if (isOpen) {
@@ -87,7 +94,7 @@ export const NewTransactionSheet = () => {
 
     const splitDefaults: SplitTransactionFormValues = useMemo(() => ({
         date: prefillSplit?.date ?? new Date(),
-        status: prefillSplit?.status ?? "pending",
+        status: (prefillSplit?.status ?? "pending") as "draft" | "pending" | "completed" | "reconciled",
         payeeCustomerId: prefillSplit?.payeeCustomerId,
         payee: prefillSplit?.payee,
         notes: prefillSplit?.notes ?? "",
@@ -101,7 +108,7 @@ export const NewTransactionSheet = () => {
 
     return (
         <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-            <SheetContent className="flex flex-col h-full p-0">
+            <SheetContent className="flex flex-col h-full p-0 max-w-2xl">
                 <div className="px-6 pt-6">
                     <SheetHeader>
                         <SheetTitle>New Transaction</SheetTitle>
@@ -115,75 +122,95 @@ export const NewTransactionSheet = () => {
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto px-6">
-                        <div className="mb-4 flex gap-2">
-                            <Button
-                                variant={splitMode ? "outline" : "default"}
-                                onClick={() => setSplitMode(false)}
-                                size="sm"
-                            >
-                                Single
-                            </Button>
-                            <Button
-                                variant={splitMode ? "default" : "outline"}
-                                onClick={() => setSplitMode(true)}
-                                size="sm"
-                            >
-                                Split
-                            </Button>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                        <div className="px-6 mb-4">
+                            <TabsList className="w-full">
+                                <TabsTrigger value="details">Details</TabsTrigger>
+                                <TabsTrigger value="documents">Documents</TabsTrigger>
+                            </TabsList>
                         </div>
 
-                        {splitMode ? (
-                            <SplitTransactionForm
-                                disabled={isPending}
-                                categoryOptions={categoryOptions}
-                                onCreateCategory={onCreateCategory}
-                                onCreateCustomer={onCreateCustomer}
-                                defaultValues={splitDefaults}
-                                onSuccess={() => {
-                                    onClose();
-                                    setSplitMode(false);
-                                }}
-                            />
-                        ) : doubleEntry ? (
-                            <TransactionDoubleEntryForm
-                                onSubmit={onSubmit}
-                                disabled={isPending}
-                                categoryOptions={categoryOptions}
-                                onCreateCategory={onCreateCategory}
-                                creditAccountOptions={creditAccountOptions}
-                                debitAccountOptions={debitAccountOptions}
-                                accountTypeById={accountTypeById}
-                                onCreateAccount={onCreateAccount}
-                                onCreateCustomer={onCreateCustomer}
-                                defaultValues={{
-                                    date: new Date(),
-                                    amount: "",
-                                    notes: "",
-                                    creditAccountId: "",
-                                    debitAccountId: "",
-                                    status: "pending",
-                                }}
-                            />
-                        ) : (
-                            <TransactionForm
-                                onSubmit={onSubmit}
-                                disabled={isPending}
-                                categoryOptions={categoryOptions}
-                                onCreateCategory={onCreateCategory}
-                                accountOptions={accountOptions}
-                                onCreateAccount={onCreateAccount}
-                                defaultValues={{
-                                    date: new Date(),
-                                    payeeCustomerId: "",
-                                    amount: "",
-                                    notes: "",
-                                    accountId: "",
-                                    status: "pending",
-                                }}
-                            />
-                        )}
-                    </div>
+                        <div className="flex-1 overflow-y-auto px-6">
+                            <TabsContent value="details" className="space-y-4 mt-6">
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant={splitMode ? "outline" : "default"}
+                                        onClick={() => setSplitMode(false)}
+                                        size="sm"
+                                    >
+                                        Single
+                                    </Button>
+                                    <Button
+                                        variant={splitMode ? "default" : "outline"}
+                                        onClick={() => setSplitMode(true)}
+                                        size="sm"
+                                    >
+                                        Split
+                                    </Button>
+                                </div>
+
+                                {splitMode ? (
+                                    <SplitTransactionForm
+                                        disabled={isPending}
+                                        categoryOptions={categoryOptions}
+                                        onCreateCategory={onCreateCategory}
+                                        onCreateCustomer={onCreateCustomer}
+                                        defaultValues={splitDefaults}
+                                        onSuccess={() => {
+                                            onClose();
+                                            setSplitMode(false);
+                                        }}
+                                    />
+                                ) : doubleEntry ? (
+                                    <TransactionDoubleEntryForm
+                                        onSubmit={onSubmit}
+                                        disabled={isPending}
+                                        categoryOptions={categoryOptions}
+                                        onCreateCategory={onCreateCategory}
+                                        creditAccountOptions={creditAccountOptions}
+                                        debitAccountOptions={debitAccountOptions}
+                                        accountTypeById={accountTypeById}
+                                        onCreateAccount={onCreateAccount}
+                                        onCreateCustomer={onCreateCustomer}
+                                        defaultValues={{
+                                            date: new Date(),
+                                            amount: "",
+                                            notes: "",
+                                            creditAccountId: "",
+                                            debitAccountId: "",
+                                        }}
+                                    />
+                                ) : (
+                                    <TransactionForm
+                                        onSubmit={onSubmit}
+                                        disabled={isPending}
+                                        categoryOptions={categoryOptions}
+                                        onCreateCategory={onCreateCategory}
+                                        accountOptions={accountOptions}
+                                        onCreateAccount={onCreateAccount}
+                                        defaultValues={{
+                                            date: new Date(),
+                                            payeeCustomerId: "",
+                                            amount: "",
+                                            notes: "",
+                                            accountId: "",
+                                        }}
+                                    />
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="documents" className="mt-6">
+                                <div className="rounded-md border border-dashed p-8 text-center">
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                        Documents can be attached after creating the transaction
+                                    </div>
+                                    <div className="mt-2 text-xs text-muted-foreground">
+                                        Save this transaction first, then edit it to upload documents
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
                 )}
             </SheetContent>
         </Sheet>

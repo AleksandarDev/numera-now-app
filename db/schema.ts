@@ -204,7 +204,7 @@ export const transactionsRelations = relations(transactions, ({ one, many }) => 
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
     date: z.coerce.date(),
-    status: z.enum(["draft", "pending", "completed", "reconciled"]).default("pending"),
+    status: z.enum(["draft", "pending", "completed", "reconciled"]).default("draft").optional(),
     splitType: z.enum(["parent", "child"]).optional(),
 });
 
@@ -217,8 +217,8 @@ export const createTransactionSchema = insertTransactionSchema.omit({
     if (data.status === "draft") {
         return true;
     }
-    // For non-draft transactions, ensure either payee or payeeCustomerId is provided
-    return (data.payee && !data.payeeCustomerId) || (!data.payee && data.payeeCustomerId);
+    // For non-draft transactions, ensure at least payee or payeeCustomerId is provided
+    return !!data.payee || !!data.payeeCustomerId;
 }, {
     message: "Either payee or payeeCustomerId must be provided for non-draft transactions",
 });

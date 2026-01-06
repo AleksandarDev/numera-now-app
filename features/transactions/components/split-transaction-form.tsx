@@ -33,13 +33,12 @@ const splitRowSchema = z.object({
 
 const formSchema = z.object({
   date: z.date(),
-  status: z.enum(["draft", "pending", "completed", "reconciled"]).default("pending"),
   payeeCustomerId: z.string().optional(),
   payee: z.string().optional(),
   notes: z.string().nullable().optional(),
   categoryId: z.string().optional(),
   splits: z.array(splitRowSchema).min(2, "Add at least two splits"),
-  doubleEntry: z.boolean().default(false),
+  doubleEntry: z.boolean(),
 }).superRefine((data, ctx) => {
   data.splits.forEach((split, index) => {
     const hasSingle = !!split.accountId;
@@ -114,7 +113,7 @@ export const SplitTransactionForm = ({
           notes: values.notes,
           categoryId: values.categoryId,
           amount: parentAmount,
-          status: values.status,
+          status: "draft",
         },
         splits: values.splits.map((split) => ({
           amount: convertAmountToMiliunits(parseFloat(split.amount || "0")),
@@ -151,31 +150,6 @@ export const SplitTransactionForm = ({
                 <FormLabel>Date</FormLabel>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} disabled={isPending} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            name="status"
-            control={form.control}
-            disabled={isPending}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <FormControl>
-                  <Select
-                    placeholder="Select status"
-                    options={[
-                      { label: "Draft", value: "draft" },
-                      { label: "Pending", value: "pending" },
-                      { label: "Completed", value: "completed" },
-                      { label: "Reconciled", value: "reconciled" },
-                    ]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={isPending}
-                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

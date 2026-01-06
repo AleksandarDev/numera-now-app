@@ -10,7 +10,7 @@ type NewTransactionState = {
     payee?: string;
     categoryId?: string | null;
     notes?: string | null;
-    status?: "draft" | "pending" | "completed" | "reconciled";
+    status?: string;
   };
   onOpen: (doubleEntry?: boolean) => void;
   onOpenSplit: (options?: { doubleEntry?: boolean; prefillSplit?: NewTransactionState["prefillSplit"] }) => void;

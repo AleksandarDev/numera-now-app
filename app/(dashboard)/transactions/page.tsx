@@ -44,6 +44,8 @@ function TransactionsImportView({ importResults, onDone }: { importResults: type
     const data = values.map((value) => ({
       ...value,
       accountId,
+      status: (value.status ?? "pending") as "draft" | "pending" | "completed" | "reconciled",
+      splitType: value.splitType as "parent" | "child" | undefined,
     }));
 
     createTransactions.mutate(data, {

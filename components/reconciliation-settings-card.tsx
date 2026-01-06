@@ -36,11 +36,11 @@ export function ReconciliationSettingsCard() {
     ReconciliationCondition[]
   >(() => {
     if (!settings?.reconciliationConditions) {
-      return ["hasReceipt"];
+      return [];
     }
     return Array.isArray(settings.reconciliationConditions)
       ? settings.reconciliationConditions
-      : JSON.parse(settings.reconciliationConditions || '["hasReceipt"]');
+      : JSON.parse(settings.reconciliationConditions || '[]');
   });
 
   const toggleCondition = (condition: ReconciliationCondition) => {

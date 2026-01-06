@@ -65,22 +65,22 @@ const app = new Hono()
       // Add validation warnings for accounts with invalid configurations
       const dataWithValidation = data.map(account => {
         let hasInvalidConfig = false;
-        
+
         // Check if account is open but any parent is closed
         if (account.isOpen && account.code && account.code.length > 1) {
-          const parentCodes = [];
+          const parentCodes: string[] = [];
           for (let i = 1; i < account.code.length; i++) {
             parentCodes.push(account.code.substring(0, i));
           }
-          
+
           // Check if any parent is closed (this would be invalid)
-          const closedParents = data.filter(a => 
+          const closedParents = data.filter(a =>
             a.code && parentCodes.includes(a.code) && !a.isOpen
           );
-          
+
           hasInvalidConfig = closedParents.length > 0;
         }
-        
+
         return {
           ...account,
           accountType: account.accountType,

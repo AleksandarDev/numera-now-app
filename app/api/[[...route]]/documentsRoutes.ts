@@ -272,6 +272,81 @@ const app = new Hono()
     }
   )
 
+  // Update document metadata (e.g., change document type)
+  .patch(
+    "/:id",
+    clerkMiddleware(),
+    zValidator(
+      "json",
+      z.object({
+        documentTypeId: z.string().optional(),
+      })
+    ),
+    async (ctx) => {
+      const auth = getAuth(ctx);
+      const { id } = ctx.req.param();
+      const { documentTypeId } = ctx.req.valid("json");
+
+      if (!auth?.userId) {
+        return ctx.json({ error: "Unauthorized." }, 401);
+      }
+
+      try {
+        const [doc] = await db
+          .select({
+            transactionId: documents.transactionId,
+          })
+          .from(documents)
+          .where(eq(documents.id, id));
+
+        if (!doc) {
+          return ctx.json({ error: "Document not found." }, 404);
+        }
+
+        // Verify ownership through transaction
+        const [transaction] = await db
+          .select()
+          .from(transactions)
+          .where(eq(transactions.id, doc.transactionId));
+
+        if (!transaction) {
+          return ctx.json({ error: "Unauthorized." }, 403);
+        }
+
+        // If updating document type, verify it belongs to user
+        if (documentTypeId) {
+          const [docType] = await db
+            .select()
+            .from(documentTypes)
+            .where(
+              and(
+                eq(documentTypes.id, documentTypeId),
+                eq(documentTypes.userId, auth.userId)
+              )
+            );
+
+          if (!docType) {
+            return ctx.json({ error: "Document type not found." }, 404);
+          }
+        }
+
+        const updateData: { documentTypeId?: string } = {};
+        if (documentTypeId) updateData.documentTypeId = documentTypeId;
+
+        const [updatedDoc] = await db
+          .update(documents)
+          .set(updateData)
+          .where(eq(documents.id, id))
+          .returning();
+
+        return ctx.json({ data: updatedDoc });
+      } catch (error) {
+        console.error("Error updating document:", error);
+        return ctx.json({ error: "Failed to update document" }, 500);
+      }
+    }
+  )
+
   // Delete a document
   .delete(
     "/:id",

@@ -2,12 +2,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { InferResponseType } from "hono";
 
+type DocumentsResponseType = InferResponseType<typeof client.api.documents.transaction[":transactionId"]["$get"], 200>["data"];
+
 // Get documents for a transaction
 export const useGetDocuments = (transactionId: string) => {
-  const query = useQuery({
+  const query = useQuery<DocumentsResponseType>({
     queryKey: ["documents", transactionId],
     queryFn: async () => {
-      const response = await client.api.documents[":transactionId"].$get({
+      const response = await client.api.documents.transaction[":transactionId"].$get({
         param: { transactionId },
       });
 
@@ -312,6 +314,86 @@ export const useDeleteDocumentType = () => {
       }
 
       const { data } = await response.json();
+      return data;
+    },
+  });
+
+  return mutation;
+};
+
+// Update document metadata (e.g., change document type)
+export const useUpdateDocument = () => {
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      documentTypeId,
+    }: {
+      id: string;
+      documentTypeId?: string;
+    }) => {
+      const response = await client.api.documents[":id"].$patch({
+        param: { id },
+        json: {
+          documentTypeId,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update document");
+      }
+
+      const { data } = await response.json();
+      return data;
+    },
+  });
+
+  return mutation;
+};
+
+// Upload document without specifying type (type can be assigned later)
+export const useUploadDocumentWithoutType = () => {
+  const generateUploadUrl = useGenerateUploadUrl();
+  const uploadToBlob = useUploadDocumentToBlob();
+  const saveDocument = useSaveDocument();
+
+  const mutation = useMutation({
+    mutationFn: async ({
+      transactionId,
+      documentTypeId,
+      file,
+    }: {
+      transactionId: string;
+      documentTypeId?: string;
+      file: File;
+    }) => {
+      // Step 1: Get upload URL
+      const { uploadUrl } = await generateUploadUrl.mutateAsync({
+        transactionId,
+        fileName: file.name,
+      });
+
+      // Extract storage path from SAS URL
+      const url = new URL(uploadUrl);
+      const storagePath = url.pathname.substring(
+        url.pathname.indexOf("/documents/") + "/documents/".length
+      );
+
+      // Step 2: Upload file to blob storage
+      await uploadToBlob.mutateAsync({
+        sasUrl: uploadUrl,
+        file,
+      });
+
+      // Step 3: Save document metadata
+      const data = await saveDocument.mutateAsync({
+        transactionId,
+        documentTypeId: documentTypeId || "", // Will need to be assigned later if not provided
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        storagePath,
+      });
+
       return data;
     },
   });

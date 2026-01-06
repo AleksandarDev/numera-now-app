@@ -2,13 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { convertAmountFromMiliunits } from "@/lib/utils";
 
-export const useGetSplitGroup = (splitGroupId?: string) => {
+export const useGetSplitGroup = (splitGroupId?: string | null) => {
   const query = useQuery({
     enabled: !!splitGroupId,
     queryKey: ["split-group", { splitGroupId }],
     queryFn: async () => {
       const response = await client.api.transactions["split-group"][":splitGroupId"].$get({
-        param: { splitGroupId },
+        param: { splitGroupId: splitGroupId! },
       });
 
       if (!response.ok) {

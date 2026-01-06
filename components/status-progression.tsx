@@ -1,0 +1,192 @@
+"use client";
+
+import { useState } from "react";
+import { ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+type TransactionStatus = "draft" | "pending" | "completed" | "reconciled";
+
+const STATUS_INFO: Record<TransactionStatus, { label: string; description: string; color: string }> = {
+  draft: {
+    label: "Draft",
+    description: "Transaction is being prepared",
+    color: "bg-gray-100 text-gray-700 border-gray-300",
+  },
+  pending: {
+    label: "Pending",
+    description: "Transaction is pending confirmation",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  },
+  completed: {
+    label: "Completed",
+    description: "Transaction has been completed",
+    color: "bg-blue-100 text-blue-700 border-blue-300",
+  },
+  reconciled: {
+    label: "Reconciled",
+    description: "Transaction has been reconciled",
+    color: "bg-green-100 text-green-700 border-green-300",
+  },
+};
+
+const STATUS_ORDER: TransactionStatus[] = ["draft", "pending", "completed", "reconciled"];
+
+interface StatusProgressionProps {
+  currentStatus: TransactionStatus;
+  onAdvance: (nextStatus: TransactionStatus) => Promise<void>;
+  disabled?: boolean;
+  canReconcile?: boolean;
+  reconciliationBlockers?: string[];
+}
+
+export function StatusProgression({
+  currentStatus,
+  onAdvance,
+  disabled = false,
+  canReconcile = true,
+  reconciliationBlockers = [],
+}: StatusProgressionProps) {
+  const [isAdvancing, setIsAdvancing] = useState(false);
+
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  const nextStatus = currentIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[currentIndex + 1] : null;
+
+  const handleAdvance = async () => {
+    if (!nextStatus || isAdvancing || disabled) return;
+
+    // Check if trying to advance to reconciled but conditions aren't met
+    if (nextStatus === "reconciled" && !canReconcile) {
+      return;
+    }
+
+    setIsAdvancing(true);
+    try {
+      await onAdvance(nextStatus);
+    } finally {
+      setIsAdvancing(false);
+    }
+  };
+
+  const isReconcileBlocked = nextStatus === "reconciled" && !canReconcile;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Transaction Status</CardTitle>
+        <CardDescription>Progress this transaction through its lifecycle</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Status Timeline */}
+        <div className="flex items-center justify-between">
+          {STATUS_ORDER.map((status, index) => {
+            const isCurrent = status === currentStatus;
+            const isPast = index < currentIndex;
+            const isNext = status === nextStatus;
+
+            return (
+              <div key={status} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all",
+                      isCurrent && STATUS_INFO[status].color,
+                      isPast && "bg-green-50 border-green-300",
+                      !isCurrent && !isPast && "bg-gray-50 border-gray-300"
+                    )}
+                  >
+                    {isPast ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <span className={cn("text-sm font-semibold", isCurrent ? "" : "text-gray-400")}>
+                        {index + 1}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <div className={cn("text-xs font-medium", isCurrent ? "text-foreground" : "text-muted-foreground")}>
+                      {STATUS_INFO[status].label}
+                    </div>
+                  </div>
+                </div>
+                {index < STATUS_ORDER.length - 1 && (
+                  <div
+                    className={cn(
+                      "flex-1 h-0.5 mx-2",
+                      index < currentIndex ? "bg-green-300" : "bg-gray-300"
+                    )}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Current Status Info */}
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge className={STATUS_INFO[currentStatus].color}>
+                  {STATUS_INFO[currentStatus].label}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {STATUS_INFO[currentStatus].description}
+              </p>
+            </div>
+            {nextStatus && (
+              <Button
+                onClick={handleAdvance}
+                disabled={disabled || isAdvancing || isReconcileBlocked}
+                className="gap-2"
+              >
+                {isAdvancing ? (
+                  <>Processing...</>
+                ) : (
+                  <>
+                    Advance to {STATUS_INFO[nextStatus].label}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Reconciliation Blockers */}
+        {isReconcileBlocked && reconciliationBlockers.length > 0 && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900 mb-2">
+                  Cannot reconcile yet. Please complete:
+                </p>
+                <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                  {reconciliationBlockers.map((blocker, idx) => (
+                    <li key={idx}>{blocker}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Completed Status */}
+        {currentStatus === "reconciled" && (
+          <div className="rounded-lg border border-green-300 bg-green-50 p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <p className="text-sm text-green-900">
+                This transaction has been fully reconciled and completed.
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

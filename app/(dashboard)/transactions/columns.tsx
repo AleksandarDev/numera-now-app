@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { AccountColumn } from "./account-column";
 import { CategoryColumn } from "./category-column";
 import { CustomerColumn } from "./customer-column";
+import { DocumentsColumn } from "./documents-column";
 
 export type ResponseType = InferResponseType<typeof client.api.transactions.$get, 200>["data"][0];
 
@@ -38,6 +39,45 @@ export const columns: ColumnDef<ResponseType>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Status
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string;
+      const statusVariants = {
+        draft: "secondary",
+        pending: "outline",
+        completed: "outline",
+        reconciled: "outline",
+      } as const;
+      
+      const statusColors = {
+        draft: "text-muted-foreground",
+        pending: "text-yellow-600",
+        completed: "text-blue-600",
+        reconciled: "text-green-600",
+      } as const;
+      
+      return (
+        <Badge
+          variant={statusVariants[status as keyof typeof statusVariants] || "outline"}
+          className={`${statusColors[status as keyof typeof statusColors] || ""}`}
+        >
+          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
+        </Badge>
+      )
+    }
   },
   {
     accessorKey: "date",
@@ -152,42 +192,21 @@ export const columns: ColumnDef<ResponseType>[] = [
     }
   },
   {
-    accessorKey: "status",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
+    id: "documents",
+    header: () => (
+      <span className="text-xs uppercase text-muted-foreground">Docs</span>
+    ),
+    enableSorting: false,
     cell: ({ row }) => {
-      const status = row.getValue("status") as string;
-      const statusVariants = {
-        draft: "secondary",
-        pending: "outline",
-        completed: "default",
-        reconciled: "default",
-      } as const;
-      
-      const statusColors = {
-        draft: "text-muted-foreground",
-        pending: "text-yellow-600",
-        completed: "text-blue-600",
-        reconciled: "text-green-600",
-      } as const;
-      
       return (
-        <Badge
-          variant={statusVariants[status as keyof typeof statusVariants] || "outline"}
-          className={`px-2 py-1 text-xs ${statusColors[status as keyof typeof statusColors] || ""}`}
-        >
-          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
-        </Badge>
-      )
+        <DocumentsColumn
+          documentCount={row.original.documentCount ?? 0}
+          hasAllRequiredDocuments={row.original.hasAllRequiredDocuments ?? true}
+          requiredDocumentTypes={row.original.requiredDocumentTypes ?? 0}
+          attachedRequiredTypes={row.original.attachedRequiredTypes ?? 0}
+          status={row.original.status ?? "pending"}
+        />
+      );
     }
   },
   {
@@ -212,9 +231,11 @@ export const columns: ColumnDef<ResponseType>[] = [
           creditAccount={row.original.creditAccount}
           creditAccountCode={row.original.creditAccountCode}
           creditAccountIsOpen={row.original.creditAccountIsOpen}
+          creditAccountType={row.original.creditAccountType}
           debitAccount={row.original.debitAccount}
           debitAccountCode={row.original.debitAccountCode}
           debitAccountIsOpen={row.original.debitAccountIsOpen}
+          debitAccountType={row.original.debitAccountType}
         />
       )
     }

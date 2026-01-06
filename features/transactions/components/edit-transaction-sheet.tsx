@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import React, { Fragment, useMemo, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -26,11 +26,13 @@ import { useEditTransaction } from "@/features/transactions/api/use-edit-transac
 import { useGetTransaction } from "@/features/transactions/api/use-get-transaction";
 import { useGetStatusHistory } from "@/features/transactions/api/use-get-status-history";
 import { useGetSplitGroup } from "@/features/transactions/api/use-get-split-group";
+import { useCanReconcile } from "@/features/transactions/api/use-can-reconcile";
 import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
+import { convertAmountToMiliunits } from "@/lib/utils";
 import { useConfirm } from "@/hooks/use-confirm";
 import { formatCurrency } from "@/lib/utils";
 import { DocumentsTab } from "@/components/documents-tab";
-import { TransactionReconciliationStatus } from "@/components/transaction-reconciliation-status";
+import { StatusProgression } from "@/components/status-progression";
 
 import { TransactionForm } from "./transaction-form";
 import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
@@ -61,7 +63,7 @@ type TransactionDoubleEntryFormValues = {
 };
 
 export const EditTransactionSheet = () => {
-  const { isOpen, onClose, id } = useOpenTransaction();
+  const { isOpen, onClose, id, initialTab } = useOpenTransaction();
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Are you sure?",
@@ -71,6 +73,7 @@ export const EditTransactionSheet = () => {
   const transactionQuery = useGetTransaction(id);
   const statusHistoryQuery = useGetStatusHistory(id);
   const splitGroupQuery = useGetSplitGroup(transactionQuery.data?.splitGroupId);
+  const canReconcileQuery = useCanReconcile(id);
   const editMutation = useEditTransaction(id);
   const deleteMutation = useDeleteTransaction(id);
 
@@ -127,6 +130,20 @@ export const EditTransactionSheet = () => {
     });
   };
 
+  const onAdvanceStatus = async (nextStatus: "draft" | "pending" | "completed" | "reconciled") => {
+    if (!transactionQuery.data) return;
+
+    const { splitType, amount, ...transactionData } = transactionQuery.data;
+
+    await editMutation.mutateAsync({
+      ...transactionData,
+      // Convert amount back to miliunits since useGetTransaction converts it from miliunits
+      amount: convertAmountToMiliunits(amount),
+      status: nextStatus,
+      splitType: splitType === "parent" || splitType === "child" ? splitType : undefined,
+    });
+  };
+
   const defaultValuesForForm: Partial<TransactionFormValues & TransactionDoubleEntryFormValues> = transactionQuery.data
     ? {
       accountId: transactionQuery.data.accountId as string,
@@ -140,7 +157,7 @@ export const EditTransactionSheet = () => {
       payeeCustomerId: transactionQuery.data.payeeCustomerId ?? undefined,
       payee: transactionQuery.data.payee ?? undefined,
       notes: transactionQuery.data.notes ?? undefined,
-      status: transactionQuery.data.status ?? "pending",
+      status: (transactionQuery.data.status ?? "pending") as "draft" | "pending" | "completed" | "reconciled",
     }
     : {
       accountId: undefined,
@@ -152,16 +169,22 @@ export const EditTransactionSheet = () => {
       payeeCustomerId: undefined,
       payee: undefined,
       notes: undefined,
-      status: "pending",
     };
 
-  const statusOrder = ["draft", "pending", "completed", "reconciled"] as const;
-  const currentStatus = transactionQuery.data?.status ?? "pending";
-  const allowedStatuses = useMemo(() => {
-    const idx = statusOrder.indexOf(currentStatus as typeof statusOrder[number]);
-    const start = idx >= 0 ? idx : 0;
-    return statusOrder.slice(start).map((value) => ({ label: value.charAt(0).toUpperCase() + value.slice(1), value }));
-  }, [currentStatus]);
+  const currentStatus = (transactionQuery.data?.status ?? "pending") as "draft" | "pending" | "completed" | "reconciled";
+
+  const reconciliationStatus = canReconcileQuery.data;
+  const canReconcile = reconciliationStatus?.isReconciled ?? false;
+  const reconciliationBlockers = reconciliationStatus?.conditions
+    ?.filter((c: any) => !c.met)
+    .map((c: any) => {
+      const labels: Record<string, string> = {
+        hasReceipt: "Document required",
+        isReviewed: "Review required",
+        isApproved: "Approval required",
+      };
+      return labels[c.name] || c.name;
+    }) ?? [];
 
   const onDelete = async () => {
     const ok = await confirm();
@@ -175,7 +198,20 @@ export const EditTransactionSheet = () => {
     }
   };
 
-  const [activeTab, setActiveTab] = useState("details");
+  type TabValue = "details" | "documents" | "history";
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab || "details");
+  
+  // Reset tab when sheet opens with a new initial tab
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as TabValue);
+  };
+  
   return (
     <>
       <ConfirmDialog />
@@ -193,96 +229,103 @@ export const EditTransactionSheet = () => {
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-              <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-              </TabsList>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+              <div className="px-6 mb-4">
+                <TabsList className="w-full">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
+                </TabsList>
+              </div>
 
               <div className="flex-1 overflow-y-auto px-6">
                 <TabsContent value="details" className="space-y-6 mt-6">
+                  {/* Status Progression */}
+                  <StatusProgression
+                    currentStatus={currentStatus}
+                    onAdvance={onAdvanceStatus}
+                    disabled={isPending}
+                    canReconcile={canReconcile}
+                    reconciliationBlockers={reconciliationBlockers}
+                  />
+
                   {transactionQuery.data && transactionQuery.data.accountId ? (
-                <TransactionForm
-                  id={id}
-                  defaultValues={defaultValuesForForm as TransactionFormValues}
-                  onSubmit={onSubmit}
-                  disabled={isPending}
-                  categoryOptions={categoryOptions}
-                  onCreateCategory={onCreateCategory}
-                  accountOptions={accountOptions}
-                  onCreateAccount={onCreateAccount}
-                  statusOptions={allowedStatuses}
-                  onDelete={onDelete}
-                />
+                    <TransactionForm
+                      id={id}
+                      defaultValues={defaultValuesForForm as TransactionFormValues}
+                      onSubmit={onSubmit}
+                      disabled={isPending}
+                      categoryOptions={categoryOptions}
+                      onCreateCategory={onCreateCategory}
+                      accountOptions={accountOptions}
+                      onCreateAccount={onCreateAccount}
+                      onDelete={onDelete}
+                    />
                   ) : (
-                <TransactionDoubleEntryForm
-                  id={id}
-                  defaultValues={defaultValuesForForm as TransactionDoubleEntryFormValues}
-                  onSubmit={onSubmit}
-                  disabled={isPending}
-                  categoryOptions={categoryOptions}
-                  onCreateCategory={onCreateCategory}
-                  creditAccountOptions={creditAccountOptions}
-                  debitAccountOptions={debitAccountOptions}
-                  accountTypeById={accountTypeById}
-                  onCreateAccount={onCreateAccount}
-                  onCreateCustomer={onCreateCustomer}
-                  onDelete={onDelete}
-                  statusOptions={allowedStatuses}
-                  hasPayee={!!transactionQuery.data?.payee}
-                />
+                    <TransactionDoubleEntryForm
+                      id={id}
+                      defaultValues={defaultValuesForForm as TransactionDoubleEntryFormValues}
+                      onSubmit={onSubmit}
+                      disabled={isPending}
+                      categoryOptions={categoryOptions}
+                      onCreateCategory={onCreateCategory}
+                      creditAccountOptions={creditAccountOptions}
+                      debitAccountOptions={debitAccountOptions}
+                      accountTypeById={accountTypeById}
+                      onCreateAccount={onCreateAccount}
+                      onCreateCustomer={onCreateCustomer}
+                      onDelete={onDelete}
+                      hasPayee={!!transactionQuery.data?.payee}
+                    />
                   )}
 
-              {splitGroupQuery.data && splitGroupQuery.data.length > 0 && (
-                <div className="space-y-2 rounded-md border p-3">
-                  <div className="text-sm font-semibold">Split group</div>
-                  <div className="space-y-1 text-sm">
-                    {splitGroupQuery.data.map((split) => (
-                      <div key={split.id} className="flex items-center justify-between rounded bg-muted/40 px-2 py-1">
-                        <div>
-                          <div className="font-medium">
-                            {split.splitType === "parent" ? "Parent" : "Child"}
+                  {splitGroupQuery.data && splitGroupQuery.data.length > 0 && (
+                    <div className="space-y-2 rounded-md border p-3">
+                      <div className="text-sm font-semibold">Split group</div>
+                      <div className="space-y-1 text-sm">
+                        {splitGroupQuery.data.map((split) => (
+                          <div key={split.id} className="flex items-center justify-between rounded bg-muted/40 px-2 py-1">
+                            <div>
+                              <div className="font-medium">
+                                {split.splitType === "parent" ? "Parent" : "Child"}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{split.payeeCustomerName || split.payee || ""}</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">{formatCurrency(split.amount ?? 0)}</div>
                           </div>
-                          <div className="text-xs text-muted-foreground">{split.payeeCustomerName || split.payee || ""}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground">{formatCurrency(split.amount ?? 0)}</div>
+                        ))}
                       </div>
-                    ))}
-                                  </TabsContent>
+                    </div>
+                  )}
+                </TabsContent>
 
-                                  <TabsContent value="documents" className="mt-6">
-                                    {transactionQuery.data && (
-                                      <DocumentsTab transactionId={transactionQuery.data.id} />
-                                    )}
-                                  </TabsContent>
+                <TabsContent value="documents" className="mt-6">
+                  {transactionQuery.data && (
+                    <DocumentsTab transactionId={transactionQuery.data.id} />
+                  )}
+                </TabsContent>
 
-                                  <TabsContent value="history" className="mt-6">
-                  </div>
-                </div>
-              )}
-
-              {statusHistoryQuery.data && statusHistoryQuery.data.length > 0 && (
-                                  ? (
-                <div className="space-y-2 rounded-md border p-3">
-                  <div className="text-sm font-semibold">Status history</div>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    {statusHistoryQuery.data.map((entry, idx) => (
-                      <Fragment key={entry.id}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-foreground">{entry.toStatus}</div>
-                            <div className="text-xs">Changed by {entry.changedBy || "unknown"}</div>
-                          </div>
-                          <div className="text-xs">
-                            {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : ""}
-                          </div>
-                        </div>
-                        {idx < statusHistoryQuery.data.length - 1 && <div className="h-px bg-muted" />}
-                      </Fragment>
-                    ))}
-                  </div>
-                </div>
+                <TabsContent value="history" className="mt-6">
+                  {statusHistoryQuery.data && statusHistoryQuery.data.length > 0 ? (
+                    <div className="space-y-2 rounded-md border p-3">
+                      <div className="text-sm font-semibold">Status history</div>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        {statusHistoryQuery.data.map((entry, idx) => (
+                          <Fragment key={entry.id}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium text-foreground">{entry.toStatus}</div>
+                                <div className="text-xs">Changed by {entry.changedBy || "unknown"}</div>
+                              </div>
+                              <div className="text-xs">
+                                {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : ""}
+                              </div>
+                            </div>
+                            {idx < statusHistoryQuery.data.length - 1 && <div className="h-px bg-muted" />}
+                          </Fragment>
+                        ))}
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-sm text-muted-foreground">No status history yet.</div>
                   )}

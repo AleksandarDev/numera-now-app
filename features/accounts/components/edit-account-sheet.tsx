@@ -76,7 +76,7 @@ export const EditAccountSheet = () => {
         code: null,
         isOpen: true,
         isReadOnly: false,
-        accountType: "neutral",
+        accountType: "neutral" as const,
     }
 
     return (

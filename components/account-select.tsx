@@ -50,7 +50,7 @@ export const AccountSelect = ({
 
   const resolvedAccounts = useMemo(() => {
     let result = accounts ?? [];
-    
+
     // Filter out read-only accounts if needed
     if (excludeReadOnly) {
       result = result.filter(account => !account.isReadOnly);
@@ -62,12 +62,12 @@ export const AccountSelect = ({
         return allowedTypes.includes(type);
       });
     }
-    
+
     // Add "all" option if needed
     if (selectAll) {
-      result = [{ id: "all", name: "All accounts", code: "", isOpen: true, isReadOnly: false, accountType: "neutral" }, ...result];
+      result = [{ id: "all", name: "All accounts", code: "", isOpen: true, isReadOnly: false, accountType: "neutral" as const, hasInvalidConfig: false }, ...result];
     }
-    
+
     return result;
   }, [accounts, selectAll, excludeReadOnly, allowedTypes]);
   const filteredAccounts = useMemo(() => resolvedAccounts?.filter((account) => {
@@ -85,8 +85,9 @@ export const AccountSelect = ({
     initialOffset: (filteredAccounts?.findIndex((account) => account.id === value) ?? 0) * 45,
   });
 
-  const selectedAccount = ((value?.length ?? 0 > 0) && resolvedAccounts)
-    ? resolvedAccounts.find((account) => account.id === value)
+  // Find selected account from all accounts (not just resolved/filtered ones) so we can display it even if invalid
+  const selectedAccount = ((value?.length ?? 0 > 0) && accounts)
+    ? accounts.find((account) => account.id === value)
     : null;
 
   const shouldRefocus = useRef(false);

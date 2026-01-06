@@ -11,9 +11,11 @@ type AccountColumnProps = {
   creditAccount?: string | null;
   creditAccountCode?: string | null;
   creditAccountIsOpen?: boolean | null;
+  creditAccountType?: string | null;
   debitAccount?: string | null;
   debitAccountCode?: string | null;
   debitAccountIsOpen?: boolean | null;
+  debitAccountType?: string | null;
 };
 
 export const AccountColumn = ({
@@ -23,9 +25,11 @@ export const AccountColumn = ({
   creditAccount,
   creditAccountCode,
   creditAccountIsOpen,
+  creditAccountType,
   debitAccount,
   debitAccountCode,
-  debitAccountIsOpen
+  debitAccountIsOpen,
+  debitAccountType
 }: AccountColumnProps) => {
   if (account)
     return (
@@ -50,6 +54,12 @@ export const AccountColumn = ({
               severity="warning"
             />
           )}
+          {creditAccountType === "debit" && (
+            <ValidationIndicator
+              message={`Credit account "${creditAccount}" is debit-only and should not be used as a credit account`}
+              severity="error"
+            />
+          )}
           <AccountName account={creditAccount} accountCode={creditAccountCode} />
         </Row>
         <ChevronRight className="size-4 min-w-4" />
@@ -58,6 +68,12 @@ export const AccountColumn = ({
             <ValidationIndicator
               message={`Debit account "${debitAccount}" is closed/inactive`}
               severity="warning"
+            />
+          )}
+          {debitAccountType === "credit" && (
+            <ValidationIndicator
+              message={`Debit account "${debitAccount}" is credit-only and should not be used as a debit account`}
+              severity="error"
             />
           )}
           <AccountName account={debitAccount} accountCode={debitAccountCode} />

@@ -2,51 +2,47 @@ import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/db/drizzle";
-import { settings, insertSettingsSchema } from "@/db/schema";
+import { settings } from "@/db/schema";
 
 const reconciliationConditionsSchema = z.array(
   z.enum(["hasReceipt", "isReviewed", "isApproved"])
 );
 
 const app = new Hono()
-  .get(
-    "/",
-    clerkMiddleware(),
-    async (ctx) => {
-      const auth = getAuth(ctx);
+  .get("/", clerkMiddleware(), async (ctx) => {
+    const auth = getAuth(ctx);
 
-      if (!auth?.userId) {
-        return ctx.json({ error: "Unauthorized." }, 401);
-      }
-
-      const [data] = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.userId, auth.userId));
-
-      // Return default settings if none exist
-      if (!data) {
-        return ctx.json({ 
-          data: { 
-            userId: auth.userId, 
-            doubleEntryMode: false,
-            reconciliationConditions: ["hasReceipt"],
-          } 
-        });
-      }
-
-      // Parse reconciliation conditions
-      const parsed = {
-        ...data,
-        reconciliationConditions: JSON.parse(data.reconciliationConditions || '["hasReceipt"]'),
-      };
-
-      return ctx.json({ data: parsed });
+    if (!auth?.userId) {
+      return ctx.json({ error: "Unauthorized." }, 401);
     }
-  )
+
+    const [data] = await db
+      .select()
+      .from(settings)
+      .where(eq(settings.userId, auth.userId));
+
+    if (!data) {
+      return ctx.json({
+        data: {
+          userId: auth.userId,
+          doubleEntryMode: false,
+          reconciliationConditions: [],
+        },
+      });
+    }
+
+    const parsed = {
+      ...data,
+      reconciliationConditions: JSON.parse(
+        data.reconciliationConditions || '[]'
+      ),
+    };
+
+    return ctx.json({ data: parsed });
+  })
   .patch(
     "/",
     clerkMiddleware(),
@@ -65,15 +61,19 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
-      // Stringify reconciliation conditions if provided
-      const updateValues = {
-        ...values,
-        ...(values.reconciliationConditions && {
-          reconciliationConditions: JSON.stringify(values.reconciliationConditions),
-        }),
-      };
+      const updateValues: {
+        doubleEntryMode?: boolean;
+        reconciliationConditions?: string;
+      } = {};
 
-      // Check if settings exist
+      if (values.doubleEntryMode !== undefined) {
+        updateValues.doubleEntryMode = values.doubleEntryMode;
+      }
+
+      if (values.reconciliationConditions !== undefined) {
+        updateValues.reconciliationConditions = JSON.stringify(values.reconciliationConditions);
+      }
+
       const [existingSettings] = await db
         .select()
         .from(settings)
@@ -82,30 +82,33 @@ const app = new Hono()
       let data;
 
       if (existingSettings) {
-        // Update existing settings
         [data] = await db
           .update(settings)
           .set(updateValues)
           .where(eq(settings.userId, auth.userId))
           .returning();
       } else {
-        // Insert new settings
         [data] = await db
           .insert(settings)
           .values({
             userId: auth.userId,
             doubleEntryMode: values.doubleEntryMode || false,
-            reconciliationConditions: values.reconciliationConditions
+            reconciliationConditions: values.reconciliationConditions !== undefined
               ? JSON.stringify(values.reconciliationConditions)
-              : '["hasReceipt"]',
+              : '[]',
           })
           .returning();
       }
 
-      // Parse reconciliation conditions for response
       const parsed = {
         ...data,
-        reconciliationConditions: JSON.parse(data.reconciliationConditions || '["hasReceipt"]'),
+        reconciliationConditions: JSON.parse(
+          data.reconciliationConditions || '[]'
+        ),
       };
 
       return ctx.json({ data: parsed });
+    }
+  );
+
+export default app;

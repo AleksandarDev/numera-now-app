@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useCallback } from "react";
 import { format } from "date-fns";
-import { FileUp, Download, Trash2, Loader } from "lucide-react";
+import { Download, Trash2, Loader2, FileText, AlertCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,85 +18,107 @@ import {
   useGetDocuments,
   useGetDocumentTypes,
   useDeleteDocument,
-  useGetDownloadUrl,
+  useUpdateDocument,
 } from "@/features/transactions/api/use-documents";
+import { DocumentDropzone } from "@/components/document-dropzone";
+import { client } from "@/lib/hono";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface DocumentUploadProps {
   transactionId: string;
+  defaultDocumentTypeId?: string;
 }
 
-export function DocumentUpload({ transactionId }: DocumentUploadProps) {
-  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { data: documentTypes = [], isLoading: typesLoading } =
-    useGetDocumentTypes();
+export function DocumentUpload({ transactionId, defaultDocumentTypeId }: DocumentUploadProps) {
+  const [selectedTypeId, setSelectedTypeId] = useState<string>(defaultDocumentTypeId || "auto");
+  const [isUploading, setIsUploading] = useState(false);
+  const queryClient = useQueryClient();
+  
+  const { data: documentTypes = [], isLoading: typesLoading } = useGetDocumentTypes();
   const uploadDocument = useUploadDocument();
 
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleFilesAccepted = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
 
-    if (!selectedTypeId) {
-      toast.error("Please select a document type");
+    // Get the first available document type if none selected or "auto" is selected
+    const typeIdToUse = selectedTypeId === "auto" ? documentTypes[0]?.id : selectedTypeId;
+    
+    if (!typeIdToUse) {
+      toast.error("No document types available. Please create a document type first.");
       return;
     }
 
-    try {
-      await uploadDocument.mutateAsync({
-        transactionId,
-        documentTypeId: selectedTypeId,
-        file,
-      });
+    setIsUploading(true);
+    let successCount = 0;
+    let errorCount = 0;
 
-      toast.success("Document uploaded successfully");
-      setSelectedTypeId("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("Failed to upload document");
+    for (const file of files) {
+      try {
+        await uploadDocument.mutateAsync({
+          transactionId,
+          documentTypeId: typeIdToUse,
+          file,
+        });
+        successCount++;
+      } catch (error) {
+        console.error("Upload error for file:", file.name, error);
+        errorCount++;
+      }
     }
-  };
+
+    setIsUploading(false);
+
+    // Invalidate documents query to refresh the list
+    queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+
+    if (successCount > 0 && errorCount === 0) {
+      toast.success(`${successCount} document${successCount > 1 ? "s" : ""} uploaded successfully`);
+    } else if (successCount > 0 && errorCount > 0) {
+      toast.warning(`${successCount} uploaded, ${errorCount} failed`);
+    } else {
+      toast.error("Failed to upload documents");
+    }
+
+    // Reset type selection after upload
+    setSelectedTypeId("auto");
+  }, [selectedTypeId, documentTypes, transactionId, uploadDocument, queryClient]);
 
   return (
-    <div className="flex items-center gap-2">
-      <input
-        ref={fileInputRef}
-        type="file"
-        hidden
-        onChange={handleFileSelect}
+    <div className="space-y-4">
+      {/* Optional: Pre-select document type before dropping */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Document type (optional):</span>
+        <Select value={selectedTypeId} onValueChange={setSelectedTypeId}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Auto-assign first type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="auto">Auto-assign first type</SelectItem>
+            {documentTypes.map((type) => (
+              <SelectItem key={type.id} value={type.id}>
+                {type.name}
+                {type.isRequired && (
+                  <span className="ml-1 text-xs text-destructive">*</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DocumentDropzone
+        onFilesAccepted={handleFilesAccepted}
+        isUploading={isUploading || uploadDocument.isPending}
+        disabled={typesLoading || documentTypes.length === 0}
       />
 
-      <Select value={selectedTypeId} onValueChange={setSelectedTypeId}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Select document type" />
-        </SelectTrigger>
-        <SelectContent>
-          {documentTypes.map((type) => (
-            <SelectItem key={type.id} value={type.id}>
-              {type.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={
-          uploadDocument.isPending || !selectedTypeId || typesLoading
-        }
-      >
-        {uploadDocument.isPending ? (
-          <Loader className="h-4 w-4 animate-spin" />
-        ) : (
-          <FileUp className="h-4 w-4" />
-        )}
-        Upload
-      </Button>
+      {documentTypes.length === 0 && !typesLoading && (
+        <div className="flex items-center gap-2 text-sm text-amber-600">
+          <AlertCircle className="h-4 w-4" />
+          <span>No document types configured. Go to Settings to add document types.</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -105,15 +128,24 @@ interface DocumentListProps {
 }
 
 export function DocumentList({ transactionId }: DocumentListProps) {
-  const { data: documents = [], isLoading } = useGetDocuments(transactionId);
+  const { data: documents, isLoading } = useGetDocuments(transactionId);
+  const { data: documentTypes = [] } = useGetDocumentTypes();
   const deleteDocument = useDeleteDocument();
-  const getDownloadUrl = useGetDownloadUrl("");
+  const updateDocument = useUpdateDocument();
+  const queryClient = useQueryClient();
 
   const handleDownload = async (documentId: string, fileName: string) => {
     try {
-      const { downloadUrl } = await getDownloadUrl.mutateAsync();
-      // Open in new tab or download
-      window.open(downloadUrl, "_blank");
+      const response = await client.api.documents[":id"]["download-url"].$get({
+        param: { id: documentId },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get download URL");
+      }
+
+      const { data } = await response.json();
+      window.open(data.downloadUrl, "_blank");
     } catch (error) {
       console.error("Download error:", error);
       toast.error("Failed to download document");
@@ -125,6 +157,7 @@ export function DocumentList({ transactionId }: DocumentListProps) {
 
     try {
       await deleteDocument.mutateAsync(documentId);
+      queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
       toast.success("Document deleted successfully");
     } catch (error) {
       console.error("Delete error:", error);
@@ -132,42 +165,94 @@ export function DocumentList({ transactionId }: DocumentListProps) {
     }
   };
 
+  const handleTypeChange = async (documentId: string, newTypeId: string) => {
+    try {
+      await updateDocument.mutateAsync({
+        id: documentId,
+        documentTypeId: newTypeId,
+      });
+      queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+      toast.success("Document type updated");
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error("Failed to update document type");
+    }
+  };
+
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading documents...</div>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading documents...
+      </div>
+    );
   }
 
-  if (documents.length === 0) {
+  if (!documents || documents.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground">
-        No documents attached yet.
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+        <FileText className="h-10 w-10 text-muted-foreground/50" />
+        <p className="mt-2 text-sm font-medium text-muted-foreground">
+          No documents attached yet
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          Drag and drop files above to attach documents
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      <h4 className="text-sm font-medium text-muted-foreground">
+        Attached Documents ({documents.length})
+      </h4>
       {documents.map((doc) => (
         <div
           key={doc.id}
-          className="flex items-center justify-between rounded-lg border p-3"
+          className="flex items-center justify-between rounded-lg border bg-card p-3 transition-colors hover:bg-accent/50"
         >
-          <div className="flex-1">
-            <p className="font-medium">{doc.fileName}</p>
-            <div className="flex gap-4 text-xs text-muted-foreground">
-              <span>{doc.documentTypeName}</span>
-              <span>{(doc.fileSize / 1024).toFixed(2)} KB</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{doc.fileName}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {/* Editable document type */}
+              <Select
+                value={doc.documentTypeId}
+                onValueChange={(value) => handleTypeChange(doc.id, value)}
+              >
+                <SelectTrigger className={cn(
+                  "h-6 w-auto gap-1 border-none bg-transparent px-0 text-xs font-medium",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  documentTypes.find(t => t.id === doc.documentTypeId)?.isRequired && "text-primary"
+                )}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {documentTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                      {type.isRequired && (
+                        <span className="ml-1 text-xs text-destructive">*</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span>•</span>
+              <span>{formatFileSize(doc.fileSize)}</span>
+              <span>•</span>
               <span>
                 {format(new Date(doc.uploadedAt), "MMM d, yyyy HH:mm")}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               size="sm"
               variant="ghost"
               onClick={() => handleDownload(doc.id, doc.fileName)}
-              disabled={getDownloadUrl.isPending}
+              title="Download"
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -176,6 +261,7 @@ export function DocumentList({ transactionId }: DocumentListProps) {
               variant="ghost"
               onClick={() => handleDelete(doc.id)}
               disabled={deleteDocument.isPending}
+              title="Delete"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
@@ -186,13 +272,19 @@ export function DocumentList({ transactionId }: DocumentListProps) {
   );
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 interface DocumentsTabProps {
   transactionId: string;
 }
 
 export function DocumentsTab({ transactionId }: DocumentsTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <DocumentUpload transactionId={transactionId} />
       <DocumentList transactionId={transactionId} />
     </div>

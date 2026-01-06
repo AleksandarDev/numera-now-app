@@ -20,8 +20,11 @@ export async function isTransactionReconciled(
   if (!userSettings) return false;
 
   const conditions: ReconciliationCondition[] = JSON.parse(
-    userSettings.reconciliationConditions || '["hasReceipt"]'
+    userSettings.reconciliationConditions || '[]'
   );
+
+  // If no conditions are defined, transaction is considered reconcilable
+  if (conditions.length === 0) return true;
 
   // Get transaction
   const [transaction] = await db
@@ -119,8 +122,16 @@ export async function getReconciliationStatus(
   }
 
   const conditionsList: ReconciliationCondition[] = JSON.parse(
-    userSettings.reconciliationConditions || '["hasReceipt"]'
+    userSettings.reconciliationConditions || '[]'
   );
+
+  // If no conditions are defined, transaction is considered reconcilable
+  if (conditionsList.length === 0) {
+    return {
+      isReconciled: true,
+      conditions: [],
+    };
+  }
 
   const [transaction] = await db
     .select()

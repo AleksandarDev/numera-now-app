@@ -1,23 +1,38 @@
-import { BlobSASPermissions, BlobServiceClient, StorageSharedKeyCredential, generateBlobSASUrl } from "@azure/storage-blob";
+import { BlobSASPermissions, BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters } from "@azure/storage-blob";
 
-// Initialize Azure Blob Storage client
-const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
-const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
-const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || "documents";
+// Lazy initialization of Azure Blob Storage client
+let sharedKeyCredential: StorageSharedKeyCredential | null = null;
+let blobServiceClient: BlobServiceClient | null = null;
+let containerClient: ReturnType<BlobServiceClient["getContainerClient"]> | null = null;
 
-if (!accountName || !accountKey) {
-  throw new Error(
-    "Azure Storage credentials not configured. Please set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY"
-  );
+function getAzureClients() {
+  if (!sharedKeyCredential || !blobServiceClient || !containerClient) {
+    const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+    const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || "documents";
+
+    if (!accountName || !accountKey) {
+      throw new Error(
+        "Azure Storage credentials not configured. Please set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY"
+      );
+    }
+
+    sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+    blobServiceClient = new BlobServiceClient(
+      `https://${accountName}.blob.core.windows.net`,
+      sharedKeyCredential
+    );
+    containerClient = blobServiceClient.getContainerClient(containerName);
+  }
+
+  return {
+    sharedKeyCredential,
+    blobServiceClient,
+    containerClient,
+    accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME!,
+    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || "documents",
+  };
 }
-
-const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
-const blobServiceClient = new BlobServiceClient(
-  `https://${accountName}.blob.core.windows.net`,
-  sharedKeyCredential
-);
-
-const containerClient = blobServiceClient.getContainerClient(containerName);
 
 export interface UploadOptions {
   userId: string;
@@ -53,6 +68,7 @@ export function generateStoragePath(
  */
 export async function uploadDocument(options: UploadOptions): Promise<DocumentMetadata> {
   const { userId, transactionId, fileName, fileBuffer, mimeType } = options;
+  const { containerClient } = getAzureClients();
 
   const storagePath = generateStoragePath(userId, transactionId, fileName);
   const blockBlobClient = containerClient.getBlockBlobClient(storagePath);
@@ -81,6 +97,7 @@ export async function uploadDocument(options: UploadOptions): Promise<DocumentMe
  * Delete a document from Azure Blob Storage
  */
 export async function deleteDocument(storagePath: string): Promise<void> {
+  const { containerClient } = getAzureClients();
   const blockBlobClient = containerClient.getBlockBlobClient(storagePath);
 
   try {
@@ -100,17 +117,21 @@ export function generateDownloadUrl(
   expirationMinutes: number = 60
 ): string {
   try {
+    const { sharedKeyCredential, accountName, containerName } = getAzureClients();
     const expiryDate = new Date();
     expiryDate.setMinutes(expiryDate.getMinutes() + expirationMinutes);
 
-    const sasUrl = generateBlobSASUrl({
-      accountName,
-      containerName,
-      blobName: storagePath,
-      credentials: sharedKeyCredential,
-      permissions: BlobSASPermissions.parse("r"), // Read-only
-      expiresOn: expiryDate,
-    });
+    const sasQueryParams = generateBlobSASQueryParameters(
+      {
+        containerName,
+        blobName: storagePath,
+        permissions: BlobSASPermissions.parse("r"), // Read-only
+        expiresOn: expiryDate,
+      },
+      sharedKeyCredential
+    );
+
+    const sasUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${storagePath}?${sasQueryParams.toString()}`;
 
     return sasUrl;
   } catch (error) {
@@ -130,18 +151,22 @@ export function generateUploadUrl(
   expirationMinutes: number = 30
 ): string {
   try {
+    const { sharedKeyCredential, accountName, containerName } = getAzureClients();
     const storagePath = generateStoragePath(userId, transactionId, fileName);
     const expiryDate = new Date();
     expiryDate.setMinutes(expiryDate.getMinutes() + expirationMinutes);
 
-    const sasUrl = generateBlobSASUrl({
-      accountName,
-      containerName,
-      blobName: storagePath,
-      credentials: sharedKeyCredential,
-      permissions: BlobSASPermissions.parse("racwd"), // Read, Add, Create, Write, Delete
-      expiresOn: expiryDate,
-    });
+    const sasQueryParams = generateBlobSASQueryParameters(
+      {
+        containerName,
+        blobName: storagePath,
+        permissions: BlobSASPermissions.parse("racwd"), // Read, Add, Create, Write, Delete
+        expiresOn: expiryDate,
+      },
+      sharedKeyCredential
+    );
+
+    const sasUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${storagePath}?${sasQueryParams.toString()}`;
 
     return sasUrl;
   } catch (error) {

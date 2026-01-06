@@ -7,7 +7,7 @@ export const useGetStatusHistory = (id?: string) => {
     queryKey: ["transaction-status-history", { id }],
     queryFn: async () => {
       const response = await client.api.transactions[":id"]["status-history"].$get({
-        param: { id },
+        param: { id: id! },
       });
 
       if (!response.ok) {

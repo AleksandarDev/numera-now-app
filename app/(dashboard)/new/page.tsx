@@ -2,7 +2,7 @@
 
 import { Loader2, ArrowLeft, Split } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ const formSchema = insertTransactionSchema.omit({ id: true });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function NewTransactionPage() {
+function NewTransactionContent() {
     const router = useRouter();
     const [splitMode, setSplitMode] = useState(false);
 
@@ -80,7 +80,6 @@ export default function NewTransactionPage() {
 
     const splitDefaults: SplitTransactionFormValues = useMemo(() => ({
         date: new Date(),
-        status: "pending",
         payeeCustomerId: undefined,
         payee: undefined,
         notes: "",
@@ -162,7 +161,6 @@ export default function NewTransactionPage() {
                                         notes: "",
                                         creditAccountId: "",
                                         debitAccountId: "",
-                                        status: "pending",
                                     }}
                                 />
                             ) : (
@@ -179,7 +177,6 @@ export default function NewTransactionPage() {
                                         amount: "",
                                         notes: "",
                                         accountId: "",
-                                        status: "pending",
                                     }}
                                 />
                             )}
@@ -188,5 +185,21 @@ export default function NewTransactionPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function NewTransactionPage() {
+    return (
+        <Suspense fallback={
+            <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
+                <Card>
+                    <CardContent className="flex h-[500px] w-full items-center justify-center">
+                        <Loader2 className="size-6 animate-spin text-slate-300" />
+                    </CardContent>
+                </Card>
+            </div>
+        }>
+            <NewTransactionContent />
+        </Suspense>
     );
 }
