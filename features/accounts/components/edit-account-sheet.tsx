@@ -77,28 +77,32 @@ export const EditAccountSheet = () => {
         <>
             <ConfirmationDialog />
             <Sheet open={isOpen} onOpenChange={onClose}>
-                <SheetContent className="space-y-4">
-                    <SheetHeader>
-                        <SheetTitle>
-                            Edit Account
-                        </SheetTitle>
-                        <SheetDescription>
-                            Edit the account details.
-                        </SheetDescription>
-                    </SheetHeader>
+                <SheetContent className="flex flex-col h-full p-0">
+                    <div className="px-6 pt-6">
+                        <SheetHeader>
+                            <SheetTitle>
+                                Edit Account
+                            </SheetTitle>
+                            <SheetDescription>
+                                Edit the account details.
+                            </SheetDescription>
+                        </SheetHeader>
+                    </div>
                     {isLoading
                         ? (
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <Loader2 className="size-4 text-muted-foreground animate-spin" />
                             </div>
                         ) : (
-                            <AccountForm
-                                id={id}
-                                onSubmit={onSubmit}
-                                disabled={isPending}
-                                defaultValues={defaultValues}
-                                onDelete={onDelete}
-                            />
+                            <div className="flex-1 overflow-y-auto px-6">
+                                <AccountForm
+                                    id={id}
+                                    onSubmit={onSubmit}
+                                    disabled={isPending}
+                                    defaultValues={defaultValues}
+                                    onDelete={onDelete}
+                                />
+                            </div>
                         )
                     }
                 </SheetContent>

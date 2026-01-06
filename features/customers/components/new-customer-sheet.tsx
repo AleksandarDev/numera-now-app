@@ -35,25 +35,29 @@ export const NewCustomerSheet = () => {
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="space-y-4">
-                <SheetHeader>
-                    <SheetTitle>New Customer</SheetTitle>
-                    <SheetDescription>
-                        Create a new customer to assign to transactions.
-                    </SheetDescription>
-                </SheetHeader>
-                <CustomerForm
-                    onSubmit={onSubmit}
-                    disabled={createMutation.isPending}
-                    defaultValues={{
-                        name: "",
-                        pin: "",
-                        vatNumber: "",
-                        address: "",
-                        contactEmail: "",
-                        contactTelephone: "",
-                    }}
-                />
+            <SheetContent className="flex flex-col h-full p-0">
+                <div className="px-6 pt-6">
+                    <SheetHeader>
+                        <SheetTitle>New Customer</SheetTitle>
+                        <SheetDescription>
+                            Create a new customer to assign to transactions.
+                        </SheetDescription>
+                    </SheetHeader>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6">
+                    <CustomerForm
+                        onSubmit={onSubmit}
+                        disabled={createMutation.isPending}
+                        defaultValues={{
+                            name: "",
+                            pin: "",
+                            vatNumber: "",
+                            address: "",
+                            contactEmail: "",
+                            contactTelephone: "",
+                        }}
+                    />
+                </div>
             </SheetContent>
         </Sheet>
     );

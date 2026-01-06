@@ -21,6 +21,31 @@ const isCustomerComplete = (customer: any): boolean => {
 
 const app = new Hono()
     .get(
+        "/incomplete-count",
+        clerkMiddleware(),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+
+            if (!auth?.userId) {
+                return ctx.json({ error: "Unauthorized." }, 401);
+            }
+
+            const [result] = await db
+                .select({
+                    count: sql<number>`count(*)`.as("count"),
+                })
+                .from(customers)
+                .where(
+                    and(
+                        eq(customers.userId, auth.userId),
+                        eq(customers.isComplete, false)
+                    )
+                );
+
+            return ctx.json({ count: Number(result?.count || 0) });
+        }
+    )
+    .get(
         "/",
         zValidator(
             "query",

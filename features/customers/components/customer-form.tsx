@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { insertCustomerSchema } from "@/db/schema";
+import { SheetFooter } from "@/components/ui/sheet";
 
 const formSchema = insertCustomerSchema.omit({
     userId: true,
@@ -54,125 +55,127 @@ export const CustomerForm = ({
         <Form {...form}>
             <form
                 onSubmit={form.handleSubmit(handleSubmit)}
-                className="space-y-4 pt-4"
+                className="space-y-4 pt-4 pb-6"
             >
-                <FormField
-                    name="name"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Name *</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="Customer name"
-                                    {...field}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="pin"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>PIN</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="Personal Identification Number"
-                                    {...field}
-                                    value={field.value ?? ""}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="vatNumber"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>VAT Number</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="VAT registration number"
-                                    {...field}
-                                    value={field.value ?? ""}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="address"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Address</FormLabel>
-                            <FormControl>
-                                <Textarea
-                                    disabled={disabled}
-                                    placeholder="Full address"
-                                    {...field}
-                                    value={field.value ?? ""}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="contactEmail"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Contact Email</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="email@example.com"
-                                    type="email"
-                                    {...field}
-                                    value={field.value ?? ""}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="contactTelephone"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Contact Telephone</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="Phone number"
-                                    type="tel"
-                                    {...field}
-                                    value={field.value ?? ""}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <Button className="w-full" disabled={disabled}>
-                    {id ? "Save changes" : "Create customer"}
-                </Button>
-                {!!id && (
-                    <Button
-                        type="button"
-                        disabled={disabled}
-                        onClick={handleDelete}
-                        className="w-full"
-                        variant="outline"
-                    >
-                        Delete customer
+                    <FormField
+                        name="name"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Name *</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="Customer name"
+                                        {...field}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="pin"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>PIN</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="Personal Identification Number"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="vatNumber"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>VAT Number</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="VAT registration number"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="address"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Address</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        disabled={disabled}
+                                        placeholder="Full address"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="contactEmail"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Contact Email</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="email@example.com"
+                                        type="email"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="contactTelephone"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Contact Telephone</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="Phone number"
+                                        type="tel"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                <SheetFooter>
+                    <Button className="w-full" disabled={disabled}>
+                        {id ? "Save changes" : "Create customer"}
                     </Button>
-                )}
+                    {!!id && (
+                        <Button
+                            type="button"
+                            disabled={disabled}
+                            onClick={handleDelete}
+                            className="w-full"
+                            variant="outline"
+                        >
+                            Delete customer
+                        </Button>
+                    )}
+                </SheetFooter>
             </form>
         </Form>
     );

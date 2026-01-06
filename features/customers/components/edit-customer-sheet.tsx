@@ -82,25 +82,29 @@ export const EditCustomerSheet = () => {
         <>
             <ConfirmDialog />
             <Sheet open={isOpen} onOpenChange={onClose}>
-                <SheetContent className="space-y-4">
-                    <SheetHeader>
-                        <SheetTitle>Edit Customer</SheetTitle>
-                        <SheetDescription>
-                            Edit an existing customer.
-                        </SheetDescription>
-                    </SheetHeader>
+                <SheetContent className="flex flex-col h-full p-0">
+                    <div className="px-6 pt-6">
+                        <SheetHeader>
+                            <SheetTitle>Edit Customer</SheetTitle>
+                            <SheetDescription>
+                                Edit an existing customer.
+                            </SheetDescription>
+                        </SheetHeader>
+                    </div>
                     {isLoading ? (
                         <div className="absolute inset-0 flex items-center justify-center">
                             <Loader2 className="size-4 text-muted-foreground animate-spin" />
                         </div>
                     ) : (
-                        <CustomerForm
-                            id={id}
-                            defaultValues={defaultValues}
-                            onSubmit={onSubmit}
-                            onDelete={onDelete}
-                            disabled={isPending}
-                        />
+                        <div className="flex-1 overflow-y-auto px-6">
+                            <CustomerForm
+                                id={id}
+                                defaultValues={defaultValues}
+                                onSubmit={onSubmit}
+                                onDelete={onDelete}
+                                disabled={isPending}
+                            />
+                        </div>
                     )}
                 </SheetContent>
             </Sheet>

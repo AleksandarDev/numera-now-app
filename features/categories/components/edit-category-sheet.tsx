@@ -6,12 +6,12 @@ import { useDeleteCategory } from "../api/use-delete-category";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useEditCategory } from "../api/use-edit-category";
 import { insertCategorySchema } from "@/db/schema";
-import { 
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
 } from "@/components/ui/sheet";
 import { Loader2 } from "lucide-react";
 
@@ -47,11 +47,11 @@ export const EditCategorySheet = () => {
 
   const defaultValues = categoryQuery.data
     ? {
-        name: categoryQuery.data.name,
-      }
+      name: categoryQuery.data.name,
+    }
     : {
-        name: "",
-      };
+      name: "",
+    };
 
   const onDelete = async () => {
     const ok = await confirm();
@@ -69,25 +69,29 @@ export const EditCategorySheet = () => {
     <>
       <ConfirmDialog />
       <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-        <SheetContent className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Category</SheetTitle>
+        <SheetContent className="flex flex-col h-full p-0">
+          <div className="px-6 pt-6">
+            <SheetHeader>
+              <SheetTitle>Edit Category</SheetTitle>
 
-            <SheetDescription>Edit an existing category.</SheetDescription>
-          </SheetHeader>
+              <SheetDescription>Edit an existing category.</SheetDescription>
+            </SheetHeader>
+          </div>
 
           {isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <CategoryForm
-              id={id}
-              defaultValues={defaultValues}
-              onSubmit={onSubmit}
-              disabled={isPending}
-              onDelete={onDelete}
-            />
+            <div className="flex-1 overflow-y-auto px-6">
+              <CategoryForm
+                id={id}
+                defaultValues={defaultValues}
+                onSubmit={onSubmit}
+                disabled={isPending}
+                onDelete={onDelete}
+              />
+            </div>
           )}
         </SheetContent>
       </Sheet>

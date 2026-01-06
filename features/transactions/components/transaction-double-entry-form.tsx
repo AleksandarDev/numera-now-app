@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SheetFooter } from "@/components/ui/sheet";
 import { insertTransactionSchema } from "@/db/schema";
 import { convertAmountToMiliunits } from "@/lib/utils";
 import { AccountSelect } from "@/components/account-select";
@@ -97,7 +98,7 @@ export const TransactionDoubleEntryForm = ({
         onSubmit={form.handleSubmit(handleSubmit)}
         autoCapitalize="off"
         autoComplete="off"
-        className="space-y-4 pt-4"
+        className="space-y-4 pt-4 pb-6"
       >
         <FormField
           name="date"
@@ -275,22 +276,24 @@ export const TransactionDoubleEntryForm = ({
           )}
         />
 
-        <Button className="w-full" disabled={disabled}>
-          {id ? "Save changes" : "Create transaction"}
-        </Button>
-
-        {!!id && (
-          <Button
-            type="button"
-            disabled={disabled}
-            onClick={handleDelete}
-            className="w-full"
-            variant="outline"
-          >
-            <Trash className="mr-2 size-4" />
-            Delete transaction
+        <SheetFooter>
+          <Button className="w-full" disabled={disabled}>
+            {id ? "Save changes" : "Create transaction"}
           </Button>
-        )}
+
+          {!!id && (
+            <Button
+              type="button"
+              disabled={disabled}
+              onClick={handleDelete}
+              className="w-full"
+              variant="outline"
+            >
+              <Trash className="mr-2 size-4" />
+              Delete transaction
+            </Button>
+          )}
+        </SheetFooter>
       </form>
     </Form>
   );

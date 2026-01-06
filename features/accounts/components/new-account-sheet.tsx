@@ -35,24 +35,28 @@ export const NewAccountSheet = () => {
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="space-y-4">
-                <SheetHeader>
-                    <SheetTitle>
-                        New Account
-                    </SheetTitle>
-                    <SheetDescription>
-                        Create a new account to track your transactions.
-                    </SheetDescription>
-                </SheetHeader>
-                <AccountForm
-                    onSubmit={onSubmit}
-                    disabled={mutation.isPending}
-                    defaultValues={{
-                        name: "",
-                        code: "",
-                        isOpen: true,
-                    }}
-                />
+            <SheetContent className="flex flex-col h-full p-0">
+                <div className="px-6 pt-6">
+                    <SheetHeader>
+                        <SheetTitle>
+                            New Account
+                        </SheetTitle>
+                        <SheetDescription>
+                            Create a new account to track your transactions.
+                        </SheetDescription>
+                    </SheetHeader>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6">
+                    <AccountForm
+                        onSubmit={onSubmit}
+                        disabled={mutation.isPending}
+                        defaultValues={{
+                            name: "",
+                            code: "",
+                            isOpen: true,
+                        }}
+                    />
+                </div>
             </SheetContent>
         </Sheet>
     );

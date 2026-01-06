@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import { Row } from "@signalco/ui-primitives/Row";
+import { useGetIncompleteCustomersCount } from "@/features/customers/api/use-get-incomplete-count";
+import { Badge } from "./ui/badge";
 
 const routes = [
     {
@@ -29,10 +31,6 @@ const routes = [
     {
         href: "/accounts",
         label: "Accounts",
-    },
-    {
-        href: "/categories",
-        label: "Categories",
     },
     {
         href: "/customers",
@@ -52,6 +50,8 @@ export const Navigation = () => {
     const pathname = usePathname();
     const isMobile = useMedia("(max-width: 1024px)", false);
     const searchParams = useSearchParams();
+
+    const { data: incompleteCount } = useGetIncompleteCustomersCount();
 
     if (isMobile) {
         return (
@@ -88,7 +88,14 @@ export const Navigation = () => {
                                         onClick={() => setIsOpen(false)}
                                         className="w-full justify-start"
                                     >
-                                        {route.label}
+                                        <span className="flex items-center gap-2">
+                                            {route.label}
+                                            {route.href === "/customers" && incompleteCount !== undefined && incompleteCount > 0 && (
+                                                <Badge variant="destructive" className="ml-1 h-5 min-w-5 flex items-center justify-center px-1.5">
+                                                    {incompleteCount}
+                                                </Badge>
+                                            )}
+                                        </span>
                                     </Button>
                                 </Link>
                             ))}
@@ -102,6 +109,7 @@ export const Navigation = () => {
                         query={searchParams.toString()}
                         label={route.label}
                         isActive={pathname === route.href}
+                        badge={route.href === "/customers" ? incompleteCount : undefined}
                     />
                 ))}
             </Row>
@@ -117,6 +125,7 @@ export const Navigation = () => {
                     query={searchParams.toString()}
                     label={route.label}
                     isActive={pathname === route.href}
+                    badge={route.href === "/customers" ? incompleteCount : undefined}
                 />
             ))}
         </nav>

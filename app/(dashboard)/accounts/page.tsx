@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { useNewAccount } from "@/features/accounts/hooks/use-new-accounts";
-import { Suspense, useRef, useState, useMemo } from "react";
+import { Suspense, useRef, useState, useMemo, useEffect } from "react";
 import { accounts as accountsSchema } from "@/db/schema";
 import { ImportCard } from "../../../components/import/import-card";
 import { useBulkCreateAccounts } from "@/features/accounts/api/use-bulk-create-accounts";
@@ -34,6 +34,7 @@ function AccountsDataTable() {
     const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
     const accountsQuery = useGetAccounts({ search, pageSize: 9999, showClosed });
     const allAccounts = accountsQuery.data || [];
+    const newAccount = useNewAccount();
 
     const isDisabled = accountsQuery.isLoading;
 
@@ -103,140 +104,157 @@ function AccountsDataTable() {
 
     return (
         <Stack spacing={2}>
-            <div className="flex flex-col sm:flex-row justify-between gap-2">
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                        placeholder={`Filter accounts...`}
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        className="max-w-sm" />
-
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            checked={showClosed}
-                            onCheckedChange={(checked) => setShowClosed(checked === true)}
-                            id="show-closed"
-                        />
-                        <label
-                            htmlFor="show-closed"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                            Show closed accounts
-                        </label>
+            {allAccounts.length === 0 && !accountsQuery.isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                    <p className="text-lg font-medium text-gray-900 mb-2">No accounts yet</p>
+                    <p className="text-sm text-gray-500 mb-6">Get started by creating your first account or importing existing accounts.</p>
+                    <div className="flex gap-3">
+                        <Button onClick={newAccount.onOpen}>
+                            <Plus className="mr-2 size-4" />
+                            Create Account
+                        </Button>
+                        <ImportButton onUpload={(results: typeof INITIAL_IMPORT_RESULTS) => {
+                            // Handle import inline
+                            window.dispatchEvent(new CustomEvent('accounts-import', { detail: results }));
+                        }} />
                     </div>
                 </div>
+            ) : (
+                <>
+                    <div className="flex flex-col sm:flex-row justify-between gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <Input
+                                placeholder={`Filter accounts...`}
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                className="max-w-sm" />
 
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            // Expand all accounts that have children
-                            const accountsWithChildren = allAccounts
-                                .filter(account => hasChildren(account))
-                                .map(account => account.code)
-                                .filter(Boolean) as string[];
-                            setExpandedAccounts(new Set(accountsWithChildren));
-                        }}
-                        disabled={isDisabled}
-                    >
-                        <Expand className="h-4 w-4 mr-1" />
-                        Expand All
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setExpandedAccounts(new Set())}
-                        disabled={isDisabled}
-                    >
-                        <Minimize2 className="h-4 w-4 mr-1" />
-                        Collapse All
-                    </Button>
-                </div>
-            </div>            <div
-                ref={parentRef}
-                className="overflow-auto max-h-[680px] border rounded-md"
-            >
-                <div
-                    className="relative w-full"
-                    style={{
-                        height: `${rowVirtualizer.getTotalSize()}px`
-                    }}
-                >
-                    {rowVirtualizer.getVirtualItems().map((virtualItem) => {
-                        const account = visibleAccounts[virtualItem.index];
-                        const { name, code } = account;
-                        const depth = (account.code?.length ?? 1) - 1;
-                        const accountHasChildren = hasChildren(account);
-                        const isExpanded = code ? expandedAccounts.has(code) : false;
-
-                        return (
-                            <div
-                                key={virtualItem.key}
-                                className="absolute top-0 left-0 w-full"
-                                style={{
-                                    height: `${virtualItem.size}px`,
-                                    transform: `translateY(${virtualItem.start}px)`,
-                                }}
-                            >
-                                <div
-                                    className="border-b group hover:bg-neutral-100"
-                                    style={{
-                                        paddingLeft: depth * 24 + (accountHasChildren ? 0 : 24), // Add indent for leaf nodes
-                                    }}>
-                                    <div className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2 gap-1">
-                                        {/* Expand/Collapse Button */}
-                                        <div className="w-6 flex justify-center">
-                                            {accountHasChildren && code && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 w-6 p-0 hover:bg-neutral-200"
-                                                    onClick={() => toggleExpand(code)}
-                                                >
-                                                    {isExpanded ? (
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    ) : (
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            )}
-                                        </div>
-
-                                        {/* Account Info */}
-                                        <Stack>
-                                            <div className="flex items-center gap-2">
-                                                <Typography
-                                                    title={name}
-                                                    level="body1"
-                                                    className="line-clamp-1"
-                                                    style={{
-                                                        fontWeight: accountHasChildren ? 'bold' : 'normal',
-                                                    }}>
-                                                    {name}
-                                                </Typography>
-                                                {!account.isOpen && (
-                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                                                        Closed
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <Typography level="body2" mono>
-                                                {code}
-                                            </Typography>
-                                        </Stack>
-
-                                        {/* Actions */}
-                                        <Actions id={account.id} disabled={isDisabled} />
-                                    </div>
-                                </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    checked={showClosed}
+                                    onCheckedChange={(checked) => setShowClosed(checked === true)}
+                                    id="show-closed"
+                                />
+                                <label
+                                    htmlFor="show-closed"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Show closed accounts
+                                </label>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
+                        </div>
 
-            {/* <DataTable
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    // Expand all accounts that have children
+                                    const accountsWithChildren = allAccounts
+                                        .filter(account => hasChildren(account))
+                                        .map(account => account.code)
+                                        .filter(Boolean) as string[];
+                                    setExpandedAccounts(new Set(accountsWithChildren));
+                                }}
+                                disabled={isDisabled}
+                            >
+                                <Expand className="h-4 w-4 mr-1" />
+                                Expand All
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setExpandedAccounts(new Set())}
+                                disabled={isDisabled}
+                            >
+                                <Minimize2 className="h-4 w-4 mr-1" />
+                                Collapse All
+                            </Button>
+                        </div>
+                    </div>            <div
+                        ref={parentRef}
+                        className="overflow-auto max-h-[680px] border rounded-md"
+                    >
+                        <div
+                            className="relative w-full"
+                            style={{
+                                height: `${rowVirtualizer.getTotalSize()}px`
+                            }}
+                        >
+                            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                                const account = visibleAccounts[virtualItem.index];
+                                const { name, code } = account;
+                                const depth = (account.code?.length ?? 1) - 1;
+                                const accountHasChildren = hasChildren(account);
+                                const isExpanded = code ? expandedAccounts.has(code) : false;
+
+                                return (
+                                    <div
+                                        key={virtualItem.key}
+                                        className="absolute top-0 left-0 w-full"
+                                        style={{
+                                            height: `${virtualItem.size}px`,
+                                            transform: `translateY(${virtualItem.start}px)`,
+                                        }}
+                                    >
+                                        <div
+                                            className="border-b group hover:bg-neutral-100"
+                                            style={{
+                                                paddingLeft: depth * 24 + (accountHasChildren ? 0 : 24), // Add indent for leaf nodes
+                                            }}>
+                                            <div className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2 gap-1">
+                                                {/* Expand/Collapse Button */}
+                                                <div className="w-6 flex justify-center">
+                                                    {accountHasChildren && code && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 w-6 p-0 hover:bg-neutral-200"
+                                                            onClick={() => toggleExpand(code)}
+                                                        >
+                                                            {isExpanded ? (
+                                                                <ChevronDown className="h-4 w-4" />
+                                                            ) : (
+                                                                <ChevronRight className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
+
+                                                {/* Account Info */}
+                                                <Stack>
+                                                    <div className="flex items-center gap-2">
+                                                        <Typography
+                                                            title={name}
+                                                            level="body1"
+                                                            className="line-clamp-1"
+                                                            style={{
+                                                                fontWeight: accountHasChildren ? 'bold' : 'normal',
+                                                            }}>
+                                                            {name}
+                                                        </Typography>
+                                                        {!account.isOpen && (
+                                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                                                                Closed
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <Typography level="body2" mono>
+                                                        {code}
+                                                    </Typography>
+                                                </Stack>
+
+                                                {/* Actions */}
+                                                <Actions id={account.id} disabled={isDisabled} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* <DataTable
                 columns={columns}
                 data={accounts}
                 onDelete={(row) => {
@@ -247,6 +265,8 @@ function AccountsDataTable() {
                 loading={accountsQuery.isLoading}
                 disabled={isDisabled}
             /> */}
+                </>
+            )}
         </Stack>
     );
 }
@@ -256,6 +276,15 @@ export default function AccountsPage() {
     const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
     const newAccount = useNewAccount();
     const createAccounts = useBulkCreateAccounts();
+
+    // Listen for import events from empty state
+    useEffect(() => {
+        const handleImport = (event: any) => {
+            onImport(event.detail);
+        };
+        window.addEventListener('accounts-import', handleImport);
+        return () => window.removeEventListener('accounts-import', handleImport);
+    }, []);
 
     const onImport = (results: typeof INITIAL_IMPORT_RESULTS) => {
         setImportResults(results);

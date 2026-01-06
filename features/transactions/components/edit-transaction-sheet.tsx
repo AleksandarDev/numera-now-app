@@ -95,7 +95,7 @@ export const EditTransactionSheet = () => {
       creditAccountId: transactionQuery.data.creditAccountId ?? undefined,
       debitAccountId: transactionQuery.data.debitAccountId ?? undefined,
       categoryId: transactionQuery.data.categoryId,
-      amount: transactionQuery.data.amount.toString(),
+      amount: transactionQuery.data.amount,
       date: transactionQuery.data.date
         ? new Date(transactionQuery.data.date)
         : new Date(),
@@ -131,19 +131,21 @@ export const EditTransactionSheet = () => {
     <>
       <ConfirmDialog />
       <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-        <SheetContent className="space-y-4">
-          <SheetHeader>
-            <SheetTitle>Edit Transaction</SheetTitle>
+        <SheetContent className="flex flex-col h-full p-0">
+          <div className="px-6 pt-6">
+            <SheetHeader>
+              <SheetTitle>Edit Transaction</SheetTitle>
 
-            <SheetDescription>Edit an existing transaction.</SheetDescription>
-          </SheetHeader>
+              <SheetDescription>Edit an existing transaction.</SheetDescription>
+            </SheetHeader>
+          </div>
 
           {isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <>
+            <div className="flex-1 overflow-y-auto px-6">
               {transactionQuery.data && transactionQuery.data.accountId ? (
                 <TransactionForm
                   id={id}
@@ -172,7 +174,7 @@ export const EditTransactionSheet = () => {
                   hasPayee={!!transactionQuery.data?.payee}
                 />
               )}
-            </>
+            </div>
           )}
         </SheetContent>
       </Sheet>

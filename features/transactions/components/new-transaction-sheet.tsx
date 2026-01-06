@@ -68,19 +68,21 @@ export const NewTransactionSheet = () => {
 
     return (
         <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-            <SheetContent className="space-y-4">
-                <SheetHeader>
-                    <SheetTitle>New Transaction</SheetTitle>
+            <SheetContent className="flex flex-col h-full p-0">
+                <div className="px-6 pt-6">
+                    <SheetHeader>
+                        <SheetTitle>New Transaction</SheetTitle>
 
-                    <SheetDescription>Add a new transaction.</SheetDescription>
-                </SheetHeader>
+                        <SheetDescription>Add a new transaction.</SheetDescription>
+                    </SheetHeader>
+                </div>
 
                 {isLoading ? (
                     <div className="absolute inset-0 flex items-center justify-center">
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <>
+                    <div className="flex-1 overflow-y-auto px-6">
                         {doubleEntry ? (
                             <TransactionDoubleEntryForm
                                 onSubmit={onSubmit}
@@ -115,7 +117,7 @@ export const NewTransactionSheet = () => {
                                 }}
                             />
                         )}
-                    </>
+                    </div>
                 )}
             </SheetContent>
         </Sheet>
