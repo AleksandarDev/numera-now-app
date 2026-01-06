@@ -20,13 +20,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { insertTransactionSchema } from "@/db/schema";
 import { convertAmountToMiliunits } from "@/lib/utils";
 import { AccountSelect } from "@/components/account-select";
+import { CustomerSelect } from "@/components/customer-select";
 
 const formSchema = z.object({
   date: z.date(),
   creditAccountId: z.string(),
   debitAccountId: z.string(),
   categoryId: z.string().nullable().optional(),
-  payee: z.string(),
+  payeeCustomerId: z.string().nullable().optional(),
+  payee: z.string().nullable().optional(),
   amount: z.string(),
   notes: z.string().nullable().optional(),
 });
@@ -49,6 +51,8 @@ type TransactionDoubleEntryFormProps = {
   categoryOptions: { label: string; value: string }[];
   onCreateAccount: (name: string) => void;
   onCreateCategory: (name: string) => void;
+  onCreateCustomer: (name: string) => void;
+  hasPayee?: boolean;
 };
 
 export const TransactionDoubleEntryForm = ({
@@ -62,6 +66,8 @@ export const TransactionDoubleEntryForm = ({
   categoryOptions,
   onCreateAccount,
   onCreateCategory,
+  onCreateCustomer,
+  hasPayee = false,
 }: TransactionDoubleEntryFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,10 +78,14 @@ export const TransactionDoubleEntryForm = ({
     const amount = parseFloat(values.amount);
     const amountInMiliunits = convertAmountToMiliunits(amount);
 
-    onSubmit({
+    // Clear payee if customer is selected (migration to customer-based payee)
+    const submittedValues = {
       ...values,
       amount: amountInMiliunits,
-    });
+      payee: values.payeeCustomerId ? null : values.payee,
+    };
+
+    onSubmit(submittedValues);
   };
 
   const handleDelete = () => {
@@ -109,18 +119,20 @@ export const TransactionDoubleEntryForm = ({
         />
 
         <FormField
-          name="payee"
+          name="payeeCustomerId"
           control={form.control}
           disabled={disabled}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Payee</FormLabel>
+              <FormLabel>Customer</FormLabel>
 
               <FormControl>
-                <Input
+                <CustomerSelect
+                  value={field.value || undefined}
+                  onChange={field.onChange}
                   disabled={disabled}
-                  placeholder="Add a payee"
-                  {...field}
+                  placeholder="Select customer..."
+                  onCreate={onCreateCustomer}
                 />
               </FormControl>
 
@@ -128,6 +140,30 @@ export const TransactionDoubleEntryForm = ({
             </FormItem>
           )}
         />
+
+        {hasPayee && (
+          <FormField
+            name="payee"
+            control={form.control}
+            disabled={disabled}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Free-form Payee (Legacy)</FormLabel>
+
+                <FormControl>
+                  <Input
+                    disabled={disabled}
+                    placeholder="Free-form payee..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           name="creditAccountId"
@@ -140,7 +176,7 @@ export const TransactionDoubleEntryForm = ({
               <FormControl>
                 <AccountSelect
                   placeholder="Select an credit account"
-                  value={field.value}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   disabled={disabled} />
               </FormControl>
@@ -161,6 +197,7 @@ export const TransactionDoubleEntryForm = ({
               <FormControl>
                 <AmountInput
                   {...field}
+                  value={field.value || ""}
                   disabled={disabled}
                   placeholder="0.00"
                 />
@@ -182,7 +219,7 @@ export const TransactionDoubleEntryForm = ({
               <FormControl>
                 <AccountSelect
                   placeholder="Select an debit account"
-                  value={field.value}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   disabled={disabled} />
               </FormControl>
@@ -205,7 +242,7 @@ export const TransactionDoubleEntryForm = ({
                   placeholder="Select a category"
                   options={categoryOptions}
                   onCreate={onCreateCategory}
-                  value={field.value}
+                  value={field.value || undefined}
                   onChange={field.onChange}
                   disabled={disabled}
                 />

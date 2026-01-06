@@ -13,6 +13,7 @@ import { useCreateAccount } from "@/features/accounts/api/use-create-account";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { useCreateCategory } from "@/features/categories/api/use-create-category";
 import { useGetCategories } from "@/features/categories/api/use-get-categories";
+import { useCreateCustomer } from "@/features/customers/api/use-create-customer";
 import { useDeleteTransaction } from "@/features/transactions/api/use-delete-transaction";
 import { useEditTransaction } from "@/features/transactions/api/use-edit-transaction";
 import { useGetTransaction } from "@/features/transactions/api/use-get-transaction";
@@ -61,15 +62,19 @@ export const EditTransactionSheet = () => {
     value: account.id,
   }));
 
+  const customerMutation = useCreateCustomer();
+
   const onCreateAccount = (name: string) => accountMutation.mutate({ name });
   const onCreateCategory = (name: string) => categoryMutation.mutate({ name });
+  const onCreateCustomer = (name: string) => customerMutation.mutate({ name });
 
   const isPending =
     editMutation.isPending ||
     deleteMutation.isPending ||
     transactionQuery.isLoading ||
     categoryMutation.isPending ||
-    accountMutation.isPending;
+    accountMutation.isPending ||
+    customerMutation.isPending;
 
   const isLoading =
     transactionQuery.isLoading ||
@@ -84,7 +89,7 @@ export const EditTransactionSheet = () => {
     });
   };
 
-  const defaultValues = transactionQuery.data
+  const defaultValues: Partial<FormValues> = transactionQuery.data
     ? {
       accountId: transactionQuery.data.accountId ?? undefined,
       creditAccountId: transactionQuery.data.creditAccountId ?? undefined,
@@ -94,18 +99,20 @@ export const EditTransactionSheet = () => {
       date: transactionQuery.data.date
         ? new Date(transactionQuery.data.date)
         : new Date(),
-      payeeCustomerId: transactionQuery.data.payeeCustomerId ?? "",
+      payeeCustomerId: transactionQuery.data.payeeCustomerId ?? undefined,
+      payee: transactionQuery.data.payee,
       notes: transactionQuery.data.notes,
     }
     : {
       accountId: "",
       creditAccountId: "",
       debitAccountId: "",
-      categoryId: "",
+      categoryId: null,
       amount: "",
       date: new Date(),
-      payeeCustomerId: "",
-      notes: "",
+      payeeCustomerId: undefined,
+      payee: null,
+      notes: null,
     };
 
   const onDelete = async () => {
@@ -160,7 +167,10 @@ export const EditTransactionSheet = () => {
                   creditAccountOptions={creditAccountOptions}
                   debitAccountOptions={debitAccountOptions}
                   onCreateAccount={onCreateAccount}
-                  onDelete={onDelete} />
+                  onCreateCustomer={onCreateCustomer}
+                  onDelete={onDelete}
+                  hasPayee={!!transactionQuery.data?.payee}
+                />
               )}
             </>
           )}

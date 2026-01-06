@@ -23,6 +23,7 @@ export type CustomerSelectProps = {
     className?: string;
     placeholder?: string;
     disabled?: boolean;
+    onCreate?: (name: string) => void;
 };
 
 export const CustomerSelect = ({
@@ -30,7 +31,8 @@ export const CustomerSelect = ({
     onChange,
     className,
     placeholder = "Select customer...",
-    disabled
+    disabled,
+    onCreate
 }: CustomerSelectProps) => {
     const [open, setOpen] = useState(false);
     const [customerFilter, setCustomerFilter] = useState("");
@@ -88,7 +90,7 @@ export const CustomerSelect = ({
                 <div className="p-2 border-b">
                     <Button
                         onClick={() => {
-                            onOpenNewCustomer();
+                            onCreate ? onCreate(customerFilter) : onOpenNewCustomer();
                             setOpen(false);
                         }}
                         variant="ghost"
@@ -166,7 +168,7 @@ export const CustomerSelect = ({
                     <div className="p-2">
                         <Button
                             onClick={() => {
-                                onOpenNewCustomer();
+                                onCreate ? onCreate(customerFilter) : onOpenNewCustomer();
                                 setOpen(false);
                             }}
                             variant="ghost"

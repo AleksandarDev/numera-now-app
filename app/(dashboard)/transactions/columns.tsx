@@ -60,7 +60,7 @@ export const columns: ColumnDef<ResponseType>[] = [
       )
     }
   },
-    {
+  {
     accessorKey: "category",
     header: ({ column }) => {
       return (
@@ -84,17 +84,27 @@ export const columns: ColumnDef<ResponseType>[] = [
     }
   },
   {
-    accessorKey: "payee",
+    accessorKey: "payeeCustomerName",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Payee
+          Customer
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
+    },
+    cell: ({ row }) => {
+      const customerName = row.original.payeeCustomerName;
+      const payee = row.original.payee;
+      // Display customer name if available, otherwise fall back to payee
+      return (
+        <span className={!customerName && payee ? "text-red-500 font-bold" : ""}>
+          {customerName || `⚠️ ${payee}` || "⚠️ -"}
+        </span>
+      );
     },
   },
   {
