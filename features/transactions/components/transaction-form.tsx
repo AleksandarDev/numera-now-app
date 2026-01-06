@@ -23,7 +23,7 @@ import { AccountSelect } from "@/components/account-select";
 import { CustomerSelect } from "@/components/customer-select";
 
 const formSchema = z.object({
-  date: z.coerce.date(),
+  date: z.date(),
   accountId: z.string(),
   categoryId: z.string().nullable().optional(),
   payeeCustomerId: z.string().optional(),
@@ -41,8 +41,8 @@ const apiSchema = insertTransactionSchema.omit({
   id: true,
 });
 
-type FormValues = z.input<typeof formSchema>;
-type ApiFormValues = z.input<typeof apiSchema>;
+type FormValues = z.infer<typeof formSchema>;
+type ApiFormValues = z.infer<typeof apiSchema>;
 
 type TransactionFormProps = {
   id?: string;

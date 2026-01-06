@@ -22,7 +22,7 @@ import { convertAmountToMiliunits } from "@/lib/utils";
 import { AccountSelect } from "@/components/account-select";
 
 const formSchema = z.object({
-  date: z.coerce.date(),
+  date: z.date(),
   creditAccountId: z.string(),
   debitAccountId: z.string(),
   categoryId: z.string().nullable().optional(),
@@ -35,8 +35,8 @@ const apiSchema = insertTransactionSchema.omit({
   id: true,
 });
 
-type FormValues = z.input<typeof formSchema>;
-type ApiFormValues = z.input<typeof apiSchema>;
+type FormValues = z.infer<typeof formSchema>;
+type ApiFormValues = z.infer<typeof apiSchema>;
 
 type TransactionDoubleEntryFormProps = {
   id?: string;
