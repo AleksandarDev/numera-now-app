@@ -3,8 +3,9 @@
 import { DataTable } from "@/components/data-table";
 import { useBulkDeleteTransactions } from "@/features/transactions/api/use-bulk-delete-transactions";
 import { useGetTransactions } from "@/features/transactions/api/use-get-transactions";
-import { columns } from "./columns";
+import { columns, ResponseType } from "./columns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { hasValidationIssues } from "./validation";
 
 export function TransactionsDataTable() {
     const deleteTransactions = useBulkDeleteTransactions();
@@ -12,6 +13,10 @@ export function TransactionsDataTable() {
     const transactions = transactionsQuery.data || [];
 
     const isDisabled = transactionsQuery.isLoading || deleteTransactions.isPending;
+
+    const getRowClassName = (transaction: ResponseType) => {
+        return hasValidationIssues(transaction) ? "bg-red-50 hover:bg-red-100" : "";
+    };
 
     return (
         <DataTable
@@ -26,6 +31,7 @@ export function TransactionsDataTable() {
                 const ids = row.map((r) => r.original.id);
                 deleteTransactions.mutate({ ids });
             }}
-            disabled={isDisabled} />
+            disabled={isDisabled}
+            getRowClassName={getRowClassName} />
     );
 }

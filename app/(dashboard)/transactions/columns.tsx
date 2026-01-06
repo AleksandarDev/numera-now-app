@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AccountColumn } from "./account-column";
 import { CategoryColumn } from "./category-column";
+import { CustomerColumn } from "./customer-column";
 
 export type ResponseType = InferResponseType<typeof client.api.transactions.$get, 200>["data"][0];
 
@@ -97,13 +98,11 @@ export const columns: ColumnDef<ResponseType>[] = [
       )
     },
     cell: ({ row }) => {
-      const customerName = row.original.payeeCustomerName;
-      const payee = row.original.payee;
-      // Display customer name if available, otherwise fall back to payee
       return (
-        <span className={!customerName && payee ? "text-red-500 font-bold" : ""}>
-          {customerName || `⚠️ ${payee}` || "⚠️ -"}
-        </span>
+        <CustomerColumn
+          customerName={row.original.payeeCustomerName}
+          payee={row.original.payee}
+        />
       );
     },
   },
@@ -150,10 +149,13 @@ export const columns: ColumnDef<ResponseType>[] = [
         <AccountColumn
           account={row.original.account}
           accountCode={row.original.accountCode}
+          accountIsOpen={row.original.accountIsOpen}
           creditAccount={row.original.creditAccount}
           creditAccountCode={row.original.creditAccountCode}
+          creditAccountIsOpen={row.original.creditAccountIsOpen}
           debitAccount={row.original.debitAccount}
           debitAccountCode={row.original.debitAccountCode}
+          debitAccountIsOpen={row.original.debitAccountIsOpen}
         />
       )
     }
