@@ -7,6 +7,10 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db/drizzle";
 import { settings, insertSettingsSchema } from "@/db/schema";
 
+const reconciliationConditionsSchema = z.array(
+  z.enum(["hasReceipt", "isReviewed", "isApproved"])
+);
+
 const app = new Hono()
   .get(
     "/",
@@ -28,12 +32,19 @@ const app = new Hono()
         return ctx.json({ 
           data: { 
             userId: auth.userId, 
-            doubleEntryMode: false 
+            doubleEntryMode: false,
+            reconciliationConditions: ["hasReceipt"],
           } 
         });
       }
 
-      return ctx.json({ data });
+      // Parse reconciliation conditions
+      const parsed = {
+        ...data,
+        reconciliationConditions: JSON.parse(data.reconciliationConditions || '["hasReceipt"]'),
+      };
+
+      return ctx.json({ data: parsed });
     }
   )
   .patch(
@@ -42,7 +53,8 @@ const app = new Hono()
     zValidator(
       "json",
       z.object({
-        doubleEntryMode: z.boolean(),
+        doubleEntryMode: z.boolean().optional(),
+        reconciliationConditions: reconciliationConditionsSchema.optional(),
       })
     ),
     async (ctx) => {
@@ -52,6 +64,14 @@ const app = new Hono()
       if (!auth?.userId) {
         return ctx.json({ error: "Unauthorized." }, 401);
       }
+
+      // Stringify reconciliation conditions if provided
+      const updateValues = {
+        ...values,
+        ...(values.reconciliationConditions && {
+          reconciliationConditions: JSON.stringify(values.reconciliationConditions),
+        }),
+      };
 
       // Check if settings exist
       const [existingSettings] = await db
@@ -65,7 +85,7 @@ const app = new Hono()
         // Update existing settings
         [data] = await db
           .update(settings)
-          .set(values)
+          .set(updateValues)
           .where(eq(settings.userId, auth.userId))
           .returning();
       } else {
@@ -74,13 +94,18 @@ const app = new Hono()
           .insert(settings)
           .values({
             userId: auth.userId,
-            ...values,
+            doubleEntryMode: values.doubleEntryMode || false,
+            reconciliationConditions: values.reconciliationConditions
+              ? JSON.stringify(values.reconciliationConditions)
+              : '["hasReceipt"]',
           })
           .returning();
       }
 
-      return ctx.json({ data });
-    }
-  );
+      // Parse reconciliation conditions for response
+      const parsed = {
+        ...data,
+        reconciliationConditions: JSON.parse(data.reconciliationConditions || '["hasReceipt"]'),
+      };
 
-export default app;
+      return ctx.json({ data: parsed });

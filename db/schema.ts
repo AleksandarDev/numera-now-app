@@ -70,11 +70,68 @@ export const insertCustomerSchema = createInsertSchema(customers);
 export const settings = pgTable("settings", {
     userId: text("user_id").primaryKey(),
     doubleEntryMode: boolean("double_entry_mode").notNull().default(false),
+    // Reconciliation conditions - JSON array of conditions
+    // e.g., ["hasReceipt", "isReviewed", "isApproved"]
+    reconciliationConditions: text("reconciliation_conditions").notNull().default('["hasReceipt"]'),
 }, (table) => [
     index('settings_userid_idx').on(table.userId)
 ]);
 
 export const insertSettingsSchema = createInsertSchema(settings);
+
+// Document types table - predefined types for documents
+export const documentTypes = pgTable("document_types", {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(), // e.g., "Receipt", "Invoice", "Contract"
+    description: text("description"),
+    userId: text("user_id").notNull(),
+    isRequired: boolean("is_required").notNull().default(false), // Whether this type is required for reconciliation
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+}, (table) => [
+    index('document_types_userid_idx').on(table.userId),
+]);
+
+export const insertDocumentTypeSchema = createInsertSchema(documentTypes);
+
+// Documents table - stores metadata about uploaded documents
+export const documents = pgTable("documents", {
+    id: text("id").primaryKey(),
+    fileName: text("file_name").notNull(),
+    fileSize: integer("file_size").notNull(), // in bytes
+    mimeType: text("mime_type").notNull(),
+    documentTypeId: text("document_type_id").notNull().references(() => documentTypes.id, {
+        onDelete: "restrict",
+    }),
+    // Primary transaction this document is attached to
+    transactionId: text("transaction_id").notNull().references(() => transactions.id, {
+        onDelete: "cascade",
+    }),
+    // Azure Blob Storage path
+    storagePath: text("storage_path").notNull(),
+    // Uploader user ID
+    uploadedBy: text("uploaded_by").notNull(),
+    uploadedAt: timestamp("uploaded_at", { mode: "date" }).notNull().defaultNow(),
+    // For managing document lifecycle
+    isDeleted: boolean("is_deleted").notNull().default(false),
+}, (table) => [
+    index('documents_transactionid_idx').on(table.transactionId),
+    index('documents_documenttypeid_idx').on(table.documentTypeId),
+    index('documents_uploadedby_idx').on(table.uploadedBy),
+]);
+
+export const documentRelations = relations(documents, ({ one }) => ({
+    documentType: one(documentTypes, {
+        fields: [documents.documentTypeId],
+        references: [documentTypes.id],
+    }),
+    transaction: one(transactions, {
+        fields: [documents.transactionId],
+        references: [transactions.id],
+        relationName: "documents",
+    }),
+}));
+
+export const insertDocumentSchema = createInsertSchema(documents);
 
 export const transactions = pgTable("transactions", {
     id: text("id").primaryKey(),
@@ -115,7 +172,8 @@ export const transactions = pgTable("transactions", {
     index('transactions_splitgroupid_idx').on(table.splitGroupId),
 ]);
 
-export const transactionsRelations = relations(transactions, ({ one }) => ({
+// Update transactions relations to include documents
+export const transactionsRelations = relations(transactions, ({ one, many }) => ({
     account: one(accounts, {
         fields: [transactions.accountId],
         references: [accounts.id],
@@ -138,6 +196,9 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     payeeCustomer: one(customers, {
         fields: [transactions.payeeCustomerId],
         references: [customers.id],
+    }),
+    documents: many(documents, {
+        relationName: "documents",
     }),
 }));
 

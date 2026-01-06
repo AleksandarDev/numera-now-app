@@ -17,6 +17,7 @@
   },
   "packageManager": "pnpm@10.8.0",
   "dependencies": {
+    "@azure/storage-blob": "^12.24.0",
     "@clerk/backend": "2.29.0",
     "@clerk/nextjs": "6.36.5",
     "@date-fns/utc": "2.1.1",

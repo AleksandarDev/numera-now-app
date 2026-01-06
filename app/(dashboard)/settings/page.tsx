@@ -14,6 +14,8 @@ import { useUpdateSettings } from "@/features/settings/api/use-update-settings";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+import { DocumentTypesSettingsCard } from "@/components/document-types-settings-card";
+import { ReconciliationSettingsCard } from "@/components/reconciliation-settings-card";
 function DoubleEntrySettings() {
     const settingsQuery = useGetSettings();
     const updateSettings = useUpdateSettings();
@@ -101,6 +103,8 @@ export default function SettingsPage() {
                 </div>
             )}>
                 <DoubleEntrySettings />
+                                <DocumentTypesSettingsCard />
+                                <ReconciliationSettingsCard />
                 <CategoriesSection />
             </Suspense>
         </div>

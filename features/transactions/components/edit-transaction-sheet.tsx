@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -9,6 +9,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { insertTransactionSchema } from "@/db/schema";
 import { useCreateAccount } from "@/features/accounts/api/use-create-account";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
@@ -23,6 +29,8 @@ import { useGetSplitGroup } from "@/features/transactions/api/use-get-split-grou
 import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
 import { useConfirm } from "@/hooks/use-confirm";
 import { formatCurrency } from "@/lib/utils";
+import { DocumentsTab } from "@/components/documents-tab";
+import { TransactionReconciliationStatus } from "@/components/transaction-reconciliation-status";
 
 import { TransactionForm } from "./transaction-form";
 import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
@@ -167,15 +175,15 @@ export const EditTransactionSheet = () => {
     }
   };
 
+  const [activeTab, setActiveTab] = useState("details");
   return (
     <>
       <ConfirmDialog />
       <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-        <SheetContent className="flex flex-col h-full p-0">
+        <SheetContent className="flex flex-col h-full p-0 max-w-2xl">
           <div className="px-6 pt-6">
             <SheetHeader>
               <SheetTitle>Edit Transaction</SheetTitle>
-
               <SheetDescription>Edit an existing transaction.</SheetDescription>
             </SheetHeader>
           </div>
@@ -185,8 +193,16 @@ export const EditTransactionSheet = () => {
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-6 space-y-6">
-              {transactionQuery.data && transactionQuery.data.accountId ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
+
+              <div className="flex-1 overflow-y-auto px-6">
+                <TabsContent value="details" className="space-y-6 mt-6">
+                  {transactionQuery.data && transactionQuery.data.accountId ? (
                 <TransactionForm
                   id={id}
                   defaultValues={defaultValuesForForm as TransactionFormValues}
@@ -199,7 +215,7 @@ export const EditTransactionSheet = () => {
                   statusOptions={allowedStatuses}
                   onDelete={onDelete}
                 />
-              ) : (
+                  ) : (
                 <TransactionDoubleEntryForm
                   id={id}
                   defaultValues={defaultValuesForForm as TransactionDoubleEntryFormValues}
@@ -216,7 +232,7 @@ export const EditTransactionSheet = () => {
                   statusOptions={allowedStatuses}
                   hasPayee={!!transactionQuery.data?.payee}
                 />
-              )}
+                  )}
 
               {splitGroupQuery.data && splitGroupQuery.data.length > 0 && (
                 <div className="space-y-2 rounded-md border p-3">
@@ -233,11 +249,21 @@ export const EditTransactionSheet = () => {
                         <div className="text-xs text-muted-foreground">{formatCurrency(split.amount ?? 0)}</div>
                       </div>
                     ))}
+                                  </TabsContent>
+
+                                  <TabsContent value="documents" className="mt-6">
+                                    {transactionQuery.data && (
+                                      <DocumentsTab transactionId={transactionQuery.data.id} />
+                                    )}
+                                  </TabsContent>
+
+                                  <TabsContent value="history" className="mt-6">
                   </div>
                 </div>
               )}
 
               {statusHistoryQuery.data && statusHistoryQuery.data.length > 0 && (
+                                  ? (
                 <div className="space-y-2 rounded-md border p-3">
                   <div className="text-sm font-semibold">Status history</div>
                   <div className="space-y-2 text-sm text-muted-foreground">
@@ -257,8 +283,12 @@ export const EditTransactionSheet = () => {
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No status history yet.</div>
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
           )}
         </SheetContent>
       </Sheet>

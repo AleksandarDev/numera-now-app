@@ -120,6 +120,13 @@
       "when": 1767702327955,
       "tag": "0016_quick_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1767703373930,
+      "tag": "0017_flawless_chamber",
+      "breakpoints": true
     }
   ]
 }
