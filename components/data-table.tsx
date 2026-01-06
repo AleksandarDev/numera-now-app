@@ -26,6 +26,7 @@ import { useConfirm } from "@/hooks/use-confirm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChevronLeft, ChevronRight, Trash } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -34,6 +35,7 @@ interface DataTableProps<TData, TValue> {
     onDelete: (rows: Row<TData>[]) => void;
     disabled?: boolean;
     loading?: boolean;
+    getRowClassName?: (row: TData) => string;
 }
 
 export function DataTable<TData, TValue>({
@@ -42,7 +44,8 @@ export function DataTable<TData, TValue>({
     filterKey,
     onDelete,
     disabled,
-    loading
+    loading,
+    getRowClassName
 }: DataTableProps<TData, TValue>) {
     const [ConfirmationDialog, confirm] = useConfirm(
         "Are you sure?",
@@ -139,6 +142,9 @@ export function DataTable<TData, TValue>({
                                             <TableRow
                                                 key={row.id}
                                                 data-state={row.getIsSelected() && "selected"}
+                                                className={cn(
+                                                    getRowClassName ? getRowClassName(row.original) : undefined
+                                                )}
                                             >
                                                 {row.getVisibleCells().map((cell) => (
                                                     <TableCell key={cell.id}>

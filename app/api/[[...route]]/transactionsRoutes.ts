@@ -107,12 +107,15 @@ const app = new Hono()
           account: accounts.name,
           accountCode: accounts.code,
           accountId: transactions.accountId,
+          accountIsOpen: accounts.isOpen,
           creditAccount: creditAccounts.name,
           creditAccountCode: creditAccounts.code,
           creditAccountId: transactions.creditAccountId,
+          creditAccountIsOpen: creditAccounts.isOpen,
           debitAccount: debitAccounts.name,
           debitAccountCode: debitAccounts.code,
           debitAccountId: transactions.debitAccountId,
+          debitAccountIsOpen: debitAccounts.isOpen,
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.id))
