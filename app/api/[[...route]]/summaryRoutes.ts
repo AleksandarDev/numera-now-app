@@ -76,6 +76,7 @@ const app = new Hono().get(
               eq(creditAccounts.userId, userId),
               eq(debitAccounts.userId, userId)
             ),
+            ne(transactions.status, "draft"), // Exclude draft transactions
             gte(transactions.date, startDate),
             lte(transactions.date, endDate)
           )
@@ -134,6 +135,7 @@ const app = new Hono().get(
             eq(debitAccounts.userId, auth.userId)
           ),
           ne(transactions.amount, 0),
+          ne(transactions.status, "draft"), // Exclude draft transactions
           gte(transactions.date, startDate),
           lte(transactions.date, endDate)
         )
@@ -182,6 +184,7 @@ const app = new Hono().get(
             eq(creditAccounts.userId, auth.userId),
             eq(debitAccounts.userId, auth.userId)
           ),
+          ne(transactions.status, "draft"), // Exclude draft transactions
           gte(transactions.date, startDate),
           lte(transactions.date, endDate)
         )

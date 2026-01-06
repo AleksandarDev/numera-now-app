@@ -20,6 +20,8 @@ const formSchema = insertAccountSchema.pick({
     name: true,
     code: true,
     isOpen: true,
+    isReadOnly: true,
+    accountType: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -67,10 +69,14 @@ export const EditAccountSheet = () => {
         name: accountQuery.data.name,
         code: accountQuery.data.code,
         isOpen: accountQuery.data.isOpen,
+        isReadOnly: accountQuery.data.isReadOnly,
+        accountType: accountQuery.data.accountType,
     } : {
         name: "",
         code: null,
         isOpen: true,
+        isReadOnly: false,
+        accountType: "neutral",
     }
 
     return (

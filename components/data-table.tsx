@@ -32,6 +32,7 @@ interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
     filterKey?: string
+    filterPlaceholder?: string
     onDelete: (rows: Row<TData>[]) => void;
     disabled?: boolean;
     loading?: boolean;
@@ -42,6 +43,7 @@ export function DataTable<TData, TValue>({
     columns,
     data,
     filterKey,
+    filterPlaceholder,
     onDelete,
     disabled,
     loading,
@@ -81,7 +83,7 @@ export function DataTable<TData, TValue>({
             <div className="flex items-center py-4">
                 {filterKey && (
                     <Input
-                        placeholder={`Filter ${filterKey}...`}
+                        placeholder={filterPlaceholder ?? `Filter ${filterKey}...`}
                         value={(table.getColumn(filterKey)?.getFilterValue() as string) ?? ""}
                         onChange={(event) =>
                             table.getColumn(filterKey)?.setFilterValue(event.target.value)

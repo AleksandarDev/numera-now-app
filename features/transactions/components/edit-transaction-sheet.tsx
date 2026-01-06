@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { Fragment, useMemo } from "react";
 import { z } from "zod";
 
 import {
@@ -17,8 +18,11 @@ import { useCreateCustomer } from "@/features/customers/api/use-create-customer"
 import { useDeleteTransaction } from "@/features/transactions/api/use-delete-transaction";
 import { useEditTransaction } from "@/features/transactions/api/use-edit-transaction";
 import { useGetTransaction } from "@/features/transactions/api/use-get-transaction";
+import { useGetStatusHistory } from "@/features/transactions/api/use-get-status-history";
+import { useGetSplitGroup } from "@/features/transactions/api/use-get-split-group";
 import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
 import { useConfirm } from "@/hooks/use-confirm";
+import { formatCurrency } from "@/lib/utils";
 
 import { TransactionForm } from "./transaction-form";
 import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
@@ -34,6 +38,7 @@ type TransactionFormValues = {
   payee?: string;
   amount: string;
   notes?: string | null;
+  status?: "draft" | "pending" | "completed" | "reconciled";
 };
 type TransactionDoubleEntryFormValues = {
   date: Date;
@@ -44,6 +49,7 @@ type TransactionDoubleEntryFormValues = {
   payee?: string | null;
   amount: string;
   notes?: string | null;
+  status?: "draft" | "pending" | "completed" | "reconciled";
 };
 
 export const EditTransactionSheet = () => {
@@ -55,6 +61,8 @@ export const EditTransactionSheet = () => {
   );
 
   const transactionQuery = useGetTransaction(id);
+  const statusHistoryQuery = useGetStatusHistory(id);
+  const splitGroupQuery = useGetSplitGroup(transactionQuery.data?.splitGroupId);
   const editMutation = useEditTransaction(id);
   const deleteMutation = useDeleteTransaction(id);
 
@@ -80,6 +88,9 @@ export const EditTransactionSheet = () => {
     label: account.name,
     value: account.id,
   }));
+  const accountTypeById = useMemo(() => Object.fromEntries(
+    (accountsQuery.data ?? []).map((account) => [account.id, account.accountType as "credit" | "debit" | "neutral"])
+  ), [accountsQuery.data]);
 
   const customerMutation = useCreateCustomer();
 
@@ -121,6 +132,7 @@ export const EditTransactionSheet = () => {
       payeeCustomerId: transactionQuery.data.payeeCustomerId ?? undefined,
       payee: transactionQuery.data.payee ?? undefined,
       notes: transactionQuery.data.notes ?? undefined,
+      status: transactionQuery.data.status ?? "pending",
     }
     : {
       accountId: undefined,
@@ -132,7 +144,16 @@ export const EditTransactionSheet = () => {
       payeeCustomerId: undefined,
       payee: undefined,
       notes: undefined,
+      status: "pending",
     };
+
+  const statusOrder = ["draft", "pending", "completed", "reconciled"] as const;
+  const currentStatus = transactionQuery.data?.status ?? "pending";
+  const allowedStatuses = useMemo(() => {
+    const idx = statusOrder.indexOf(currentStatus as typeof statusOrder[number]);
+    const start = idx >= 0 ? idx : 0;
+    return statusOrder.slice(start).map((value) => ({ label: value.charAt(0).toUpperCase() + value.slice(1), value }));
+  }, [currentStatus]);
 
   const onDelete = async () => {
     const ok = await confirm();
@@ -164,7 +185,7 @@ export const EditTransactionSheet = () => {
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-6">
+            <div className="flex-1 overflow-y-auto px-6 space-y-6">
               {transactionQuery.data && transactionQuery.data.accountId ? (
                 <TransactionForm
                   id={id}
@@ -175,6 +196,7 @@ export const EditTransactionSheet = () => {
                   onCreateCategory={onCreateCategory}
                   accountOptions={accountOptions}
                   onCreateAccount={onCreateAccount}
+                  statusOptions={allowedStatuses}
                   onDelete={onDelete}
                 />
               ) : (
@@ -187,11 +209,54 @@ export const EditTransactionSheet = () => {
                   onCreateCategory={onCreateCategory}
                   creditAccountOptions={creditAccountOptions}
                   debitAccountOptions={debitAccountOptions}
+                  accountTypeById={accountTypeById}
                   onCreateAccount={onCreateAccount}
                   onCreateCustomer={onCreateCustomer}
                   onDelete={onDelete}
+                  statusOptions={allowedStatuses}
                   hasPayee={!!transactionQuery.data?.payee}
                 />
+              )}
+
+              {splitGroupQuery.data && splitGroupQuery.data.length > 0 && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <div className="text-sm font-semibold">Split group</div>
+                  <div className="space-y-1 text-sm">
+                    {splitGroupQuery.data.map((split) => (
+                      <div key={split.id} className="flex items-center justify-between rounded bg-muted/40 px-2 py-1">
+                        <div>
+                          <div className="font-medium">
+                            {split.splitType === "parent" ? "Parent" : "Child"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{split.payeeCustomerName || split.payee || ""}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{formatCurrency(split.amount ?? 0)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {statusHistoryQuery.data && statusHistoryQuery.data.length > 0 && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <div className="text-sm font-semibold">Status history</div>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    {statusHistoryQuery.data.map((entry, idx) => (
+                      <Fragment key={entry.id}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-foreground">{entry.toStatus}</div>
+                            <div className="text-xs">Changed by {entry.changedBy || "unknown"}</div>
+                          </div>
+                          <div className="text-xs">
+                            {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : ""}
+                          </div>
+                        </div>
+                        {idx < statusHistoryQuery.data.length - 1 && <div className="h-px bg-muted" />}
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}

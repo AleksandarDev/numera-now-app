@@ -16,7 +16,26 @@ import {
   insertTransactionSchema,
   transactions,
   settings,
+  transactionStatusHistory,
 } from "@/db/schema";
+
+// Helper function to record status change
+const recordStatusChange = async (
+  transactionId: string,
+  fromStatus: string | null,
+  toStatus: string,
+  changedBy: string,
+  notes?: string
+) => {
+  await db.insert(transactionStatusHistory).values({
+    id: createId(),
+    transactionId,
+    fromStatus,
+    toStatus,
+    changedBy,
+    notes,
+  });
+};
 
 // Helper function to open an account and all its parent accounts
 const openAccountAndParents = async (accountId: string, userId: string) => {
@@ -117,6 +136,11 @@ const app = new Hono()
           debitAccountCode: debitAccounts.code,
           debitAccountId: transactions.debitAccountId,
           debitAccountIsOpen: debitAccounts.isOpen,
+          status: transactions.status,
+          statusChangedAt: transactions.statusChangedAt,
+          statusChangedBy: transactions.statusChangedBy,
+          splitGroupId: transactions.splitGroupId,
+          splitType: transactions.splitType,
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -181,6 +205,11 @@ const app = new Hono()
           accountId: transactions.accountId,
           creditAccountId: transactions.creditAccountId,
           debitAccountId: transactions.debitAccountId,
+          status: transactions.status,
+          statusChangedAt: transactions.statusChangedAt,
+          statusChangedBy: transactions.statusChangedBy,
+          splitGroupId: transactions.splitGroupId,
+          splitType: transactions.splitType,
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -227,8 +256,8 @@ const app = new Hono()
 
       const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
 
-      // Validate double-entry mode requirements
-      if (doubleEntryMode) {
+      // Validate double-entry mode requirements (skip for draft transactions)
+      if (doubleEntryMode && values.status !== "draft") {
         if (!values.creditAccountId || !values.debitAccountId) {
           return ctx.json({ 
             error: "Double-entry mode is enabled. Both credit and debit accounts are required." 
@@ -245,6 +274,50 @@ const app = new Hono()
         return ctx.json({ error: "When using debit and credit accounts, amount must be positive or zero." }, 400);
       }
 
+      // Check if any of the accounts are read-only
+      const accountIds = [values.accountId, values.creditAccountId, values.debitAccountId].filter(Boolean) as string[];
+      const accountMap = new Map<string, { id: string; name: string; isReadOnly: boolean; accountType: string }>();
+      if (accountIds.length > 0) {
+        const accountsToCheck = await db
+          .select({ id: accounts.id, name: accounts.name, isReadOnly: accounts.isReadOnly, accountType: accounts.accountType })
+          .from(accounts)
+          .where(and(
+            inArray(accounts.id, accountIds),
+            eq(accounts.userId, auth.userId)
+          ));
+
+        accountsToCheck.forEach((acc) => accountMap.set(acc.id, acc));
+
+        const readOnlyAccounts = accountsToCheck.filter(acc => acc.isReadOnly);
+        if (readOnlyAccounts.length > 0) {
+          return ctx.json({ 
+            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}` 
+          }, 400);
+        }
+      }
+
+      if (doubleEntryMode) {
+        if (values.creditAccountId) {
+          const creditAccount = accountMap.get(values.creditAccountId);
+          if (!creditAccount) {
+            return ctx.json({ error: "Credit account not found for this user." }, 400);
+          }
+          if (creditAccount.accountType === "debit") {
+            return ctx.json({ error: `Account ${creditAccount.name} is debit-only and cannot be used as a credit account.` }, 400);
+          }
+        }
+
+        if (values.debitAccountId) {
+          const debitAccount = accountMap.get(values.debitAccountId);
+          if (!debitAccount) {
+            return ctx.json({ error: "Debit account not found for this user." }, 400);
+          }
+          if (debitAccount.accountType === "credit") {
+            return ctx.json({ error: `Account ${debitAccount.name} is credit-only and cannot be used as a debit account.` }, 400);
+          }
+        }
+      }
+
       // TODO: Fix users being able to create transactions with other users' accounts
 
       // Open accounts and their parents if they are closed
@@ -258,13 +331,22 @@ const app = new Hono()
         await openAccountAndParents(values.debitAccountId, auth.userId);
       }
 
+      const transactionId = createId();
+      const status = values.status || "pending";
+      
       const [data] = await db
         .insert(transactions)
         .values({
-          id: createId(),
+          id: transactionId,
           ...values,
+          status,
+          statusChangedAt: new Date(),
+          statusChangedBy: auth.userId,
         })
         .returning();
+
+      // Record initial status in history
+      await recordStatusChange(transactionId, null, status, auth.userId, "Transaction created");
 
       return ctx.json({ data });
     }
@@ -281,8 +363,78 @@ const app = new Hono()
         return ctx.json({ error: "Unauthorized." }, 401);
       }
 
+      const [userSettings] = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.userId, auth.userId));
+
+      const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+
       if (values.some((value) => value.amount < 0 && !value.accountId)) {
         return ctx.json({ error: "When using debit and credit accounts, amount must be positive or zero." }, 400);
+      }
+
+      if (doubleEntryMode) {
+        for (const value of values) {
+          if (value.status !== "draft") {
+            if (!value.creditAccountId || !value.debitAccountId) {
+              return ctx.json({
+                error: "Double-entry mode is enabled. Both credit and debit accounts are required for each transaction."
+              }, 400);
+            }
+            if (value.accountId) {
+              return ctx.json({
+                error: "Double-entry mode is enabled. Use creditAccountId and debitAccountId instead of accountId."
+              }, 400);
+            }
+          }
+        }
+      }
+
+      // Check if any of the accounts are read-only
+      const allAccountIds = values.flatMap(v => [v.accountId, v.creditAccountId, v.debitAccountId]).filter(Boolean) as string[];
+      const accountMap = new Map<string, { id: string; name: string; isReadOnly: boolean; accountType: string }>();
+      if (allAccountIds.length > 0) {
+        const accountsToCheck = await db
+          .select({ id: accounts.id, name: accounts.name, isReadOnly: accounts.isReadOnly, accountType: accounts.accountType })
+          .from(accounts)
+          .where(and(
+            inArray(accounts.id, allAccountIds),
+            eq(accounts.userId, auth.userId)
+          ));
+
+        accountsToCheck.forEach((acc) => accountMap.set(acc.id, acc));
+
+        const readOnlyAccounts = accountsToCheck.filter(acc => acc.isReadOnly);
+        if (readOnlyAccounts.length > 0) {
+          return ctx.json({ 
+            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}` 
+          }, 400);
+        }
+      }
+
+      if (doubleEntryMode) {
+        for (const value of values) {
+          if (value.creditAccountId) {
+            const creditAccount = accountMap.get(value.creditAccountId);
+            if (!creditAccount) {
+              return ctx.json({ error: "Credit account not found for this user." }, 400);
+            }
+            if (creditAccount.accountType === "debit") {
+              return ctx.json({ error: `Account ${creditAccount.name} is debit-only and cannot be used as a credit account.` }, 400);
+            }
+          }
+
+          if (value.debitAccountId) {
+            const debitAccount = accountMap.get(value.debitAccountId);
+            if (!debitAccount) {
+              return ctx.json({ error: "Debit account not found for this user." }, 400);
+            }
+            if (debitAccount.accountType === "credit") {
+              return ctx.json({ error: `Account ${debitAccount.name} is credit-only and cannot be used as a debit account.` }, 400);
+            }
+          }
+        }
       }
 
       // TODO: Fix users being able to create transactions with other users' accounts
@@ -401,8 +553,8 @@ const app = new Hono()
 
       const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
 
-      // Validate double-entry mode requirements
-      if (doubleEntryMode) {
+      // Validate double-entry mode requirements (skip for draft transactions)
+      if (doubleEntryMode && values.status !== "draft") {
         if (!values.creditAccountId || !values.debitAccountId) {
           return ctx.json({ 
             error: "Double-entry mode is enabled. Both credit and debit accounts are required." 
@@ -412,6 +564,50 @@ const app = new Hono()
           return ctx.json({ 
             error: "Double-entry mode is enabled. Use creditAccountId and debitAccountId instead of accountId." 
           }, 400);
+        }
+      }
+
+      // Check if any of the accounts are read-only
+      const accountIds = [values.accountId, values.creditAccountId, values.debitAccountId].filter(Boolean) as string[];
+      const accountMap = new Map<string, { id: string; name: string; isReadOnly: boolean; accountType: string }>();
+      if (accountIds.length > 0) {
+        const accountsToCheck = await db
+          .select({ id: accounts.id, name: accounts.name, isReadOnly: accounts.isReadOnly, accountType: accounts.accountType })
+          .from(accounts)
+          .where(and(
+            inArray(accounts.id, accountIds),
+            eq(accounts.userId, auth.userId)
+          ));
+
+        accountsToCheck.forEach((acc) => accountMap.set(acc.id, acc));
+
+        const readOnlyAccounts = accountsToCheck.filter(acc => acc.isReadOnly);
+        if (readOnlyAccounts.length > 0) {
+          return ctx.json({ 
+            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}` 
+          }, 400);
+        }
+      }
+
+      if (doubleEntryMode) {
+        if (values.creditAccountId) {
+          const creditAccount = accountMap.get(values.creditAccountId);
+          if (!creditAccount) {
+            return ctx.json({ error: "Credit account not found for this user." }, 400);
+          }
+          if (creditAccount.accountType === "debit") {
+            return ctx.json({ error: `Account ${creditAccount.name} is debit-only and cannot be used as a credit account.` }, 400);
+          }
+        }
+
+        if (values.debitAccountId) {
+          const debitAccount = accountMap.get(values.debitAccountId);
+          if (!debitAccount) {
+            return ctx.json({ error: "Debit account not found for this user." }, 400);
+          }
+          if (debitAccount.accountType === "credit") {
+            return ctx.json({ error: `Account ${debitAccount.name} is credit-only and cannot be used as a debit account.` }, 400);
+          }
         }
       }
 
@@ -438,10 +634,26 @@ const app = new Hono()
 
       console.log('transactionsToUpdate', transactionsToUpdate.id);
 
+      // Get the old transaction to check for status change
+      const [oldTransaction] = await db
+        .select({ status: transactions.status })
+        .from(transactions)
+        .where(eq(transactions.id, id));
+
+      const updateData: any = {
+        ...values,
+      };
+
+      // Track status changes
+      if (values.status && oldTransaction && values.status !== oldTransaction.status) {
+        updateData.statusChangedAt = new Date();
+        updateData.statusChangedBy = auth.userId;
+      }
+
       const [data] = await db
         .with(transactionsToUpdate)
         .update(transactions)
-        .set(values)
+        .set(updateData)
         .where(
           inArray(
             transactions.id,
@@ -452,6 +664,11 @@ const app = new Hono()
 
       if (!data) {
         return ctx.json({ error: "Not found." }, 404);
+      }
+
+      // Record status change in history if status changed
+      if (values.status && oldTransaction && values.status !== oldTransaction.status) {
+        await recordStatusChange(id, oldTransaction.status, values.status, auth.userId);
       }
 
       return ctx.json({ data });
@@ -517,6 +734,285 @@ const app = new Hono()
       }
 
       return ctx.json({ data });
+    }
+  )
+  .get(
+    "/:id/status-history",
+    zValidator(
+      "param",
+      z.object({
+        id: z.string(),
+      })
+    ),
+    clerkMiddleware(),
+    async (ctx) => {
+      const auth = getAuth(ctx);
+      const { id } = ctx.req.valid("param");
+
+      if (!auth?.userId) {
+        return ctx.json({ error: "Unauthorized." }, 401);
+      }
+
+      // Verify the transaction belongs to the user
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
+      const [transaction] = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+        .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
+        .where(
+          and(
+            eq(transactions.id, id),
+            or(
+              eq(accounts.userId, auth.userId),
+              eq(creditAccounts.userId, auth.userId),
+              eq(debitAccounts.userId, auth.userId)
+            )
+          )
+        );
+
+      if (!transaction) {
+        return ctx.json({ error: "Not found." }, 404);
+      }
+
+      const history = await db
+        .select()
+        .from(transactionStatusHistory)
+        .where(eq(transactionStatusHistory.transactionId, id))
+        .orderBy(desc(transactionStatusHistory.changedAt));
+
+      return ctx.json({ data: history });
+    }
+  )
+  .get(
+    "/split-group/:splitGroupId",
+    zValidator(
+      "param",
+      z.object({
+        splitGroupId: z.string(),
+      })
+    ),
+    clerkMiddleware(),
+    async (ctx) => {
+      const auth = getAuth(ctx);
+      const { splitGroupId } = ctx.req.valid("param");
+
+      if (!auth?.userId) {
+        return ctx.json({ error: "Unauthorized." }, 401);
+      }
+
+      const creditAccounts = aliasedTable(accounts, "creditAccounts");
+      const debitAccounts = aliasedTable(accounts, "debitAccounts");
+      
+      const data = await db
+        .select({
+          id: transactions.id,
+          date: transactions.date,
+          category: categories.name,
+          categoryId: transactions.categoryId,
+          payee: transactions.payee,
+          payeeCustomerId: transactions.payeeCustomerId,
+          payeeCustomerName: customers.name,
+          amount: transactions.amount,
+          notes: transactions.notes,
+          account: accounts.name,
+          accountId: transactions.accountId,
+          creditAccount: creditAccounts.name,
+          creditAccountId: transactions.creditAccountId,
+          debitAccount: debitAccounts.name,
+          debitAccountId: transactions.debitAccountId,
+          status: transactions.status,
+          splitGroupId: transactions.splitGroupId,
+          splitType: transactions.splitType,
+        })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
+        .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(customers, eq(transactions.payeeCustomerId, customers.id))
+        .where(
+          and(
+            eq(transactions.splitGroupId, splitGroupId),
+            or(
+              eq(accounts.userId, auth.userId),
+              eq(creditAccounts.userId, auth.userId),
+              eq(debitAccounts.userId, auth.userId)
+            )
+          )
+        )
+        .orderBy(
+          sql`CASE WHEN ${transactions.splitType} = 'parent' THEN 0 ELSE 1 END`,
+          transactions.id
+        );
+
+      if (data.length === 0) {
+        return ctx.json({ error: "Split group not found." }, 404);
+      }
+
+      return ctx.json({ data });
+    }
+  )
+  .post(
+    "/create-split",
+    clerkMiddleware(),
+    zValidator(
+      "json",
+      z.object({
+        parentTransaction: createTransactionSchema,
+        splits: z.array(
+          z.object({
+            amount: z.number(),
+            accountId: z.string().optional(),
+            creditAccountId: z.string().optional(),
+            debitAccountId: z.string().optional(),
+            categoryId: z.string().optional(),
+            notes: z.string().optional(),
+          })
+        ).min(2, "At least 2 splits are required"),
+      })
+    ),
+    async (ctx) => {
+      const auth = getAuth(ctx);
+      const { parentTransaction, splits } = ctx.req.valid("json");
+
+      if (!auth?.userId) {
+        return ctx.json({ error: "Unauthorized." }, 401);
+      }
+
+      // Check if double-entry mode is enabled
+      const [userSettings] = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.userId, auth.userId));
+
+      const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+
+      // In double-entry mode, validate that total debits equal total credits
+      if (doubleEntryMode) {
+        const totalDebits = splits
+          .filter(s => s.debitAccountId)
+          .reduce((sum, s) => sum + s.amount, 0);
+        const totalCredits = splits
+          .filter(s => s.creditAccountId)
+          .reduce((sum, s) => sum + s.amount, 0);
+
+        if (Math.abs(totalDebits - totalCredits) > 0.01) {
+          return ctx.json({ 
+            error: "In double-entry mode, total debits must equal total credits in split transactions." 
+          }, 400);
+        }
+      }
+
+      const splitAccountIds = splits
+        .flatMap((s) => [s.creditAccountId, s.debitAccountId])
+        .filter(Boolean) as string[];
+
+      const splitAccountMap = new Map<string, { id: string; name: string; accountType: string }>();
+
+      if (splitAccountIds.length > 0) {
+        const accountsToCheck = await db
+          .select({ id: accounts.id, name: accounts.name, accountType: accounts.accountType })
+          .from(accounts)
+          .where(and(
+            inArray(accounts.id, splitAccountIds),
+            eq(accounts.userId, auth.userId)
+          ));
+
+        accountsToCheck.forEach((acc) => splitAccountMap.set(acc.id, acc));
+      }
+
+      if (doubleEntryMode) {
+        for (const split of splits) {
+          if (split.creditAccountId) {
+            const creditAccount = splitAccountMap.get(split.creditAccountId);
+            if (!creditAccount) {
+              return ctx.json({ error: "Credit account not found for this user." }, 400);
+            }
+            if (creditAccount.accountType === "debit") {
+              return ctx.json({ error: `Account ${creditAccount.name} is debit-only and cannot be used as a credit account.` }, 400);
+            }
+          }
+
+          if (split.debitAccountId) {
+            const debitAccount = splitAccountMap.get(split.debitAccountId);
+            if (!debitAccount) {
+              return ctx.json({ error: "Debit account not found for this user." }, 400);
+            }
+            if (debitAccount.accountType === "credit") {
+              return ctx.json({ error: `Account ${debitAccount.name} is credit-only and cannot be used as a debit account.` }, 400);
+            }
+          }
+        }
+      }
+
+      // Validate that all splits have either accountId or both creditAccountId and debitAccountId
+      for (const split of splits) {
+        if (!split.accountId && (!split.creditAccountId || !split.debitAccountId)) {
+          return ctx.json({ 
+            error: "Each split must have either accountId or both creditAccountId and debitAccountId." 
+          }, 400);
+        }
+      }
+
+      const splitGroupId = createId();
+      const status = parentTransaction.status || "pending";
+
+      // Create parent transaction
+      const parentId = createId();
+      const [parent] = await db
+        .insert(transactions)
+        .values({
+          id: parentId,
+          ...parentTransaction,
+          splitGroupId,
+          splitType: "parent",
+          status,
+          statusChangedAt: new Date(),
+          statusChangedBy: auth.userId,
+        })
+        .returning();
+
+      // Record initial status in history
+      await recordStatusChange(parentId, null, status, auth.userId, "Split transaction created");
+
+      // Create child transactions
+      const childTransactions = await db
+        .insert(transactions)
+        .values(
+          splits.map((split) => ({
+            id: createId(),
+            date: parentTransaction.date,
+            payee: parentTransaction.payee,
+            payeeCustomerId: parentTransaction.payeeCustomerId,
+            amount: split.amount,
+            accountId: split.accountId,
+            creditAccountId: split.creditAccountId,
+            debitAccountId: split.debitAccountId,
+            categoryId: split.categoryId,
+            notes: split.notes,
+            splitGroupId,
+            splitType: "child" as const,
+            status,
+            statusChangedAt: new Date(),
+            statusChangedBy: auth.userId,
+          }))
+        )
+        .returning();
+
+      // Record initial status for all child transactions
+      for (const child of childTransactions) {
+        await recordStatusChange(child.id, null, status, auth.userId, "Split transaction child created");
+      }
+
+      return ctx.json({ 
+        data: {
+          parent,
+          children: childTransactions,
+        }
+      });
     }
   );
 

@@ -16,22 +16,22 @@ type AccountColumnProps = {
   debitAccountIsOpen?: boolean | null;
 };
 
-export const AccountColumn = ({ 
-  account, 
-  accountCode, 
+export const AccountColumn = ({
+  account,
+  accountCode,
   accountIsOpen,
-  creditAccount, 
-  creditAccountCode, 
+  creditAccount,
+  creditAccountCode,
   creditAccountIsOpen,
-  debitAccount, 
+  debitAccount,
   debitAccountCode,
-  debitAccountIsOpen 
+  debitAccountIsOpen
 }: AccountColumnProps) => {
   if (account)
     return (
       <Row spacing={1}>
         {accountIsOpen === false && (
-          <ValidationIndicator 
+          <ValidationIndicator
             message={`Account "${account}" is closed/inactive`}
             severity="warning"
           />
@@ -41,25 +41,29 @@ export const AccountColumn = ({
     );
 
   if (creditAccount && debitAccount)
-  return (
-    <Row spacing={1}>
-      {creditAccountIsOpen === false && (
-        <ValidationIndicator 
-          message={`Credit account "${creditAccount}" is closed/inactive`}
-          severity="warning"
-        />
-      )}
-      <AccountName account={creditAccount} accountCode={creditAccountCode} />
-      <ChevronRight className="size-4 min-w-4" />
-      {debitAccountIsOpen === false && (
-        <ValidationIndicator 
-          message={`Debit account "${debitAccount}" is closed/inactive`}
-          severity="warning"
-        />
-      )}
-      <AccountName account={debitAccount} accountCode={debitAccountCode} />
-    </Row>
-  );
+    return (
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+        <Row spacing={1}>
+          {creditAccountIsOpen === false && (
+            <ValidationIndicator
+              message={`Credit account "${creditAccount}" is closed/inactive`}
+              severity="warning"
+            />
+          )}
+          <AccountName account={creditAccount} accountCode={creditAccountCode} />
+        </Row>
+        <ChevronRight className="size-4 min-w-4" />
+        <Row spacing={1}>
+          {debitAccountIsOpen === false && (
+            <ValidationIndicator
+              message={`Debit account "${debitAccount}" is closed/inactive`}
+              severity="warning"
+            />
+          )}
+          <AccountName account={debitAccount} accountCode={debitAccountCode} />
+        </Row>
+      </div>
+    );
 
   return <Typography level="body1" semiBold color="danger">Invalid accounts</Typography>;
 };

@@ -23,10 +23,20 @@ export type AccountSelectProps = {
   placeholder?: string;
   disabled?: boolean;
   showClosed?: boolean;
+  excludeReadOnly?: boolean;
+  allowedTypes?: Array<"credit" | "debit" | "neutral">;
 };
 
 export const AccountSelect = ({
-  value, onChange, selectAll, className, placeholder, disabled, showClosed = false
+  value,
+  onChange,
+  selectAll,
+  className,
+  placeholder,
+  disabled,
+  showClosed = false,
+  excludeReadOnly = false,
+  allowedTypes,
 }: AccountSelectProps) => {
   const [open, setOpen] = useState(false);
   const [accountsFilter, setAccountsFilter] = useState("");
@@ -38,9 +48,28 @@ export const AccountSelect = ({
     showClosed
   });
 
-  const resolvedAccounts = useMemo(() => selectAll
-    ? [{ id: "all", name: "All accounts", code: "" }, ...(accounts ?? [])]
-    : accounts, [accounts, selectAll]);
+  const resolvedAccounts = useMemo(() => {
+    let result = accounts ?? [];
+    
+    // Filter out read-only accounts if needed
+    if (excludeReadOnly) {
+      result = result.filter(account => !account.isReadOnly);
+    }
+
+    if (allowedTypes && allowedTypes.length > 0) {
+      result = result.filter((account) => {
+        const type = (account.accountType ?? "neutral") as "credit" | "debit" | "neutral";
+        return allowedTypes.includes(type);
+      });
+    }
+    
+    // Add "all" option if needed
+    if (selectAll) {
+      result = [{ id: "all", name: "All accounts", code: "", isOpen: true, isReadOnly: false, accountType: "neutral" }, ...result];
+    }
+    
+    return result;
+  }, [accounts, selectAll, excludeReadOnly, allowedTypes]);
   const filteredAccounts = useMemo(() => resolvedAccounts?.filter((account) => {
     const filter = accountsFilter.toLowerCase();
     return account.name.toLowerCase().includes(filter) || account.code?.toLowerCase().includes(filter);

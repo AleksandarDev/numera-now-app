@@ -1,6 +1,8 @@
 import { Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
+import { Button } from "@/components/ui/button";
 import {
     Sheet,
     SheetContent,
@@ -19,13 +21,21 @@ import { useNewTransaction } from "@/features/transactions/hooks/use-new-transac
 
 import { TransactionForm } from "./transaction-form";
 import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
+import { SplitTransactionForm, SplitTransactionFormValues } from "./split-transaction-form";
 
 const formSchema = insertTransactionSchema.omit({ id: true });
 
 type FormValues = z.infer<typeof formSchema>;
 
 export const NewTransactionSheet = () => {
-    const { doubleEntry, isOpen, onClose } = useNewTransaction();
+    const { doubleEntry, isOpen, onClose, splitMode: initialSplitMode, prefillSplit } = useNewTransaction();
+    const [splitMode, setSplitMode] = useState(initialSplitMode);
+
+    useEffect(() => {
+        if (isOpen) {
+            setSplitMode(initialSplitMode);
+        }
+    }, [isOpen, initialSplitMode]);
 
     const createMutation = useCreateTransaction();
     const categoryMutation = useCreateCategory();
@@ -49,6 +59,9 @@ export const NewTransactionSheet = () => {
         label: account.name,
         value: account.id,
     }));
+    const accountTypeById = useMemo(() => Object.fromEntries(
+        (accountsQuery.data ?? []).map((account) => [account.id, account.accountType as "credit" | "debit" | "neutral"])
+    ), [accountsQuery.data]);
 
     const customerMutation = useCreateCustomer();
 
@@ -67,9 +80,24 @@ export const NewTransactionSheet = () => {
         createMutation.mutate(values, {
             onSuccess: () => {
                 onClose();
+                setSplitMode(false);
             },
         });
     };
+
+    const splitDefaults: SplitTransactionFormValues = useMemo(() => ({
+        date: prefillSplit?.date ?? new Date(),
+        status: prefillSplit?.status ?? "pending",
+        payeeCustomerId: prefillSplit?.payeeCustomerId,
+        payee: prefillSplit?.payee,
+        notes: prefillSplit?.notes ?? "",
+        categoryId: prefillSplit?.categoryId ?? undefined,
+        doubleEntry: !!doubleEntry,
+        splits: [
+            { amount: "", accountId: "", creditAccountId: "", debitAccountId: "", categoryId: "", notes: "" },
+            { amount: "", accountId: "", creditAccountId: "", debitAccountId: "", categoryId: "", notes: "" },
+        ],
+    }), [prefillSplit, doubleEntry]);
 
     return (
         <Sheet open={isOpen || isPending} onOpenChange={onClose}>
@@ -88,7 +116,36 @@ export const NewTransactionSheet = () => {
                     </div>
                 ) : (
                     <div className="flex-1 overflow-y-auto px-6">
-                        {doubleEntry ? (
+                        <div className="mb-4 flex gap-2">
+                            <Button
+                                variant={splitMode ? "outline" : "default"}
+                                onClick={() => setSplitMode(false)}
+                                size="sm"
+                            >
+                                Single
+                            </Button>
+                            <Button
+                                variant={splitMode ? "default" : "outline"}
+                                onClick={() => setSplitMode(true)}
+                                size="sm"
+                            >
+                                Split
+                            </Button>
+                        </div>
+
+                        {splitMode ? (
+                            <SplitTransactionForm
+                                disabled={isPending}
+                                categoryOptions={categoryOptions}
+                                onCreateCategory={onCreateCategory}
+                                onCreateCustomer={onCreateCustomer}
+                                defaultValues={splitDefaults}
+                                onSuccess={() => {
+                                    onClose();
+                                    setSplitMode(false);
+                                }}
+                            />
+                        ) : doubleEntry ? (
                             <TransactionDoubleEntryForm
                                 onSubmit={onSubmit}
                                 disabled={isPending}
@@ -96,6 +153,7 @@ export const NewTransactionSheet = () => {
                                 onCreateCategory={onCreateCategory}
                                 creditAccountOptions={creditAccountOptions}
                                 debitAccountOptions={debitAccountOptions}
+                                accountTypeById={accountTypeById}
                                 onCreateAccount={onCreateAccount}
                                 onCreateCustomer={onCreateCustomer}
                                 defaultValues={{
@@ -104,6 +162,7 @@ export const NewTransactionSheet = () => {
                                     notes: "",
                                     creditAccountId: "",
                                     debitAccountId: "",
+                                    status: "pending",
                                 }}
                             />
                         ) : (
@@ -120,6 +179,7 @@ export const NewTransactionSheet = () => {
                                     amount: "",
                                     notes: "",
                                     accountId: "",
+                                    status: "pending",
                                 }}
                             />
                         )}

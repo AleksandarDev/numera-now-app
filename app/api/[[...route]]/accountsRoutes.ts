@@ -49,6 +49,8 @@ const app = new Hono()
           name: accounts.name,
           code: accounts.code,
           isOpen: accounts.isOpen,
+          isReadOnly: accounts.isReadOnly,
+          accountType: accounts.accountType,
         })
         .from(accounts)
         .where(and(
@@ -60,7 +62,33 @@ const app = new Hono()
         .offset(page ? Number(page) * Number(pageSize) : 0)
         .limit(pageSize ? Number(pageSize) : 10);
 
-      return ctx.json({ data });
+      // Add validation warnings for accounts with invalid configurations
+      const dataWithValidation = data.map(account => {
+        let hasInvalidConfig = false;
+        
+        // Check if account is open but any parent is closed
+        if (account.isOpen && account.code && account.code.length > 1) {
+          const parentCodes = [];
+          for (let i = 1; i < account.code.length; i++) {
+            parentCodes.push(account.code.substring(0, i));
+          }
+          
+          // Check if any parent is closed (this would be invalid)
+          const closedParents = data.filter(a => 
+            a.code && parentCodes.includes(a.code) && !a.isOpen
+          );
+          
+          hasInvalidConfig = closedParents.length > 0;
+        }
+        
+        return {
+          ...account,
+          accountType: account.accountType,
+          hasInvalidConfig
+        };
+      });
+
+      return ctx.json({ data: dataWithValidation });
     })
   .get(
     "/:id",
@@ -89,6 +117,8 @@ const app = new Hono()
           name: accounts.name,
           code: accounts.code,
           isOpen: accounts.isOpen,
+          isReadOnly: accounts.isReadOnly,
+          accountType: accounts.accountType,
         })
         .from(accounts)
         .where(and(eq(accounts.userId, auth.userId), eq(accounts.id, id)));
@@ -109,6 +139,8 @@ const app = new Hono()
         name: true,
         code: true,
         isOpen: true,
+        isReadOnly: true,
+        accountType: true,
       })
     ),
     async (ctx) => {
@@ -204,6 +236,8 @@ const app = new Hono()
         name: true,
         code: true,
         isOpen: true,
+        isReadOnly: true,
+        accountType: true,
       })
     ),
     async (ctx) => {

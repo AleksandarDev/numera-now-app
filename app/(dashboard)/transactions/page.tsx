@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Split, MoreHorizontal } from "lucide-react";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,6 +15,7 @@ import { useGetSettings } from "@/features/settings/api/use-get-settings";
 import { TransactionsDataTable } from "./TransactionsDataTable";
 import { ImportButton } from "@/components/import-button";
 import { ImportCard } from "@/components/import/import-card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 enum VARIANTS {
   LIST = "LIST",
@@ -80,14 +81,16 @@ export default function TransactionsPage() {
   };
 
   if (variant === VARIANTS.IMPORT) {
-    <Suspense>
-      <TransactionsImportView
-        importResults={importResults}
-        onDone={() => {
-          setImportResults(INITIAL_IMPORT_RESULTS);
-          setVariant(VARIANTS.LIST);
-        }} />
-    </Suspense>
+    return (
+      <Suspense>
+        <TransactionsImportView
+          importResults={importResults}
+          onDone={() => {
+            setImportResults(INITIAL_IMPORT_RESULTS);
+            setVariant(VARIANTS.LIST);
+          }} />
+      </Suspense>
+    );
   }
 
   return (
@@ -95,7 +98,7 @@ export default function TransactionsPage() {
       <Card>
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>
-            Transaction History
+            Transaction
           </CardTitle>
           <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
             <Button
@@ -105,7 +108,25 @@ export default function TransactionsPage() {
             >
               <Plus className="mr-2 size-4" /> Add new
             </Button>
-            <ImportButton onUpload={onUpload} />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => newTransaction.onOpenSplit({ doubleEntry: doubleEntryMode })}
+              className="w-full lg:w-auto"
+            >
+              <Split className="mr-2 size-4" /> Create split
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="w-full lg:w-auto">
+                  <MoreHorizontal className="mr-2 size-4" />
+                  More
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <ImportButton onUpload={onUpload} variant="menu" />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
 

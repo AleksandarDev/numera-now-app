@@ -32,10 +32,15 @@ const formSchema = z.object({
   payee: z.string().nullable().optional(),
   amount: z.string(),
   notes: z.string().nullable().optional(),
+  status: z.enum(["draft", "pending", "completed", "reconciled"]).default("pending"),
 });
 
 const apiSchema = insertTransactionSchema.omit({
   id: true,
+  statusChangedAt: true,
+  statusChangedBy: true,
+  splitGroupId: true,
+  splitType: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,11 +54,13 @@ type TransactionDoubleEntryFormProps = {
   disabled?: boolean;
   creditAccountOptions: { label: string; value: string }[];
   debitAccountOptions: { label: string; value: string }[];
+  accountTypeById?: Record<string, "credit" | "debit" | "neutral" | undefined>;
   categoryOptions: { label: string; value: string }[];
   onCreateAccount: (name: string) => void;
   onCreateCategory: (name: string) => void;
   onCreateCustomer: (name: string) => void;
   hasPayee?: boolean;
+  statusOptions?: { label: string; value: FormValues["status"] }[];
 };
 
 export const TransactionDoubleEntryForm = ({
@@ -64,11 +71,13 @@ export const TransactionDoubleEntryForm = ({
   disabled,
   creditAccountOptions,
   debitAccountOptions,
+  accountTypeById,
   categoryOptions,
   onCreateAccount,
   onCreateCategory,
   onCreateCustomer,
   hasPayee = false,
+  statusOptions,
 }: TransactionDoubleEntryFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -76,6 +85,21 @@ export const TransactionDoubleEntryForm = ({
   });
 
   const handleSubmit = (values: FormValues) => {
+    if (accountTypeById) {
+      const creditType = accountTypeById[values.creditAccountId];
+      const debitType = accountTypeById[values.debitAccountId];
+
+      if (creditType === "debit") {
+        form.setError("creditAccountId", { type: "manual", message: "Account is debit-only; choose a credit/neutral account." });
+        return;
+      }
+
+      if (debitType === "credit") {
+        form.setError("debitAccountId", { type: "manual", message: "Account is credit-only; choose a debit/neutral account." });
+        return;
+      }
+    }
+
     const amount = parseFloat(values.amount);
     const amountInMiliunits = convertAmountToMiliunits(amount);
 
@@ -179,7 +203,9 @@ export const TransactionDoubleEntryForm = ({
                   placeholder="Select an credit account"
                   value={field.value || ""}
                   onChange={field.onChange}
-                  disabled={disabled} />
+                  disabled={disabled}
+                    excludeReadOnly
+                    allowedTypes={["credit", "neutral"]} />
               </FormControl>
 
               <FormMessage />
@@ -222,7 +248,9 @@ export const TransactionDoubleEntryForm = ({
                   placeholder="Select an debit account"
                   value={field.value || ""}
                   onChange={field.onChange}
-                  disabled={disabled} />
+                  disabled={disabled}
+                    excludeReadOnly
+                    allowedTypes={["debit", "neutral"]} />
               </FormControl>
 
               <FormMessage />
@@ -268,6 +296,34 @@ export const TransactionDoubleEntryForm = ({
                   value={field.value || ""}
                   disabled={disabled}
                   placeholder="Optional notes..."
+                />
+              </FormControl>
+
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="status"
+          control={form.control}
+          disabled={disabled}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+
+              <FormControl>
+                <Select
+                  placeholder="Select status"
+                  options={statusOptions ?? [
+                    { label: "Draft", value: "draft" },
+                    { label: "Pending", value: "pending" },
+                    { label: "Completed", value: "completed" },
+                    { label: "Reconciled", value: "reconciled" },
+                  ]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
                 />
               </FormControl>
 

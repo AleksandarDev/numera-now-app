@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, ChevronDown, ChevronRight, Expand, Minimize2 } from "lucide-react";
+import { Loader2, Plus, ChevronDown, ChevronRight, Expand, Minimize2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Actions } from "./actions";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 enum VARIANTS {
     LIST = "LIST",
@@ -104,6 +105,12 @@ function AccountsDataTable() {
 
     return (
         <Stack spacing={2}>
+            {accountsQuery.isLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading accounts...
+                </div>
+            )}
             {allAccounts.length === 0 && !accountsQuery.isLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
                     <p className="text-lg font-medium text-gray-900 mb-2">No accounts yet</p>
@@ -238,6 +245,26 @@ function AccountsDataTable() {
                                                                 Closed
                                                             </span>
                                                         )}
+                                                        {account.isReadOnly && (
+                                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                                Read-only
+                                                            </span>
+                                                        )}
+                                                        {account.accountType === "credit" && (
+                                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                                                                Credit
+                                                            </span>
+                                                        )}
+                                                        {account.accountType === "debit" && (
+                                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                                                                Debit
+                                                            </span>
+                                                        )}
+                                                        {account.hasInvalidConfig && (
+                                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full" title="Account is open but one or more parent accounts are closed">
+                                                                ⚠️ Invalid Config
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <Typography level="body2" mono>
                                                         {code}
@@ -323,12 +350,22 @@ export default function AccountsPage() {
         <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
             <Card>
                 <CardHeader className="gap-y-2 md:flex-row md:items-center md:justify-between">
-                    <CardTitle>Accounts Page</CardTitle>
+                    <CardTitle>Accounts</CardTitle>
                     <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
                         <Button size="sm" onClick={newAccount.onOpen} className="w-full lg:w-auto">
                             <Plus className="mr-2 size-4" /> Add new
                         </Button>
-                        <ImportButton onUpload={onImport} />
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="outline" className="w-full lg:w-auto">
+                                    <MoreHorizontal className="mr-2 size-4" />
+                                    More
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <ImportButton onUpload={onImport} variant="menu" />
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </CardHeader>
                 <CardContent>

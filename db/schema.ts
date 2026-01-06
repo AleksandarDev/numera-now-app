@@ -10,6 +10,8 @@ export const accounts = pgTable("accounts", {
     userId: text("user_id").notNull(),
     code: text("code"),
     isOpen: boolean("is_open").notNull().default(true),
+    isReadOnly: boolean("is_read_only").notNull().default(false),
+    accountType: text("account_type", { enum: ["credit", "debit", "neutral"] }).notNull().default("neutral"),
 }, (table) => [
     index('accounts_userid_idx').on(table.userId)
 ]);
@@ -26,7 +28,9 @@ export const accountsRelations = relations(accounts, ({ many }) => ({
     }),
 }));
 
-export const insertAccountSchema = createInsertSchema(accounts);
+export const insertAccountSchema = createInsertSchema(accounts, {
+    accountType: z.enum(["credit", "debit", "neutral"]).default("neutral"),
+});
 
 export const categories = pgTable("categories", {
     id: text("id").primaryKey(),
@@ -93,6 +97,13 @@ export const transactions = pgTable("transactions", {
     categoryId: text("category_id").references(() => categories.id, {
         onDelete: "set null",
     }),
+    // Transaction status fields
+    status: text("status").notNull().default("pending"), // draft, pending, completed, reconciled
+    statusChangedAt: timestamp("status_changed_at", { mode: "date" }).notNull().defaultNow(),
+    statusChangedBy: text("status_changed_by"),
+    // Split transaction fields
+    splitGroupId: text("split_group_id"), // Groups related split transactions together
+    splitType: text("split_type"), // 'parent' or 'child' - parent is the main transaction
 }, (table) => [
     index('transactions_accountid_idx').on(table.accountId),
     index('transactions_creditaccountid_idx').on(table.creditAccountId),
@@ -100,6 +111,8 @@ export const transactions = pgTable("transactions", {
     index('transactions_categoryid_idx').on(table.categoryId),
     index('transactions_payeecustomerid_idx').on(table.payeeCustomerId),
     index('transactions_date_idx').on(table.date),
+    index('transactions_status_idx').on(table.status),
+    index('transactions_splitgroupid_idx').on(table.splitGroupId),
 ]);
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -130,13 +143,46 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
     date: z.coerce.date(),
+    status: z.enum(["draft", "pending", "completed", "reconciled"]).default("pending"),
+    splitType: z.enum(["parent", "child"]).optional(),
 });
 
 export const createTransactionSchema = insertTransactionSchema.omit({
     id: true,
+    statusChangedAt: true,
+    statusChangedBy: true,
 }).refine((data) => {
-    // Ensure either payee or payeeCustomerId is provided, but not both
+    // For draft transactions, allow missing fields
+    if (data.status === "draft") {
+        return true;
+    }
+    // For non-draft transactions, ensure either payee or payeeCustomerId is provided
     return (data.payee && !data.payeeCustomerId) || (!data.payee && data.payeeCustomerId);
 }, {
-    message: "Either payee or payeeCustomerId must be provided, but not both",
+    message: "Either payee or payeeCustomerId must be provided for non-draft transactions",
 });
+
+// Transaction status history table
+export const transactionStatusHistory = pgTable("transaction_status_history", {
+    id: text("id").primaryKey(),
+    transactionId: text("transaction_id").notNull().references(() => transactions.id, {
+        onDelete: "cascade",
+    }),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    changedAt: timestamp("changed_at", { mode: "date" }).notNull().defaultNow(),
+    changedBy: text("changed_by").notNull(),
+    notes: text("notes"),
+}, (table) => [
+    index('transaction_status_history_transactionid_idx').on(table.transactionId),
+    index('transaction_status_history_changedat_idx').on(table.changedAt),
+]);
+
+export const transactionStatusHistoryRelations = relations(transactionStatusHistory, ({ one }) => ({
+    transaction: one(transactions, {
+        fields: [transactionStatusHistory.transactionId],
+        references: [transactions.id],
+    }),
+}));
+
+export const insertTransactionStatusHistorySchema = createInsertSchema(transactionStatusHistory);

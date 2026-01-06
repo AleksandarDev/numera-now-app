@@ -31,7 +31,12 @@ const formSchema = z.object({
   payee: z.string().optional(), // Keep for backward compatibility
   amount: z.string(),
   notes: z.string().nullable().optional(),
+  status: z.enum(["draft", "pending", "completed", "reconciled"]).default("pending"),
 }).refine((data) => {
+  // For draft status, allow missing payee
+  if (data.status === "draft") {
+    return true;
+  }
   // Ensure either payee or payeeCustomerId is provided, but not both
   return (data.payee && !data.payeeCustomerId) || (!data.payee && data.payeeCustomerId) || (!data.payee && !data.payeeCustomerId);
 }, {
@@ -40,6 +45,10 @@ const formSchema = z.object({
 
 const apiSchema = insertTransactionSchema.omit({
   id: true,
+  statusChangedAt: true,
+  statusChangedBy: true,
+  splitGroupId: true,
+  splitType: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,6 +64,7 @@ type TransactionFormProps = {
   categoryOptions: { label: string; value: string }[];
   onCreateAccount: (name: string) => void;
   onCreateCategory: (name: string) => void;
+  statusOptions?: { label: string; value: FormValues["status"] }[];
 };
 
 export const TransactionForm = ({
@@ -67,6 +77,7 @@ export const TransactionForm = ({
   categoryOptions,
   onCreateAccount,
   onCreateCategory,
+  statusOptions,
 }: TransactionFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -144,7 +155,7 @@ export const TransactionForm = ({
               <FormLabel>Account</FormLabel>
 
               <FormControl>
-                <AccountSelect value={field.value} onChange={field.onChange} disabled={disabled} />
+                <AccountSelect value={field.value} onChange={field.onChange} disabled={disabled} excludeReadOnly />
               </FormControl>
 
               <FormMessage />
@@ -211,6 +222,34 @@ export const TransactionForm = ({
                   value={field.value || ""}
                   disabled={disabled}
                   placeholder="Optional notes..."
+                />
+              </FormControl>
+
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="status"
+          control={form.control}
+          disabled={disabled}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+
+              <FormControl>
+                <Select
+                  placeholder="Select status"
+                  options={statusOptions ?? [
+                    { label: "Draft", value: "draft" },
+                    { label: "Pending", value: "pending" },
+                    { label: "Completed", value: "completed" },
+                    { label: "Reconciled", value: "reconciled" },
+                  ]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
                 />
               </FormControl>
 
