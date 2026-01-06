@@ -5,6 +5,7 @@ import {
   PieChart,
   ResponsiveContainer,
   Tooltip,
+  type LegendProps,
 } from "recharts";
 
 import { formatPercentage } from "@/lib/utils";
@@ -17,8 +18,11 @@ type PieVariantProps = {
   data: {
     name: string;
     value: number;
+    percent?: number;
   }[];
 };
+
+type PieChartLegendPayload = NonNullable<LegendProps["payload"]>[number];
 
 export const PieVariant = ({ data }: PieVariantProps) => {
   return (
@@ -32,33 +36,35 @@ export const PieVariant = ({ data }: PieVariantProps) => {
           content={({ payload }) => {
             return (
               <ul className="flex flex-col space-y-2">
-                {payload?.map((entry, index) => (
-                  <li
-                    key={`item-${index}`}
-                    className="flex items-center space-x-2"
-                  >
-                    <span
-                      className="size-2 rounded-full"
-                      style={{
-                        backgroundColor: entry.color,
-                      }}
-                      aria-hidden
-                    />
+                {payload?.map((entry: PieChartLegendPayload, index) => {
+                  const payloadData = entry.payload as { percent?: number };
+                  return (
+                    <li
+                      key={`item-${index}`}
+                      className="flex items-center space-x-2"
+                    >
+                      <span
+                        className="size-2 rounded-full"
+                        style={{
+                          backgroundColor: entry.color,
+                        }}
+                        aria-hidden
+                      />
 
-                    <div className="space-x-1">
-                      <span className="text-sm text-muted-foreground">
-                        {entry.value}
-                      </span>
+                      <div className="space-x-1">
+                        <span className="text-sm text-muted-foreground">
+                          {entry.value}
+                        </span>
 
-                      <span className="text-sm">
-                        {formatPercentage(
-                          (entry.payload as unknown as { percent: number })
-                            .percent * 100
-                        )}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+                        <span className="text-sm">
+                          {formatPercentage(
+                            ((payloadData.percent ?? 0) * 100)
+                          )}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             );
           }}

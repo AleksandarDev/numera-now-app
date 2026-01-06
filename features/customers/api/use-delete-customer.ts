@@ -15,8 +15,9 @@ export const useDeleteCustomer = (id?: string) => {
                 param: { id },
             });
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error((errorData as any).error || "Failed to delete customer.");
+                const errorData = await response.json() as ResponseType;
+                const errorMessage = 'error' in errorData ? errorData.error : "Failed to delete customer.";
+                throw new Error(errorMessage);
             }
             return await response.json();
         },

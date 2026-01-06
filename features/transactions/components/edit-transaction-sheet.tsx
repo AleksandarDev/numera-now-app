@@ -31,7 +31,7 @@ type TransactionFormValues = {
   accountId: string;
   categoryId?: string | null;
   payeeCustomerId?: string;
-  payee?: string | null;
+  payee?: string;
   amount: string;
   notes?: string | null;
 };
@@ -119,8 +119,8 @@ export const EditTransactionSheet = () => {
         ? new Date(transactionQuery.data.date)
         : new Date(),
       payeeCustomerId: transactionQuery.data.payeeCustomerId ?? undefined,
-      payee: transactionQuery.data.payee,
-      notes: transactionQuery.data.notes,
+      payee: transactionQuery.data.payee ?? undefined,
+      notes: transactionQuery.data.notes ?? undefined,
     }
     : {
       accountId: undefined,
@@ -130,8 +130,8 @@ export const EditTransactionSheet = () => {
       amount: "0",
       date: new Date(),
       payeeCustomerId: undefined,
-      payee: "",
-      notes: null,
+      payee: undefined,
+      notes: undefined,
     };
 
   const onDelete = async () => {
@@ -168,7 +168,7 @@ export const EditTransactionSheet = () => {
               {transactionQuery.data && transactionQuery.data.accountId ? (
                 <TransactionForm
                   id={id}
-                  defaultValues={defaultValuesForForm as any}
+                  defaultValues={defaultValuesForForm as TransactionFormValues}
                   onSubmit={onSubmit}
                   disabled={isPending}
                   categoryOptions={categoryOptions}
@@ -180,7 +180,7 @@ export const EditTransactionSheet = () => {
               ) : (
                 <TransactionDoubleEntryForm
                   id={id}
-                  defaultValues={defaultValuesForForm as any}
+                  defaultValues={defaultValuesForForm as TransactionDoubleEntryFormValues}
                   onSubmit={onSubmit}
                   disabled={isPending}
                   categoryOptions={categoryOptions}

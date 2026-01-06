@@ -41,7 +41,7 @@ function TransactionsImportView({ importResults, onDone }: { importResults: type
 
     const data = values.map((value) => ({
       ...value,
-      accountId: accountId as string,
+      accountId,
     }));
 
     createTransactions.mutate(data, {
