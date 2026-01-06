@@ -98,7 +98,7 @@ export default function TransactionsPage() {
       <Card>
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>
-            Transaction
+            Transactions
           </CardTitle>
           <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
             <Button
