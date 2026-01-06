@@ -10,6 +10,7 @@ import { transactions as transactionSchema } from "@/db/schema";
 import { useSelectAccount } from "@/features/accounts/hooks/use-select-account";
 import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-create-transactions";
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
+import { useGetSettings } from "@/features/settings/api/use-get-settings";
 
 import { TransactionsDataTable } from "./TransactionsDataTable";
 import { ImportButton } from "@/components/import-button";
@@ -70,6 +71,8 @@ export default function TransactionsPage() {
   const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
 
   const newTransaction = useNewTransaction();
+  const settingsQuery = useGetSettings();
+  const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
 
   const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
     setImportResults(results);
@@ -97,17 +100,10 @@ export default function TransactionsPage() {
           <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
             <Button
               size="sm"
-              onClick={() => newTransaction.onOpen(false)}
+              onClick={() => newTransaction.onOpen(doubleEntryMode)}
               className="w-full lg:w-auto"
             >
               <Plus className="mr-2 size-4" /> Add new
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => newTransaction.onOpen(true)}
-              className="w-full lg:w-auto"
-            >
-              <Plus className="mr-2 size-4" /> Add new double entry
             </Button>
             <ImportButton onUpload={onUpload} />
           </div>

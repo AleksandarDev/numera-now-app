@@ -63,6 +63,15 @@ export const customersRelations = relations(customers, ({ many }) => ({
 
 export const insertCustomerSchema = createInsertSchema(customers);
 
+export const settings = pgTable("settings", {
+    userId: text("user_id").primaryKey(),
+    doubleEntryMode: boolean("double_entry_mode").notNull().default(false),
+}, (table) => [
+    index('settings_userid_idx').on(table.userId)
+]);
+
+export const insertSettingsSchema = createInsertSchema(settings);
+
 export const transactions = pgTable("transactions", {
     id: text("id").primaryKey(),
     amount: integer("amount").notNull(),

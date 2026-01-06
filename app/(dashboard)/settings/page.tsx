@@ -9,6 +9,51 @@ import { useGetCategories } from "@/features/categories/api/use-get-categories";
 import { useBulkDeleteCategories } from "@/features/categories/api/use-bulk-delete-categories";
 import { DataTable } from "@/components/data-table";
 import { columns } from "../categories/columns";
+import { useGetSettings } from "@/features/settings/api/use-get-settings";
+import { useUpdateSettings } from "@/features/settings/api/use-update-settings";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+
+function DoubleEntrySettings() {
+    const settingsQuery = useGetSettings();
+    const updateSettings = useUpdateSettings();
+    
+    const isLoading = settingsQuery.isLoading;
+    const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
+
+    const handleToggle = (checked: boolean) => {
+        updateSettings.mutate({ doubleEntryMode: checked });
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Accounting Mode</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Configure how transactions are recorded in your system
+                </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between space-x-2">
+                    <div className="flex-1 space-y-1">
+                        <Label htmlFor="double-entry-mode">
+                            Double-Entry Bookkeeping
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                            When enabled, all transactions must have both credit and debit accounts
+                        </p>
+                    </div>
+                    <Switch
+                        id="double-entry-mode"
+                        checked={doubleEntryMode}
+                        onCheckedChange={handleToggle}
+                        disabled={isLoading || updateSettings.isPending}
+                    />
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 function CategoriesSection() {
     const newCategory = useNewCategory();
@@ -55,6 +100,7 @@ export default function SettingsPage() {
                     <Loader2 className="size-6 animate-spin text-slate-300" />
                 </div>
             )}>
+                <DoubleEntrySettings />
                 <CategoriesSection />
             </Suspense>
         </div>
