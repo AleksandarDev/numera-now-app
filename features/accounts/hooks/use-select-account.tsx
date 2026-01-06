@@ -15,7 +15,7 @@ import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 
 export const useSelectAccount = (): [
   () => ReactNode,
-  () => Promise<unknown>,
+  () => Promise<string | undefined>,
 ] => {
   const accountQuery = useGetAccounts();
   const accountMutation = useCreateAccount();
@@ -34,9 +34,9 @@ export const useSelectAccount = (): [
     resolve: (value: string | undefined) => void;
   } | null>(null);
 
-  const selectValue = useRef<string>(undefined);
+  const selectValue = useRef<string | undefined>(undefined);
 
-  const confirm = () =>
+  const confirm = (): Promise<string | undefined> =>
     new Promise((resolve) => {
       setPromise({ resolve });
     });

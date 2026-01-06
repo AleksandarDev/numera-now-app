@@ -153,7 +153,7 @@ function AccountsDataTable() {
                                     const accountsWithChildren = allAccounts
                                         .filter(account => hasChildren(account))
                                         .map(account => account.code)
-                                        .filter(Boolean) as string[];
+                                        .filter((code): code is string => Boolean(code));
                                     setExpandedAccounts(new Set(accountsWithChildren));
                                 }}
                                 disabled={isDisabled}
