@@ -108,7 +108,7 @@ export const EditTransactionSheet = () => {
       creditAccountId: "",
       debitAccountId: "",
       categoryId: null,
-      amount: "",
+      amount: 0,
       date: new Date(),
       payeeCustomerId: undefined,
       payee: null,

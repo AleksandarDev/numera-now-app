@@ -29,18 +29,19 @@ const routes = [
         label: "Transactions",
     },
     {
-        href: "/accounts",
-        label: "Accounts",
-    },
-    {
         href: "/customers",
         label: "Customers",
     },
     {
-        href: "/settings",
-        label: "Settings",
+        href: "/accounts",
+        label: "Accounts",
     },
 ]
+
+const settingsRoute = {
+    href: "/settings",
+    label: "Settings",
+};
 
 const mobileRoutes = [routes[0], routes[1]]; // Only show Overview and Transactions on mobile
 
@@ -129,5 +130,21 @@ export const Navigation = () => {
                 />
             ))}
         </nav>
+    )
+}
+
+export const SettingsNav = () => {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    return (
+        <div className="hidden lg:block">
+            <NavButton
+                href={settingsRoute.href}
+                query={searchParams.toString()}
+                label={settingsRoute.label}
+                isActive={pathname === settingsRoute.href}
+            />
+        </div>
     )
 }

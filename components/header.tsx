@@ -2,7 +2,7 @@ import { ClerkLoaded, ClerkLoading, UserButton } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import { Filters } from "./filters";
 import { HeaderLogo } from "./header-logo";
-import { Navigation } from "./navigation";
+import { Navigation, SettingsNav } from "./navigation";
 import { Suspense } from "react";
 
 export const Header = () => {
@@ -18,6 +18,10 @@ export const Header = () => {
           </div>
 
           <div className="flex items-center gap-x-2">
+            <Suspense>
+              <SettingsNav />
+            </Suspense>
+
             <ClerkLoaded>
               <UserButton />
             </ClerkLoaded>
