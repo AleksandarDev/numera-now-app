@@ -26,6 +26,25 @@ import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
 const formSchema = insertTransactionSchema.omit({ id: true });
 
 type FormValues = z.infer<typeof formSchema>;
+type TransactionFormValues = {
+  date: Date;
+  accountId: string;
+  categoryId?: string | null;
+  payeeCustomerId?: string;
+  payee?: string | null;
+  amount: string;
+  notes?: string | null;
+};
+type TransactionDoubleEntryFormValues = {
+  date: Date;
+  creditAccountId: string;
+  debitAccountId: string;
+  categoryId?: string | null;
+  payeeCustomerId?: string | null;
+  payee?: string | null;
+  amount: string;
+  notes?: string | null;
+};
 
 export const EditTransactionSheet = () => {
   const { isOpen, onClose, id } = useOpenTransaction();
@@ -89,13 +108,13 @@ export const EditTransactionSheet = () => {
     });
   };
 
-  const defaultValues: Partial<FormValues> = transactionQuery.data
+  const defaultValuesForForm: Partial<TransactionFormValues & TransactionDoubleEntryFormValues> = transactionQuery.data
     ? {
-      accountId: transactionQuery.data.accountId ?? undefined,
+      accountId: transactionQuery.data.accountId as string,
       creditAccountId: transactionQuery.data.creditAccountId ?? undefined,
       debitAccountId: transactionQuery.data.debitAccountId ?? undefined,
       categoryId: transactionQuery.data.categoryId,
-      amount: transactionQuery.data.amount,
+      amount: String(transactionQuery.data.amount),
       date: transactionQuery.data.date
         ? new Date(transactionQuery.data.date)
         : new Date(),
@@ -104,14 +123,14 @@ export const EditTransactionSheet = () => {
       notes: transactionQuery.data.notes,
     }
     : {
-      accountId: "",
+      accountId: undefined,
       creditAccountId: "",
       debitAccountId: "",
       categoryId: null,
-      amount: 0,
+      amount: "0",
       date: new Date(),
       payeeCustomerId: undefined,
-      payee: null,
+      payee: "",
       notes: null,
     };
 
@@ -149,7 +168,7 @@ export const EditTransactionSheet = () => {
               {transactionQuery.data && transactionQuery.data.accountId ? (
                 <TransactionForm
                   id={id}
-                  defaultValues={defaultValues}
+                  defaultValues={defaultValuesForForm as any}
                   onSubmit={onSubmit}
                   disabled={isPending}
                   categoryOptions={categoryOptions}
@@ -161,7 +180,7 @@ export const EditTransactionSheet = () => {
               ) : (
                 <TransactionDoubleEntryForm
                   id={id}
-                  defaultValues={defaultValues}
+                  defaultValues={defaultValuesForForm as any}
                   onSubmit={onSubmit}
                   disabled={isPending}
                   categoryOptions={categoryOptions}

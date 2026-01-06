@@ -13,6 +13,7 @@ import { useCreateAccount } from "@/features/accounts/api/use-create-account";
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { useCreateCategory } from "@/features/categories/api/use-create-category";
 import { useGetCategories } from "@/features/categories/api/use-get-categories";
+import { useCreateCustomer } from "@/features/customers/api/use-create-customer";
 import { useCreateTransaction } from "@/features/transactions/api/use-create-transaction";
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 
@@ -49,13 +50,17 @@ export const NewTransactionSheet = () => {
         value: account.id,
     }));
 
+    const customerMutation = useCreateCustomer();
+
     const onCreateAccount = (name: string) => accountMutation.mutate({ name });
     const onCreateCategory = (name: string) => categoryMutation.mutate({ name });
+    const onCreateCustomer = (name: string) => customerMutation.mutate({ name });
 
     const isPending =
         createMutation.isPending ||
         categoryMutation.isPending ||
-        accountMutation.isPending;
+        accountMutation.isPending ||
+        customerMutation.isPending;
     const isLoading = categoryQuery.isLoading || accountsQuery.isLoading;
 
     const onSubmit = (values: FormValues) => {
@@ -92,6 +97,7 @@ export const NewTransactionSheet = () => {
                                 creditAccountOptions={creditAccountOptions}
                                 debitAccountOptions={debitAccountOptions}
                                 onCreateAccount={onCreateAccount}
+                                onCreateCustomer={onCreateCustomer}
                                 defaultValues={{
                                     date: new Date(),
                                     amount: "",
