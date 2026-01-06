@@ -78,6 +78,13 @@
       "when": 1754311848140,
       "tag": "0010_petite_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1754312762913,
+      "tag": "0011_steady_nomad",
+      "breakpoints": true
     }
   ]
 }

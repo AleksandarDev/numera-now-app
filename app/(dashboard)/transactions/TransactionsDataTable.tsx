@@ -15,7 +15,7 @@ export function TransactionsDataTable() {
 
     return (
         <DataTable
-            filterKey="payee"
+            filterKey="payeeCustomerName"
             columns={transactionsQuery.isLoading
                 ? columns.map((column) => ({ ...column, cell: () => <Skeleton className="h-[14px] w-[100%] rounded-sm" /> }))
                 : columns}

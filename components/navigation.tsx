@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import { Row } from "@signalco/ui-primitives/Row";
+import { useGetIncompleteCustomersCount } from "@/features/customers/api/use-get-incomplete-count";
+import { Badge } from "./ui/badge";
 
 const routes = [
     {
@@ -27,18 +29,19 @@ const routes = [
         label: "Transactions",
     },
     {
+        href: "/customers",
+        label: "Customers",
+    },
+    {
         href: "/accounts",
         label: "Accounts",
     },
-    {
-        href: "/categories",
-        label: "Categories",
-    },
-    {
-        href: "/settings",
-        label: "Settings",
-    },
 ]
+
+const settingsRoute = {
+    href: "/settings",
+    label: "Settings",
+};
 
 const mobileRoutes = [routes[0], routes[1]]; // Only show Overview and Transactions on mobile
 
@@ -48,6 +51,8 @@ export const Navigation = () => {
     const pathname = usePathname();
     const isMobile = useMedia("(max-width: 1024px)", false);
     const searchParams = useSearchParams();
+
+    const { data: incompleteCount } = useGetIncompleteCustomersCount();
 
     if (isMobile) {
         return (
@@ -84,7 +89,14 @@ export const Navigation = () => {
                                         onClick={() => setIsOpen(false)}
                                         className="w-full justify-start"
                                     >
-                                        {route.label}
+                                        <span className="flex items-center gap-2">
+                                            {route.label}
+                                            {route.href === "/customers" && incompleteCount !== undefined && incompleteCount > 0 && (
+                                                <Badge variant="destructive" className="ml-1 h-5 min-w-5 flex items-center justify-center px-1.5">
+                                                    {incompleteCount}
+                                                </Badge>
+                                            )}
+                                        </span>
                                     </Button>
                                 </Link>
                             ))}
@@ -98,6 +110,7 @@ export const Navigation = () => {
                         query={searchParams.toString()}
                         label={route.label}
                         isActive={pathname === route.href}
+                        badge={route.href === "/customers" ? incompleteCount : undefined}
                     />
                 ))}
             </Row>
@@ -113,8 +126,25 @@ export const Navigation = () => {
                     query={searchParams.toString()}
                     label={route.label}
                     isActive={pathname === route.href}
+                    badge={route.href === "/customers" ? incompleteCount : undefined}
                 />
             ))}
         </nav>
+    )
+}
+
+export const SettingsNav = () => {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    return (
+        <div className="hidden lg:block">
+            <NavButton
+                href={settingsRoute.href}
+                query={searchParams.toString()}
+                label={settingsRoute.label}
+                isActive={pathname === settingsRoute.href}
+            />
+        </div>
     )
 }

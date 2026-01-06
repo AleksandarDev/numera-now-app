@@ -5,14 +5,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { insertCategorySchema } from "@/db/schema";
-import { 
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
+import { SheetFooter } from "@/components/ui/sheet";
 
 const formSchema = insertCategorySchema.pick({
   name: true,
@@ -53,41 +54,43 @@ export const CategoryForm = ({
         onSubmit={form.handleSubmit(handleSubmit)}
         autoCapitalize="off"
         autoComplete="off"
-        className="space-y-4 pt-4"
+        className="space-y-4 pt-4 pb-6"
       >
-        <FormField
-          name="name"
-          control={form.control}
-          disabled={disabled}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-
-              <FormControl>
-                <Input placeholder="e.g. Food, Travel, etc." {...field} />
-              </FormControl>
-
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button className="w-full" disabled={disabled}>
-          {id ? "Save changes" : "Create category"}
-        </Button>
-
-        {!!id && (
-          <Button
-            type="button"
+          <FormField
+            name="name"
+            control={form.control}
             disabled={disabled}
-            onClick={handleDelete}
-            className="w-full"
-            variant="outline"
-          >
-            <Trash className="mr-2 size-4" />
-            Delete category
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+
+                <FormControl>
+                  <Input placeholder="e.g. Food, Travel, etc." {...field} />
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+        <SheetFooter>
+          <Button className="w-full" disabled={disabled}>
+            {id ? "Save changes" : "Create category"}
           </Button>
-        )}
+
+          {!!id && (
+            <Button
+              type="button"
+              disabled={disabled}
+              onClick={handleDelete}
+              className="w-full"
+              variant="outline"
+            >
+              <Trash className="mr-2 size-4" />
+              Delete category
+            </Button>
+          )}
+        </SheetFooter>
       </form>
     </Form>
   );

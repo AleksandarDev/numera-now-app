@@ -11,6 +11,8 @@ import { db } from "@/db/drizzle";
 import {
   accounts,
   categories,
+  createTransactionSchema,
+  customers,
   insertTransactionSchema,
   transactions,
 } from "@/db/schema";
@@ -98,6 +100,8 @@ const app = new Hono()
           category: categories.name,
           categoryId: transactions.categoryId,
           payee: transactions.payee,
+          payeeCustomerId: transactions.payeeCustomerId,
+          payeeCustomerName: customers.name,
           amount: transactions.amount,
           notes: transactions.notes,
           account: accounts.name,
@@ -115,6 +119,7 @@ const app = new Hono()
         .leftJoin(creditAccounts, eq(transactions.creditAccountId, creditAccounts.id))
         .leftJoin(debitAccounts, eq(transactions.debitAccountId, debitAccounts.id))
         .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(customers, eq(transactions.payeeCustomerId, customers.id))
         .where(
           and(
             accountId
@@ -166,6 +171,7 @@ const app = new Hono()
           date: transactions.date,
           categoryId: transactions.categoryId,
           payee: transactions.payee,
+          payeeCustomerId: transactions.payeeCustomerId,
           amount: transactions.amount,
           notes: transactions.notes,
           accountId: transactions.accountId,
@@ -199,9 +205,7 @@ const app = new Hono()
     clerkMiddleware(),
     zValidator(
       "json",
-      insertTransactionSchema.omit({
-        id: true,
-      })
+      createTransactionSchema
     ),
     async (ctx) => {
       const auth = getAuth(ctx);
@@ -242,7 +246,7 @@ const app = new Hono()
   .post(
     "/bulk-create",
     clerkMiddleware(),
-    zValidator("json", z.array(insertTransactionSchema.omit({ id: true }))),
+    zValidator("json", z.array(createTransactionSchema)),
     async (ctx) => {
       const auth = getAuth(ctx);
       const values = ctx.req.valid("json");
@@ -348,9 +352,7 @@ const app = new Hono()
     ),
     zValidator(
       "json",
-      insertTransactionSchema.omit({
-        id: true,
-      })
+      createTransactionSchema
     ),
     async (ctx) => {
       const auth = getAuth(ctx);

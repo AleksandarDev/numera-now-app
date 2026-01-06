@@ -17,16 +17,19 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SheetFooter } from "@/components/ui/sheet";
 import { insertTransactionSchema } from "@/db/schema";
 import { convertAmountToMiliunits } from "@/lib/utils";
 import { AccountSelect } from "@/components/account-select";
+import { CustomerSelect } from "@/components/customer-select";
 
 const formSchema = z.object({
-  date: z.coerce.date(),
+  date: z.date(),
   creditAccountId: z.string(),
   debitAccountId: z.string(),
   categoryId: z.string().nullable().optional(),
-  payee: z.string(),
+  payeeCustomerId: z.string().nullable().optional(),
+  payee: z.string().nullable().optional(),
   amount: z.string(),
   notes: z.string().nullable().optional(),
 });
@@ -35,8 +38,8 @@ const apiSchema = insertTransactionSchema.omit({
   id: true,
 });
 
-type FormValues = z.input<typeof formSchema>;
-type ApiFormValues = z.input<typeof apiSchema>;
+type FormValues = z.infer<typeof formSchema>;
+type ApiFormValues = z.infer<typeof apiSchema>;
 
 type TransactionDoubleEntryFormProps = {
   id?: string;
@@ -49,6 +52,8 @@ type TransactionDoubleEntryFormProps = {
   categoryOptions: { label: string; value: string }[];
   onCreateAccount: (name: string) => void;
   onCreateCategory: (name: string) => void;
+  onCreateCustomer: (name: string) => void;
+  hasPayee?: boolean;
 };
 
 export const TransactionDoubleEntryForm = ({
@@ -62,6 +67,8 @@ export const TransactionDoubleEntryForm = ({
   categoryOptions,
   onCreateAccount,
   onCreateCategory,
+  onCreateCustomer,
+  hasPayee = false,
 }: TransactionDoubleEntryFormProps) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -72,10 +79,14 @@ export const TransactionDoubleEntryForm = ({
     const amount = parseFloat(values.amount);
     const amountInMiliunits = convertAmountToMiliunits(amount);
 
-    onSubmit({
+    // Clear payee if customer is selected (migration to customer-based payee)
+    const submittedValues = {
       ...values,
       amount: amountInMiliunits,
-    });
+      payee: values.payeeCustomerId ? null : values.payee,
+    };
+
+    onSubmit(submittedValues);
   };
 
   const handleDelete = () => {
@@ -87,7 +98,7 @@ export const TransactionDoubleEntryForm = ({
         onSubmit={form.handleSubmit(handleSubmit)}
         autoCapitalize="off"
         autoComplete="off"
-        className="space-y-4 pt-4"
+        className="space-y-4 pt-4 pb-6"
       >
         <FormField
           name="date"
@@ -109,18 +120,20 @@ export const TransactionDoubleEntryForm = ({
         />
 
         <FormField
-          name="payee"
+          name="payeeCustomerId"
           control={form.control}
           disabled={disabled}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Payee</FormLabel>
+              <FormLabel>Customer</FormLabel>
 
               <FormControl>
-                <Input
+                <CustomerSelect
+                  value={field.value || undefined}
+                  onChange={field.onChange}
                   disabled={disabled}
-                  placeholder="Add a payee"
-                  {...field}
+                  placeholder="Select customer..."
+                  onCreate={onCreateCustomer}
                 />
               </FormControl>
 
@@ -128,6 +141,30 @@ export const TransactionDoubleEntryForm = ({
             </FormItem>
           )}
         />
+
+        {hasPayee && (
+          <FormField
+            name="payee"
+            control={form.control}
+            disabled={disabled}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Free-form Payee (Legacy)</FormLabel>
+
+                <FormControl>
+                  <Input
+                    disabled={disabled}
+                    placeholder="Free-form payee..."
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           name="creditAccountId"
@@ -140,7 +177,7 @@ export const TransactionDoubleEntryForm = ({
               <FormControl>
                 <AccountSelect
                   placeholder="Select an credit account"
-                  value={field.value}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   disabled={disabled} />
               </FormControl>
@@ -161,6 +198,7 @@ export const TransactionDoubleEntryForm = ({
               <FormControl>
                 <AmountInput
                   {...field}
+                  value={field.value || ""}
                   disabled={disabled}
                   placeholder="0.00"
                 />
@@ -182,7 +220,7 @@ export const TransactionDoubleEntryForm = ({
               <FormControl>
                 <AccountSelect
                   placeholder="Select an debit account"
-                  value={field.value}
+                  value={field.value || ""}
                   onChange={field.onChange}
                   disabled={disabled} />
               </FormControl>
@@ -205,7 +243,7 @@ export const TransactionDoubleEntryForm = ({
                   placeholder="Select a category"
                   options={categoryOptions}
                   onCreate={onCreateCategory}
-                  value={field.value}
+                  value={field.value || undefined}
                   onChange={field.onChange}
                   disabled={disabled}
                 />
@@ -238,22 +276,24 @@ export const TransactionDoubleEntryForm = ({
           )}
         />
 
-        <Button className="w-full" disabled={disabled}>
-          {id ? "Save changes" : "Create transaction"}
-        </Button>
-
-        {!!id && (
-          <Button
-            type="button"
-            disabled={disabled}
-            onClick={handleDelete}
-            className="w-full"
-            variant="outline"
-          >
-            <Trash className="mr-2 size-4" />
-            Delete transaction
+        <SheetFooter>
+          <Button className="w-full" disabled={disabled}>
+            {id ? "Save changes" : "Create transaction"}
           </Button>
-        )}
+
+          {!!id && (
+            <Button
+              type="button"
+              disabled={disabled}
+              onClick={handleDelete}
+              className="w-full"
+              variant="outline"
+            >
+              <Trash className="mr-2 size-4" />
+              Delete transaction
+            </Button>
+          )}
+        </SheetFooter>
       </form>
     </Form>
   );

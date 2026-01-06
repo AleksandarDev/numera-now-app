@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { Badge } from "./ui/badge";
 
 type Props = {
     href: string;
     query?: string;
     label: string;
     isActive?: boolean;
+    badge?: number;
 };
 
 export const NavButton = ({
@@ -14,6 +16,7 @@ export const NavButton = ({
     query,
     label,
     isActive,
+    badge,
 }: Props) => {
     return (
         <Link href={{
@@ -28,7 +31,14 @@ export const NavButton = ({
                     isActive ? "bg-white/10 text-white" : "bg-transparent",
                 )}
             >
-                {label}
+                <span className="flex items-center gap-2">
+                    {label}
+                    {badge !== undefined && badge > 0 && (
+                        <Badge variant="destructive" className="ml-1 h-5 min-w-5 flex items-center justify-center px-1.5">
+                            {badge}
+                        </Badge>
+                    )}
+                </span>
             </Button>
         </Link>
     );

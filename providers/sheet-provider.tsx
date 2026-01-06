@@ -14,10 +14,14 @@ import { NewTransactionSheet } from "@/features/transactions/components/new-tran
 
 import { EditTransactionSheet } from "@/features/transactions/components/edit-transaction-sheet";
 
+import { NewCustomerSheet } from "@/features/customers/components/new-customer-sheet";
+
+import { EditCustomerSheet } from "@/features/customers/components/edit-customer-sheet";
+
 export const SheetProvider = () => {
     const isMounted = useMountedState();
 
-    if(!isMounted) return null;
+    if (!isMounted) return null;
 
     return (
         <>
@@ -29,6 +33,9 @@ export const SheetProvider = () => {
 
             <NewTransactionSheet />
             <EditTransactionSheet />
+
+            <NewCustomerSheet />
+            <EditCustomerSheet />
         </>
     );
 };

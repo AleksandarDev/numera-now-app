@@ -13,6 +13,7 @@ import {
     FormItem,
     FormLabel
 } from "@/components/ui/form";
+import { SheetFooter } from "@/components/ui/sheet";
 
 const formSchema = insertAccountSchema.pick({
     name: true,
@@ -55,77 +56,77 @@ export const AccountForm = ({
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}
-                className="space-y-4 pt-4">
-                <FormField
-                    name="name"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>
-                                Name
-                            </FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="e.g. Cash, Credit Card, Bank"
-                                    {...field}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="code"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>
-                                Code
-                            </FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="e.g. 0001, CASH, VISA"
-                                    {...field}
-                                    value={field.value || ""}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    name="isOpen"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                                <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={disabled}
-                                />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
+                className="space-y-4 pt-4 pb-6">
+                    <FormField
+                        name="name"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
                                 <FormLabel>
+                                    Name
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="e.g. Cash, Credit Card, Bank"
+                                        {...field}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="code"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>
+                                    Code
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={disabled}
+                                        placeholder="e.g. 0001, CASH, VISA"
+                                        {...field}
+                                        value={field.value || ""}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        name="isOpen"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        disabled={disabled}
+                                    />
+                                </FormControl>
+                                <FormLabel className="font-normal cursor-pointer">
                                     Account is open
                                 </FormLabel>
-                            </div>
-                        </FormItem>
-                    )}
-                />
-                <Button className="w-full" disabled={disabled}>
-                    {id ? "Save changes" : "Create Account"}
-                </Button>
-                {!!id && <Button
-                    type="button"
-                    disabled={disabled}
-                    onClick={handleDelete}
-                    className="w-full"
-                    variant="outline"
-                >
-                    <Trash className="size-4 mr-2" />
-                    Delete account
-                </Button>}
+                            </FormItem>
+                        )}
+                    />
+            <SheetFooter>
+                    <Button className="w-full" disabled={disabled}>
+                        {id ? "Save changes" : "Create Account"}
+                    </Button>
+                    {!!id && <Button
+                        type="button"
+                        disabled={disabled}
+                        onClick={handleDelete}
+                        className="w-full"
+                        variant="outline"
+                    >
+                        <Trash className="size-4 mr-2" />
+                        Delete account
+                    </Button>}
+                </SheetFooter>
             </form>
         </Form>
     )
