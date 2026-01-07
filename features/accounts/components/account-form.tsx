@@ -74,110 +74,110 @@ export const AccountForm = ({
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}
                 className="space-y-4 pt-4 pb-6">
-                    <FormField
-                        name="name"
-                        control={form.control}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>
-                                    Name
-                                </FormLabel>
-                                <FormControl>
-                                    <Input
-                                        disabled={disabled}
-                                        placeholder="e.g. Cash, Credit Card, Bank"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        name="code"
-                        control={form.control}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>
-                                    Code
-                                </FormLabel>
-                                <FormControl>
-                                    <Input
-                                        disabled={disabled}
-                                        placeholder="e.g. 0001, CASH, VISA"
-                                        {...field}
-                                        value={field.value || ""}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        name="accountType"
-                        control={form.control}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>
-                                    Account type
-                                </FormLabel>
-                                <FormControl>
-                                    <Select
-                                        disabled={disabled}
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="neutral">Neutral (can credit or debit)</SelectItem>
-                                            <SelectItem value="debit">Debit only</SelectItem>
-                                            <SelectItem value="credit">Credit only</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        name="isOpen"
-                        control={form.control}
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                        disabled={disabled}
-                                    />
-                                </FormControl>
-                                <FormLabel className="font-normal cursor-pointer">
-                                    Account is open
-                                </FormLabel>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        name="isReadOnly"
-                        control={form.control}
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                        disabled={disabled}
-                                    />
-                                </FormControl>
-                                <FormLabel className="font-normal cursor-pointer">
-                                    Read-only account
-                                </FormLabel>
-                            </FormItem>
-                        )}
-                    />
-            <SheetFooter>
+                <FormField
+                    name="name"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>
+                                Name
+                            </FormLabel>
+                            <FormControl>
+                                <Input
+                                    disabled={disabled}
+                                    placeholder="e.g. Cash, Credit Card, Bank"
+                                    {...field}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="code"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>
+                                Code
+                            </FormLabel>
+                            <FormControl>
+                                <Input
+                                    disabled={disabled}
+                                    placeholder="e.g. 0001, CASH, VISA"
+                                    {...field}
+                                    value={field.value || ""}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="accountType"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>
+                                Account type
+                            </FormLabel>
+                            <FormControl>
+                                <Select
+                                    disabled={disabled}
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="neutral">Neutral (can credit or debit)</SelectItem>
+                                        <SelectItem value="debit">Debit only</SelectItem>
+                                        <SelectItem value="credit">Credit only</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="isOpen"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={disabled}
+                                />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                                Account is open
+                            </FormLabel>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="isReadOnly"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={disabled}
+                                />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                                Read-only account
+                            </FormLabel>
+                        </FormItem>
+                    )}
+                />
+                <SheetFooter>
                     <Button className="w-full" disabled={disabled}>
                         {id ? "Save changes" : "Create Account"}
                     </Button>

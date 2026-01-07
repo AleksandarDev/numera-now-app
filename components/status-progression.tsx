@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,65 +74,60 @@ export function StatusProgression({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Transaction Status</CardTitle>
-        <CardDescription>Progress this transaction through its lifecycle</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-6 pb-4">
         {/* Status Timeline */}
-        <div className="flex items-center justify-between">
+        <div className="grid grid-cols-[repeat(7,1fr)]">
           {STATUS_ORDER.map((status, index) => {
             const isCurrent = status === currentStatus;
             const isPast = index < currentIndex;
-            const isNext = status === nextStatus;
 
             return (
-              <div key={status} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all",
-                      isCurrent && STATUS_INFO[status].color,
-                      isPast && "bg-green-50 border-green-300",
-                      !isCurrent && !isPast && "bg-gray-50 border-gray-300"
-                    )}
-                  >
-                    {isPast ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <span className={cn("text-sm font-semibold", isCurrent ? "" : "text-gray-400")}>
-                        {index + 1}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 text-center">
-                    <div className={cn("text-xs font-medium", isCurrent ? "text-foreground" : "text-muted-foreground")}>
-                      {STATUS_INFO[status].label}
+              <Fragment key={status}>
+                <div className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all",
+                        isCurrent && STATUS_INFO[status].color,
+                        isPast && "bg-green-50 border-green-300",
+                        !isCurrent && !isPast && "bg-gray-50 border-gray-300"
+                      )}
+                    >
+                      {isPast ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <span className={cn("text-sm font-semibold", isCurrent ? "" : "text-gray-400")}>
+                          {index + 1}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <div className={cn("text-xs font-medium", isCurrent ? "text-foreground" : "text-muted-foreground")}>
+                        {STATUS_INFO[status].label}
+                      </div>
                     </div>
                   </div>
                 </div>
                 {index < STATUS_ORDER.length - 1 && (
                   <div
                     className={cn(
-                      "flex-1 h-0.5 mx-2",
+                      "flex-1 h-0.5 mx-2 mt-5",
                       index < currentIndex ? "bg-green-300" : "bg-gray-300"
                     )}
                   />
                 )}
-              </div>
+              </Fragment>
             );
           })}
         </div>
 
         {/* Current Status Info */}
-        <div className="rounded-lg border p-4">
+        <div>
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge className={STATUS_INFO[currentStatus].color}>
-                  {STATUS_INFO[currentStatus].label}
-                </Badge>
-              </div>
+            <div className="flex items-center gap-1">
+              <Badge className={STATUS_INFO[currentStatus].color}>
+                {STATUS_INFO[currentStatus].label}
+              </Badge>
               <p className="text-sm text-muted-foreground">
                 {STATUS_INFO[currentStatus].description}
               </p>
@@ -147,8 +142,8 @@ export function StatusProgression({
                   <>Processing...</>
                 ) : (
                   <>
-                    Advance to {STATUS_INFO[nextStatus].label}
-                    <ArrowRight className="w-4 h-4" />
+                    {STATUS_INFO[nextStatus].label}
+                    <ArrowRight className="size-4" />
                   </>
                 )}
               </Button>

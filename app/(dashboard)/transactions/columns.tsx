@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { client } from "@/lib/hono";
 import { Actions } from "./actions";
 import { format } from "date-fns";
-import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AccountColumn } from "./account-column";
 import { CategoryColumn } from "./category-column";
@@ -99,29 +98,6 @@ export const columns: ColumnDef<ResponseType>[] = [
     }
   },
   {
-    accessorKey: "category",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Category
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-    cell: ({ row }) => {
-      return (
-        <CategoryColumn
-          id={row.original.id}
-          category={row.original.category}
-          categoryId={row.original.categoryId}
-        />
-      )
-    }
-  },
-  {
     accessorKey: "payeeCustomerName",
     header: ({ column }) => {
       return (
@@ -148,34 +124,37 @@ export const columns: ColumnDef<ResponseType>[] = [
     },
   },
   {
-    accessorKey: "amount",
-    header: ({ column }) => {
+    accessorKey: "account",
+    header: () => {
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <span className="text-sm text-muted-foreground">Transaction</span>
       )
     },
+    enableSorting: false,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
       return (
-        <Badge
-          variant={amount < 0 ? "destructive" : "primary"}
-          className="px-3 py-2 text-sm"
-        >
-          {formatCurrency(amount)}
-        </Badge>
+        <AccountColumn
+          account={row.original.account}
+          accountCode={row.original.accountCode}
+          accountIsOpen={row.original.accountIsOpen}
+          creditAccount={row.original.creditAccount}
+          creditAccountCode={row.original.creditAccountCode}
+          creditAccountIsOpen={row.original.creditAccountIsOpen}
+          creditAccountType={row.original.creditAccountType}
+          amount={amount}
+          debitAccount={row.original.debitAccount}
+          debitAccountCode={row.original.debitAccountCode}
+          debitAccountIsOpen={row.original.debitAccountIsOpen}
+          debitAccountType={row.original.debitAccountType}
+        />
       )
     }
   },
   {
     id: "split",
     header: () => (
-      <span className="text-xs uppercase text-muted-foreground">Split</span>
+      <span className="text-sm text-muted-foreground">Split</span>
     ),
     enableSorting: false,
     cell: ({ row }) => {
@@ -191,7 +170,7 @@ export const columns: ColumnDef<ResponseType>[] = [
   {
     id: "documents",
     header: () => (
-      <span className="text-xs uppercase text-muted-foreground">Docs</span>
+      <span className="text-sm text-muted-foreground">Docs</span>
     ),
     enableSorting: false,
     cell: ({ row }) => {
@@ -208,32 +187,24 @@ export const columns: ColumnDef<ResponseType>[] = [
     }
   },
   {
-    accessorKey: "account",
+    accessorKey: "category",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Account
+          Category
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
     },
     cell: ({ row }) => {
       return (
-        <AccountColumn
-          account={row.original.account}
-          accountCode={row.original.accountCode}
-          accountIsOpen={row.original.accountIsOpen}
-          creditAccount={row.original.creditAccount}
-          creditAccountCode={row.original.creditAccountCode}
-          creditAccountIsOpen={row.original.creditAccountIsOpen}
-          creditAccountType={row.original.creditAccountType}
-          debitAccount={row.original.debitAccount}
-          debitAccountCode={row.original.debitAccountCode}
-          debitAccountIsOpen={row.original.debitAccountIsOpen}
-          debitAccountType={row.original.debitAccountType}
+        <CategoryColumn
+          id={row.original.id}
+          category={row.original.category}
+          categoryId={row.original.categoryId}
         />
       )
     }

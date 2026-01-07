@@ -3,6 +3,8 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { ChevronRight } from "lucide-react";
 import { ValidationIndicator } from "./validation-indicator";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/utils";
 
 type AccountColumnProps = {
   account?: string | null;
@@ -12,6 +14,7 @@ type AccountColumnProps = {
   creditAccountCode?: string | null;
   creditAccountIsOpen?: boolean | null;
   creditAccountType?: string | null;
+  amount: number;
   debitAccount?: string | null;
   debitAccountCode?: string | null;
   debitAccountIsOpen?: boolean | null;
@@ -26,6 +29,7 @@ export const AccountColumn = ({
   creditAccountCode,
   creditAccountIsOpen,
   creditAccountType,
+  amount,
   debitAccount,
   debitAccountCode,
   debitAccountIsOpen,
@@ -46,7 +50,7 @@ export const AccountColumn = ({
 
   if (creditAccount && debitAccount)
     return (
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+      <div className="grid grid-cols-[1fr_12px_auto_12px_1fr] gap-2 items-center">
         <Row spacing={1}>
           {creditAccountIsOpen === false && (
             <ValidationIndicator
@@ -62,7 +66,14 @@ export const AccountColumn = ({
           )}
           <AccountName account={creditAccount} accountCode={creditAccountCode} />
         </Row>
-        <ChevronRight className="size-4 min-w-4" />
+        <ChevronRight className="size-4 min-w-4 text-muted-foreground" />
+        <Badge
+          variant={amount < 0 ? "destructive" : "primary"}
+          className="px-3 py-2 text-sm"
+        >
+          {formatCurrency(amount)}
+        </Badge>
+        <ChevronRight className="size-4 min-w-4 text-muted-foreground" />
         <Row spacing={1}>
           {debitAccountIsOpen === false && (
             <ValidationIndicator

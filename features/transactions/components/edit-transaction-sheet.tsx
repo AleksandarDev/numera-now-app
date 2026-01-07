@@ -33,34 +33,13 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { formatCurrency } from "@/lib/utils";
 import { DocumentsTab } from "@/components/documents-tab";
 import { StatusProgression } from "@/components/status-progression";
+import { UserAvatar } from "@/components/user-avatar";
 
-import { TransactionForm } from "./transaction-form";
-import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
+import { UnifiedEditTransactionForm, UnifiedEditTransactionFormValues } from "./unified-edit-transaction-form";
 
 const formSchema = insertTransactionSchema.omit({ id: true });
 
 type FormValues = z.infer<typeof formSchema>;
-type TransactionFormValues = {
-  date: Date;
-  accountId: string;
-  categoryId?: string | null;
-  payeeCustomerId?: string;
-  payee?: string;
-  amount: string;
-  notes?: string | null;
-  status?: "draft" | "pending" | "completed" | "reconciled";
-};
-type TransactionDoubleEntryFormValues = {
-  date: Date;
-  creditAccountId: string;
-  debitAccountId: string;
-  categoryId?: string | null;
-  payeeCustomerId?: string | null;
-  payee?: string | null;
-  amount: string;
-  notes?: string | null;
-  status?: "draft" | "pending" | "completed" | "reconciled";
-};
 
 export const EditTransactionSheet = () => {
   const { isOpen, onClose, id, initialTab } = useOpenTransaction();
@@ -85,24 +64,6 @@ export const EditTransactionSheet = () => {
   }));
 
   const accountMutation = useCreateAccount();
-  const accountsQuery = useGetAccounts();
-  const accountOptions = (accountsQuery.data ?? []).map((account) => ({
-    label: account.name,
-    value: account.id,
-  }));
-  // TODO: Move options to custom select component
-  const creditAccountOptions = (accountsQuery.data ?? []).map((account) => ({
-    label: account.name,
-    value: account.id,
-  }));
-  const debitAccountOptions = (accountsQuery.data ?? []).map((account) => ({
-    label: account.name,
-    value: account.id,
-  }));
-  const accountTypeById = useMemo(() => Object.fromEntries(
-    (accountsQuery.data ?? []).map((account) => [account.id, account.accountType as "credit" | "debit" | "neutral"])
-  ), [accountsQuery.data]);
-
   const customerMutation = useCreateCustomer();
 
   const onCreateAccount = (name: string) => accountMutation.mutate({ name });
@@ -119,11 +80,22 @@ export const EditTransactionSheet = () => {
 
   const isLoading =
     transactionQuery.isLoading ||
-    categoryQuery.isLoading ||
-    accountsQuery.isLoading;
+    categoryQuery.isLoading;
 
-  const onSubmit = (values: FormValues) => {
-    editMutation.mutate(values, {
+  const onSubmit = (values: UnifiedEditTransactionFormValues) => {
+    // Convert to FormValues format expected by the API
+    const formValues: FormValues = {
+      date: values.date,
+      creditAccountId: values.creditAccountId,
+      debitAccountId: values.debitAccountId,
+      categoryId: values.categoryId || null,
+      payeeCustomerId: values.payeeCustomerId || null,
+      amount: convertAmountToMiliunits(parseFloat(values.amount)),
+      notes: values.notes || null,
+      status: values.status || currentStatus,
+    };
+
+    editMutation.mutate(formValues, {
       onSuccess: () => {
         onClose();
       },
@@ -144,30 +116,26 @@ export const EditTransactionSheet = () => {
     });
   };
 
-  const defaultValuesForForm: Partial<TransactionFormValues & TransactionDoubleEntryFormValues> = transactionQuery.data
+  const defaultValuesForForm: Partial<UnifiedEditTransactionFormValues> = transactionQuery.data
     ? {
-      accountId: transactionQuery.data.accountId as string,
-      creditAccountId: transactionQuery.data.creditAccountId ?? undefined,
-      debitAccountId: transactionQuery.data.debitAccountId ?? undefined,
-      categoryId: transactionQuery.data.categoryId,
+      creditAccountId: transactionQuery.data.creditAccountId ?? "",
+      debitAccountId: transactionQuery.data.debitAccountId ?? "",
+      categoryId: transactionQuery.data.categoryId ?? undefined,
       amount: String(transactionQuery.data.amount),
       date: transactionQuery.data.date
         ? new Date(transactionQuery.data.date)
         : new Date(),
       payeeCustomerId: transactionQuery.data.payeeCustomerId ?? undefined,
-      payee: transactionQuery.data.payee ?? undefined,
       notes: transactionQuery.data.notes ?? undefined,
       status: (transactionQuery.data.status ?? "pending") as "draft" | "pending" | "completed" | "reconciled",
     }
     : {
-      accountId: undefined,
       creditAccountId: "",
       debitAccountId: "",
-      categoryId: null,
+      categoryId: undefined,
       amount: "0",
       date: new Date(),
       payeeCustomerId: undefined,
-      payee: undefined,
       notes: undefined,
     };
 
@@ -179,9 +147,9 @@ export const EditTransactionSheet = () => {
     ?.filter((c: any) => !c.met)
     .map((c: any) => {
       const labels: Record<string, string> = {
-        hasReceipt: "Document required",
-        isReviewed: "Review required",
-        isApproved: "Approval required",
+        hasReceipt: "Attach a receipt or document",
+        isReviewed: "Mark as reviewed",
+        isApproved: "Get approval",
       };
       return labels[c.name] || c.name;
     }) ?? [];
@@ -200,7 +168,7 @@ export const EditTransactionSheet = () => {
 
   type TabValue = "details" | "documents" | "history";
   const [activeTab, setActiveTab] = useState<TabValue>(initialTab || "details");
-  
+
   // Reset tab when sheet opens with a new initial tab
   React.useEffect(() => {
     if (isOpen && initialTab) {
@@ -211,12 +179,12 @@ export const EditTransactionSheet = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value as TabValue);
   };
-  
+
   return (
     <>
       <ConfirmDialog />
       <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-        <SheetContent className="flex flex-col h-full p-0 max-w-2xl">
+        <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg">
           <div className="px-6 pt-6">
             <SheetHeader>
               <SheetTitle>Edit Transaction</SheetTitle>
@@ -239,7 +207,7 @@ export const EditTransactionSheet = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto px-6">
-                <TabsContent value="details" className="space-y-6 mt-6">
+                <TabsContent value="details" className="space-y-6 mt-6 h-full">
                   {/* Status Progression */}
                   <StatusProgression
                     currentStatus={currentStatus}
@@ -249,35 +217,16 @@ export const EditTransactionSheet = () => {
                     reconciliationBlockers={reconciliationBlockers}
                   />
 
-                  {transactionQuery.data && transactionQuery.data.accountId ? (
-                    <TransactionForm
-                      id={id}
-                      defaultValues={defaultValuesForForm as TransactionFormValues}
-                      onSubmit={onSubmit}
-                      disabled={isPending}
-                      categoryOptions={categoryOptions}
-                      onCreateCategory={onCreateCategory}
-                      accountOptions={accountOptions}
-                      onCreateAccount={onCreateAccount}
-                      onDelete={onDelete}
-                    />
-                  ) : (
-                    <TransactionDoubleEntryForm
-                      id={id}
-                      defaultValues={defaultValuesForForm as TransactionDoubleEntryFormValues}
-                      onSubmit={onSubmit}
-                      disabled={isPending}
-                      categoryOptions={categoryOptions}
-                      onCreateCategory={onCreateCategory}
-                      creditAccountOptions={creditAccountOptions}
-                      debitAccountOptions={debitAccountOptions}
-                      accountTypeById={accountTypeById}
-                      onCreateAccount={onCreateAccount}
-                      onCreateCustomer={onCreateCustomer}
-                      onDelete={onDelete}
-                      hasPayee={!!transactionQuery.data?.payee}
-                    />
-                  )}
+                  <UnifiedEditTransactionForm
+                    id={id}
+                    defaultValues={defaultValuesForForm}
+                    onSubmit={onSubmit}
+                    disabled={isPending}
+                    categoryOptions={categoryOptions}
+                    onCreateCategory={onCreateCategory}
+                    onCreateCustomer={onCreateCustomer}
+                    onDelete={onDelete}
+                  />
 
                   {splitGroupQuery.data && splitGroupQuery.data.length > 0 && (
                     <div className="space-y-2 rounded-md border p-3">
@@ -312,13 +261,15 @@ export const EditTransactionSheet = () => {
                       <div className="space-y-2 text-sm text-muted-foreground">
                         {statusHistoryQuery.data.map((entry, idx) => (
                           <Fragment key={entry.id}>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-medium text-foreground">{entry.toStatus}</div>
-                                <div className="text-xs">Changed by {entry.changedBy || "unknown"}</div>
-                              </div>
-                              <div className="text-xs">
-                                {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : ""}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 flex-1">
+                                <UserAvatar userId={entry.changedBy || "unknown"} />
+                                <div>
+                                  <div className="font-medium text-foreground">{entry.toStatus}</div>
+                                  <div className="text-xs">
+                                    {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : ""}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             {idx < statusHistoryQuery.data.length - 1 && <div className="h-px bg-muted" />}
