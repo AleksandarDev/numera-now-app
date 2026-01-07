@@ -1,19 +1,15 @@
 "use client";
 
 import { DataTable } from "@/components/data-table";
-import { useBulkDeleteTransactions } from "@/features/transactions/api/use-bulk-delete-transactions";
 import { useGetTransactions } from "@/features/transactions/api/use-get-transactions";
 import { columns, ResponseType } from "./columns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hasValidationIssues } from "./validation";
 
 export function TransactionsDataTable() {
-    const deleteTransactions = useBulkDeleteTransactions();
     const transactionsQuery = useGetTransactions();
     const transactions = transactionsQuery.data || [];
     const isLoading = transactionsQuery.isLoading;
-
-    const isDisabled = isLoading || deleteTransactions.isPending;
 
     const getRowClassName = (transaction: ResponseType) => {
         if (isLoading) return "";
@@ -36,11 +32,7 @@ export function TransactionsDataTable() {
             data={transactionsQuery.isLoading
                 ? Array(5).fill({})
                 : transactions}
-            onDelete={(row) => {
-                const ids = row.map((r) => r.original.id);
-                deleteTransactions.mutate({ ids });
-            }}
-            disabled={isDisabled}
+            disabled={isLoading}
             getRowClassName={getRowClassName} />
     );
 }
