@@ -18,6 +18,7 @@ type DocumentsColumnProps = {
   attachedRequiredTypes: number;
   status: string;
   transactionId: string;
+  minRequiredDocuments?: number;
 };
 
 export const DocumentsColumn = ({
@@ -27,10 +28,16 @@ export const DocumentsColumn = ({
   attachedRequiredTypes,
   status,
   transactionId,
+  minRequiredDocuments = 0,
 }: DocumentsColumnProps) => {
   const { onOpen } = useOpenTransaction();
   const showWarning = status !== "draft" && requiredDocumentTypes > 0 && !hasAllRequiredDocuments;
   const isReconciled = status === "reconciled";
+
+  // Calculate the effective minimum required
+  const effectiveMinRequired = minRequiredDocuments === 0 
+    ? requiredDocumentTypes 
+    : Math.min(minRequiredDocuments, requiredDocumentTypes);
 
   if (documentCount === 0 && !showWarning) {
     return (
@@ -40,6 +47,29 @@ export const DocumentsColumn = ({
 
   const handleClick = () => {
     onOpen(transactionId, "documents");
+  };
+
+  // Generate appropriate message based on min required setting
+  const getRequirementMessage = () => {
+    if (minRequiredDocuments === 0) {
+      // All required types needed
+      return showWarning
+        ? `${attachedRequiredTypes}/${requiredDocumentTypes} required document types attached`
+        : `All ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached`;
+    } else {
+      // At least N required
+      return showWarning
+        ? `${attachedRequiredTypes}/${effectiveMinRequired} minimum required (of ${requiredDocumentTypes} types)`
+        : `Document requirement met (${attachedRequiredTypes}/${effectiveMinRequired} minimum)`;
+    }
+  };
+
+  const getWarningMessage = () => {
+    if (minRequiredDocuments === 0) {
+      return "Attach all required documents before completing this transaction.";
+    } else {
+      return `Attach at least ${effectiveMinRequired} of the ${requiredDocumentTypes} required document types before completing this transaction.`;
+    }
   };
 
   return (
@@ -74,15 +104,12 @@ export const DocumentsColumn = ({
                 "text-xs",
                 showWarning ? "text-amber-600" : "text-green-600"
               )}>
-                {showWarning
-                  ? `${attachedRequiredTypes}/${requiredDocumentTypes} required document types attached`
-                  : `All ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached`
-                }
+                {getRequirementMessage()}
               </p>
             )}
             {showWarning && (
               <p className="text-xs text-amber-600">
-                Attach all required documents before completing this transaction.
+                {getWarningMessage()}
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-2">

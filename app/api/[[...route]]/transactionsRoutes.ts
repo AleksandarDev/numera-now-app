@@ -114,15 +114,19 @@ const app = new Hono()
       const creditAccounts = aliasedTable(accounts, "creditAccounts");
       const debitAccounts = aliasedTable(accounts, "debitAccounts");
 
-      // Get required document types for this user
-      const requiredDocTypes = await db
-        .select({ id: documentTypes.id })
-        .from(documentTypes)
-        .where(and(
-          eq(documentTypes.userId, auth.userId),
-          eq(documentTypes.isRequired, true)
-        ));
-      const requiredDocTypeIds = requiredDocTypes.map(dt => dt.id);
+      // Get user settings for required document types
+      const [userSettings] = await db
+        .select({ 
+          minRequiredDocuments: settings.minRequiredDocuments,
+          requiredDocumentTypeIds: settings.requiredDocumentTypeIds,
+        })
+        .from(settings)
+        .where(eq(settings.userId, auth.userId));
+      
+      const minRequiredDocs = userSettings?.minRequiredDocuments ?? 0;
+      const requiredDocTypeIds = userSettings?.requiredDocumentTypeIds 
+        ? JSON.parse(userSettings.requiredDocumentTypeIds) 
+        : [];
 
       const data = await db
         .select({
@@ -216,14 +220,33 @@ const app = new Hono()
       }
 
       // Combine data with document info
-      const dataWithDocs = data.map(transaction => ({
-        ...transaction,
-        documentCount: documentCounts.get(transaction.id)?.total ?? 0,
-        hasAllRequiredDocuments: requiredDocTypeIds.length === 0 ||
-          (documentCounts.get(transaction.id)?.requiredTypes.length ?? 0) >= requiredDocTypeIds.length,
-        requiredDocumentTypes: requiredDocTypeIds.length,
-        attachedRequiredTypes: documentCounts.get(transaction.id)?.requiredTypes.length ?? 0,
-      }));
+      // If minRequiredDocs is 0, all required types must be attached
+      // If minRequiredDocs > 0, at least that many required types must be attached
+      const dataWithDocs = data.map(transaction => {
+        const attachedRequiredCount = documentCounts.get(transaction.id)?.requiredTypes.length ?? 0;
+        const totalRequiredTypes = requiredDocTypeIds.length;
+        
+        // Determine if documents requirement is met
+        let hasAllRequiredDocuments = true;
+        if (totalRequiredTypes > 0) {
+          if (minRequiredDocs === 0) {
+            // All required document types must be attached
+            hasAllRequiredDocuments = attachedRequiredCount >= totalRequiredTypes;
+          } else {
+            // At least minRequiredDocs of the required types must be attached
+            hasAllRequiredDocuments = attachedRequiredCount >= Math.min(minRequiredDocs, totalRequiredTypes);
+          }
+        }
+
+        return {
+          ...transaction,
+          documentCount: documentCounts.get(transaction.id)?.total ?? 0,
+          hasAllRequiredDocuments,
+          requiredDocumentTypes: totalRequiredTypes,
+          attachedRequiredTypes: attachedRequiredCount,
+          minRequiredDocuments: minRequiredDocs,
+        };
+      });
 
       return ctx.json({ data: dataWithDocs });
     }

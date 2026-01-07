@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +33,6 @@ export function DocumentTypesSettingsCard() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    isRequired: false,
   });
 
   const { data: documentTypes = [], isLoading, refetch } = useGetDocumentTypes();
@@ -48,14 +46,12 @@ export function DocumentTypesSettingsCard() {
       setFormData({
         name: docType.name,
         description: docType.description || "",
-        isRequired: docType.isRequired,
       });
     } else {
       setEditingId(null);
       setFormData({
         name: "",
         description: "",
-        isRequired: false,
       });
     }
     setDialogOpen(true);
@@ -160,25 +156,6 @@ export function DocumentTypesSettingsCard() {
                 />
               </div>
 
-              <div className="flex items-center space-x-3">
-                <Checkbox
-                  id="isRequired"
-                  checked={formData.isRequired}
-                  onCheckedChange={(checked) =>
-                    setFormData({
-                      ...formData,
-                      isRequired: checked === true,
-                    })
-                  }
-                />
-                <Label
-                  htmlFor="isRequired"
-                  className="font-medium cursor-pointer"
-                >
-                  Required for reconciliation
-                </Label>
-              </div>
-
               <Button
                 type="submit"
                 disabled={
@@ -207,11 +184,6 @@ export function DocumentTypesSettingsCard() {
                   {docType.description && (
                     <p className="text-sm text-muted-foreground">
                       {docType.description}
-                    </p>
-                  )}
-                  {docType.isRequired && (
-                    <p className="text-xs text-yellow-600">
-                      Required for reconciliation
                     </p>
                   )}
                 </div>

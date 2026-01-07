@@ -118,9 +118,6 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
             {documentTypes.map((type) => (
               <SelectItem key={type.id} value={type.id}>
                 {type.name}
-                {type.isRequired && (
-                  <span className="ml-1 text-xs text-destructive">*</span>
-                )}
               </SelectItem>
             ))}
           </SelectContent>
@@ -242,8 +239,7 @@ export function DocumentList({ transactionId }: DocumentListProps) {
               >
                 <SelectTrigger className={cn(
                   "h-6 w-auto gap-1 border-none bg-transparent px-0 text-xs font-medium",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  documentTypes.find(t => t.id === doc.documentTypeId)?.isRequired && "text-primary"
+                  "hover:bg-accent hover:text-accent-foreground"
                 )}>
                   <SelectValue />
                 </SelectTrigger>
@@ -251,9 +247,6 @@ export function DocumentList({ transactionId }: DocumentListProps) {
                   {documentTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
-                      {type.isRequired && (
-                        <span className="ml-1 text-xs text-destructive">*</span>
-                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -28,6 +28,8 @@ import { useGetStatusHistory } from "@/features/transactions/api/use-get-status-
 import { useGetSplitGroup } from "@/features/transactions/api/use-get-split-group";
 import { useCanReconcile } from "@/features/transactions/api/use-can-reconcile";
 import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
+import { useGetDocuments, useGetDocumentTypes } from "@/features/transactions/api/use-documents";
+import { useGetSettings } from "@/features/settings/api/use-get-settings";
 import { convertAmountToMiliunits } from "@/lib/utils";
 import { useConfirm } from "@/hooks/use-confirm";
 import { formatCurrency } from "@/lib/utils";
@@ -55,6 +57,11 @@ export const EditTransactionSheet = () => {
   const canReconcileQuery = useCanReconcile(id);
   const editMutation = useEditTransaction(id);
   const deleteMutation = useDeleteTransaction(id);
+
+  // Document validation queries
+  const documentsQuery = useGetDocuments(id ?? "");
+  const documentTypesQuery = useGetDocumentTypes();
+  const settingsQuery = useGetSettings();
 
   const categoryMutation = useCreateCategory();
   const categoryQuery = useGetCategories();
@@ -143,16 +150,32 @@ export const EditTransactionSheet = () => {
 
   const reconciliationStatus = canReconcileQuery.data;
   const canReconcile = reconciliationStatus?.isReconciled ?? false;
-  const reconciliationBlockers = reconciliationStatus?.conditions
-    ?.filter((c: any) => !c.met)
-    .map((c: any) => {
-      const labels: Record<string, string> = {
-        hasReceipt: "Attach a receipt or document",
-        isReviewed: "Mark as reviewed",
-        isApproved: "Get approval",
-      };
-      return labels[c.name] || c.name;
-    }) ?? [];
+  const reconciliationBlockers: string[] = [];
+
+  // Calculate document requirement status from settings
+  const documents = documentsQuery.data ?? [];
+  const requiredDocTypeIds: string[] = settingsQuery.data?.requiredDocumentTypeIds ?? [];
+  const minRequiredDocuments = settingsQuery.data?.minRequiredDocuments ?? 0;
+
+  // Count attached required document types
+  const attachedRequiredTypeIds = new Set(
+    documents
+      .filter((doc) => requiredDocTypeIds.includes(doc.documentTypeId))
+      .map((doc) => doc.documentTypeId)
+  );
+  const attachedRequiredTypesCount = attachedRequiredTypeIds.size;
+
+  // Check if document requirements are met
+  const hasAllRequiredDocuments = useMemo(() => {
+    if (requiredDocTypeIds.length === 0) return true;
+    if (minRequiredDocuments === 0) {
+      // All required types must be attached
+      return attachedRequiredTypesCount >= requiredDocTypeIds.length;
+    } else {
+      // At least minRequiredDocuments of the required types must be attached
+      return attachedRequiredTypesCount >= Math.min(minRequiredDocuments, requiredDocTypeIds.length);
+    }
+  }, [requiredDocTypeIds.length, attachedRequiredTypesCount, minRequiredDocuments]);
 
   const onDelete = async () => {
     const ok = await confirm();
@@ -215,6 +238,10 @@ export const EditTransactionSheet = () => {
                     disabled={isPending}
                     canReconcile={canReconcile}
                     reconciliationBlockers={reconciliationBlockers}
+                    hasAllRequiredDocuments={hasAllRequiredDocuments}
+                    requiredDocumentTypes={requiredDocTypeIds.length}
+                    attachedRequiredTypes={attachedRequiredTypesCount}
+                    minRequiredDocuments={minRequiredDocuments}
                   />
 
                   <UnifiedEditTransactionForm
