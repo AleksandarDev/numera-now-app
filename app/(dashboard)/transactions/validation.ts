@@ -1,10 +1,29 @@
 import { ResponseType } from "./columns";
 
 export type ValidationIssue = {
-  type: "customer" | "account" | "account-closed" | "documents";
+  type: "customer" | "account" | "account-closed" | "documents" | "documents-status-block";
   message: string;
   severity: "warning" | "error";
 };
+
+/**
+ * Gets the document requirement message based on settings
+ */
+function getDocumentRequirementMessage(
+  attachedRequiredTypes: number,
+  requiredDocumentTypes: number,
+  minRequiredDocuments: number
+): string {
+  if (minRequiredDocuments === 0) {
+    // All required types needed
+    const missing = requiredDocumentTypes - attachedRequiredTypes;
+    return `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach all required documents before completing this transaction.`;
+  } else {
+    // At least N required
+    const needed = Math.min(minRequiredDocuments, requiredDocumentTypes);
+    return `Need at least ${needed} of ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached (currently ${attachedRequiredTypes}). Attach required documents before completing this transaction.`;
+  }
+}
 
 /**
  * Validates a transaction and returns any validation issues found.
@@ -73,16 +92,20 @@ export function validateTransaction(transaction: ResponseType): ValidationIssue[
     });
   }
 
-  // Document validation: Check if all required documents are attached
+  // Document validation: Check if required documents are attached
   // Only warn if transaction is not in draft status and has required document types defined
   if (transaction.status !== "draft" && 
       transaction.requiredDocumentTypes !== undefined && 
       transaction.requiredDocumentTypes > 0 && 
       !transaction.hasAllRequiredDocuments) {
-    const missing = transaction.requiredDocumentTypes - (transaction.attachedRequiredTypes ?? 0);
+    const minRequired = (transaction as any).minRequiredDocuments ?? 0;
     issues.push({
       type: "documents",
-      message: `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach required documents before completing this transaction.`,
+      message: getDocumentRequirementMessage(
+        transaction.attachedRequiredTypes ?? 0,
+        transaction.requiredDocumentTypes,
+        minRequired
+      ),
       severity: "warning",
     });
   }
@@ -117,4 +140,76 @@ export function hasMissingRequiredDocuments(transaction: ResponseType): boolean 
     transaction.requiredDocumentTypes > 0 &&
     !transaction.hasAllRequiredDocuments
   );
+}
+
+/**
+ * Checks if status progression should be blocked due to missing documents.
+ * This is used to prevent advancing to "completed" status without required documents.
+ */
+export function canProgressToStatus(
+  transaction: ResponseType,
+  targetStatus: "draft" | "pending" | "completed" | "reconciled"
+): { canProgress: boolean; blockedReason?: string } {
+  // Only block when trying to progress to "completed" or "reconciled"
+  if (targetStatus !== "completed" && targetStatus !== "reconciled") {
+    return { canProgress: true };
+  }
+
+  // Check if transaction has required document types defined
+  if (!transaction.requiredDocumentTypes || transaction.requiredDocumentTypes === 0) {
+    return { canProgress: true };
+  }
+
+  // Check if document requirements are met
+  if (transaction.hasAllRequiredDocuments) {
+    return { canProgress: true };
+  }
+
+  // Documents are missing - block status progression
+  const minRequired = (transaction as any).minRequiredDocuments ?? 0;
+  const attachedCount = transaction.attachedRequiredTypes ?? 0;
+  const totalRequired = transaction.requiredDocumentTypes;
+
+  let message: string;
+  if (minRequired === 0) {
+    const missing = totalRequired - attachedCount;
+    message = `Cannot advance to ${targetStatus}. Missing ${missing} required document type${missing > 1 ? "s" : ""}. Please attach all required documents.`;
+  } else {
+    const needed = Math.min(minRequired, totalRequired);
+    message = `Cannot advance to ${targetStatus}. Need at least ${needed} of ${totalRequired} required document type${totalRequired > 1 ? "s" : ""} attached (currently ${attachedCount}).`;
+  }
+
+  return { canProgress: false, blockedReason: message };
+}
+
+/**
+ * Gets document requirement status info for UI display.
+ */
+export function getDocumentRequirementStatus(transaction: ResponseType): {
+  isBlocked: boolean;
+  attachedCount: number;
+  requiredCount: number;
+  minRequired: number;
+  message: string;
+} {
+  const attachedCount = transaction.attachedRequiredTypes ?? 0;
+  const requiredCount = transaction.requiredDocumentTypes ?? 0;
+  const minRequired = (transaction as any).minRequiredDocuments ?? 0;
+  const isBlocked = requiredCount > 0 && !transaction.hasAllRequiredDocuments;
+
+  let message = "";
+  if (requiredCount > 0) {
+    if (minRequired === 0) {
+      message = isBlocked
+        ? `${attachedCount}/${requiredCount} required document types attached`
+        : `All ${requiredCount} required document type${requiredCount > 1 ? "s" : ""} attached`;
+    } else {
+      const needed = Math.min(minRequired, requiredCount);
+      message = isBlocked
+        ? `${attachedCount}/${needed} required (of ${requiredCount} types)`
+        : `Document requirement met (${attachedCount} of ${needed} minimum)`;
+    }
+  }
+
+  return { isBlocked, attachedCount, requiredCount, minRequired, message };
 }

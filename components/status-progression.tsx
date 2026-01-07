@@ -40,6 +40,11 @@ interface StatusProgressionProps {
   disabled?: boolean;
   canReconcile?: boolean;
   reconciliationBlockers?: string[];
+  // Document validation props
+  hasAllRequiredDocuments?: boolean;
+  requiredDocumentTypes?: number;
+  attachedRequiredTypes?: number;
+  minRequiredDocuments?: number;
 }
 
 export function StatusProgression({
@@ -48,14 +53,44 @@ export function StatusProgression({
   disabled = false,
   canReconcile = true,
   reconciliationBlockers = [],
+  hasAllRequiredDocuments = true,
+  requiredDocumentTypes = 0,
+  attachedRequiredTypes = 0,
+  minRequiredDocuments = 0,
 }: StatusProgressionProps) {
   const [isAdvancing, setIsAdvancing] = useState(false);
 
   const currentIndex = STATUS_ORDER.indexOf(currentStatus);
   const nextStatus = currentIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[currentIndex + 1] : null;
 
+  // Check if document requirements block progression
+  const getDocumentBlocker = (): string | null => {
+    // Only check when advancing to completed or reconciled
+    if (nextStatus !== "completed" && nextStatus !== "reconciled") {
+      return null;
+    }
+
+    // No required document types
+    if (requiredDocumentTypes === 0 || hasAllRequiredDocuments) {
+      return null;
+    }
+
+    // Generate appropriate message
+    if (minRequiredDocuments === 0) {
+      const missing = requiredDocumentTypes - attachedRequiredTypes;
+      return `Attach ${missing} more required document type${missing > 1 ? "s" : ""}`;
+    } else {
+      const needed = Math.min(minRequiredDocuments, requiredDocumentTypes);
+      const stillNeed = needed - attachedRequiredTypes;
+      return `Attach ${stillNeed} more of the ${requiredDocumentTypes} required document types`;
+    }
+  };
+
+  const documentBlocker = getDocumentBlocker();
+  const isDocumentBlocked = documentBlocker !== null;
+
   const handleAdvance = async () => {
-    if (!nextStatus || isAdvancing || disabled) return;
+    if (!nextStatus || isAdvancing || disabled || isDocumentBlocked) return;
 
     // Check if trying to advance to reconciled but conditions aren't met
     if (nextStatus === "reconciled" && !canReconcile) {
@@ -135,7 +170,7 @@ export function StatusProgression({
             {nextStatus && (
               <Button
                 onClick={handleAdvance}
-                disabled={disabled || isAdvancing || isReconcileBlocked}
+                disabled={disabled || isAdvancing || isReconcileBlocked || isDocumentBlocked}
                 className="gap-2"
               >
                 {isAdvancing ? (
@@ -150,6 +185,29 @@ export function StatusProgression({
             )}
           </div>
         </div>
+
+        {/* Document Blockers */}
+        {isDocumentBlocked && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900 mb-2">
+                  Cannot advance to {nextStatus}. Missing required documents:
+                </p>
+                <p className="text-sm text-amber-800">
+                  {documentBlocker}
+                </p>
+                <p className="text-xs text-amber-600 mt-2">
+                  {minRequiredDocuments === 0
+                    ? `${attachedRequiredTypes}/${requiredDocumentTypes} required document types attached`
+                    : `${attachedRequiredTypes}/${Math.min(minRequiredDocuments, requiredDocumentTypes)} minimum required (of ${requiredDocumentTypes} types)`
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Reconciliation Blockers */}
         {isReconcileBlocked && reconciliationBlockers.length > 0 && (

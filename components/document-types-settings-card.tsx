@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Trash2, Plus, Info } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -21,11 +21,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   useGetDocumentTypes,
   useCreateDocumentType,
   useUpdateDocumentType,
   useDeleteDocumentType,
 } from "@/features/transactions/api/use-documents";
+import { useGetSettings } from "@/features/settings/api/use-get-settings";
+import { useUpdateSettings } from "@/features/settings/api/use-update-settings";
 import { toast } from "sonner";
 
 export function DocumentTypesSettingsCard() {
@@ -38,9 +46,31 @@ export function DocumentTypesSettingsCard() {
   });
 
   const { data: documentTypes = [], isLoading, refetch } = useGetDocumentTypes();
+  const { data: settings, isLoading: settingsLoading } = useGetSettings();
+  const updateSettings = useUpdateSettings();
   const createDocumentType = useCreateDocumentType();
   const updateDocumentType = useUpdateDocumentType();
   const deleteDocumentType = useDeleteDocumentType();
+
+  // Count required document types
+  const requiredTypesCount = documentTypes.filter(dt => dt.isRequired).length;
+  const minRequiredDocuments = settings?.minRequiredDocuments ?? 0;
+
+  // Local state for the minimum required input
+  const [localMinRequired, setLocalMinRequired] = useState<number>(minRequiredDocuments);
+
+  // Sync local state with settings
+  useEffect(() => {
+    if (settings?.minRequiredDocuments !== undefined) {
+      setLocalMinRequired(settings.minRequiredDocuments);
+    }
+  }, [settings?.minRequiredDocuments]);
+
+  const handleMinRequiredChange = (value: number) => {
+    const newValue = Math.max(0, Math.min(value, requiredTypesCount));
+    setLocalMinRequired(newValue);
+    updateSettings.mutate({ minRequiredDocuments: newValue });
+  };
 
   const handleOpenDialog = (docType?: (typeof documentTypes)[0]) => {
     if (docType) {
@@ -190,6 +220,54 @@ export function DocumentTypesSettingsCard() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Minimum Required Documents Setting */}
+        {requiredTypesCount > 0 && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="minRequiredDocs" className="font-medium text-blue-900">
+                Minimum Required Documents
+              </Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-blue-600 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>
+                      Set the minimum number of required document types that must be attached 
+                      before a transaction can be marked as &quot;Completed&quot;.
+                    </p>
+                    <p className="mt-2">
+                      Set to 0 to require all {requiredTypesCount} required document type{requiredTypesCount > 1 ? "s" : ""}.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="flex items-center gap-3">
+              <Input
+                id="minRequiredDocs"
+                type="number"
+                min={0}
+                max={requiredTypesCount}
+                value={localMinRequired}
+                onChange={(e) => handleMinRequiredChange(parseInt(e.target.value) || 0)}
+                className="w-24"
+                disabled={settingsLoading || updateSettings.isPending}
+              />
+              <span className="text-sm text-blue-800">
+                of {requiredTypesCount} required type{requiredTypesCount > 1 ? "s" : ""}
+              </span>
+            </div>
+            <p className="text-xs text-blue-700">
+              {localMinRequired === 0 
+                ? `All ${requiredTypesCount} required document type${requiredTypesCount > 1 ? "s" : ""} must be attached to complete a transaction.`
+                : `At least ${localMinRequired} of the ${requiredTypesCount} required document type${requiredTypesCount > 1 ? "s" : ""} must be attached to complete a transaction.`
+              }
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           {documentTypes.length === 0 ? (

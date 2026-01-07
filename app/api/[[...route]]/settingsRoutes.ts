@@ -30,6 +30,7 @@ const app = new Hono()
           userId: auth.userId,
           doubleEntryMode: false,
           reconciliationConditions: [],
+          minRequiredDocuments: 0,
         },
       });
     }
@@ -51,6 +52,7 @@ const app = new Hono()
       z.object({
         doubleEntryMode: z.boolean().optional(),
         reconciliationConditions: reconciliationConditionsSchema.optional(),
+        minRequiredDocuments: z.number().int().min(0).optional(),
       })
     ),
     async (ctx) => {
@@ -64,6 +66,7 @@ const app = new Hono()
       const updateValues: {
         doubleEntryMode?: boolean;
         reconciliationConditions?: string;
+        minRequiredDocuments?: number;
       } = {};
 
       if (values.doubleEntryMode !== undefined) {
@@ -72,6 +75,10 @@ const app = new Hono()
 
       if (values.reconciliationConditions !== undefined) {
         updateValues.reconciliationConditions = JSON.stringify(values.reconciliationConditions);
+      }
+
+      if (values.minRequiredDocuments !== undefined) {
+        updateValues.minRequiredDocuments = values.minRequiredDocuments;
       }
 
       const [existingSettings] = await db
@@ -96,6 +103,7 @@ const app = new Hono()
             reconciliationConditions: values.reconciliationConditions !== undefined
               ? JSON.stringify(values.reconciliationConditions)
               : '[]',
+            minRequiredDocuments: values.minRequiredDocuments ?? 0,
           })
           .returning();
       }

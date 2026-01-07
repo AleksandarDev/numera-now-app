@@ -78,6 +78,9 @@ export const settings = pgTable("settings", {
     // Reconciliation conditions - JSON array of conditions
     // e.g., ["hasReceipt", "isReviewed", "isApproved"]
     reconciliationConditions: text("reconciliation_conditions").notNull().default('["hasReceipt"]'),
+    // Minimum number of required document types that must be attached before completing a transaction
+    // 0 means all required document types must be attached, 1 or more means at least N
+    minRequiredDocuments: integer("min_required_documents").notNull().default(0),
 }, (table) => [
     index('settings_userid_idx').on(table.userId)
 ]);

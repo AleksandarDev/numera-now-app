@@ -71,6 +71,10 @@ export const columns: ColumnDef<ResponseType>[] = [
             splitGroupId: row.original.splitGroupId,
             splitType: row.original.splitType,
           }}
+          hasAllRequiredDocuments={row.original.hasAllRequiredDocuments ?? true}
+          requiredDocumentTypes={row.original.requiredDocumentTypes ?? 0}
+          attachedRequiredTypes={row.original.attachedRequiredTypes ?? 0}
+          minRequiredDocuments={(row.original as any).minRequiredDocuments ?? 0}
         />
       );
     }
@@ -182,6 +186,7 @@ export const columns: ColumnDef<ResponseType>[] = [
           attachedRequiredTypes={row.original.attachedRequiredTypes ?? 0}
           status={row.original.status ?? "pending"}
           transactionId={row.original.id}
+          minRequiredDocuments={(row.original as any).minRequiredDocuments ?? 0}
         />
       );
     }
