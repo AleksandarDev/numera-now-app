@@ -102,7 +102,7 @@ export const TransactionDoubleEntryForm = ({
     if (creditType === "debit") {
       form.setError("creditAccountId", {
         type: "manual",
-        message: "Account is debit-only; choose a credit/neutral account.",
+        message: "This account only supports debits. Pick a credit or neutral account here.",
       });
     } else {
       form.clearErrors("creditAccountId");
@@ -111,7 +111,7 @@ export const TransactionDoubleEntryForm = ({
     if (debitType === "credit") {
       form.setError("debitAccountId", {
         type: "manual",
-        message: "Account is credit-only; choose a debit/neutral account.",
+        message: "This account only supports credits. Pick a debit or neutral account here.",
       });
     } else {
       form.clearErrors("debitAccountId");

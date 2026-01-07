@@ -229,7 +229,7 @@ export const createTransactionSchema = insertTransactionSchema.omit({
     // For non-draft transactions, ensure at least payee or payeeCustomerId is provided
     return !!data.payee || !!data.payeeCustomerId;
 }, {
-    message: "Either payee or payeeCustomerId must be provided for non-draft transactions",
+    message: "Please select a payee or customer to complete the transaction.",
 });
 
 // Transaction status history table

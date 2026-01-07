@@ -47,7 +47,7 @@ const formSchema = z.object({
       ctx.addIssue({
         code: "custom",
         path: ["splits", index],
-        message: "Provide account or both credit/debit accounts",
+          message: "Add an account, or choose both a debit and credit account for this split.",
       });
     }
   });

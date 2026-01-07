@@ -2,7 +2,7 @@ import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
 import { zValidator } from "@hono/zod-validator";
 import { createId } from "@paralleldrive/cuid2";
 import { endOfDay, parse, subDays } from "date-fns";
-import { aliasedTable, and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { aliasedTable, and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { UTCDate } from "@date-fns/utc";
@@ -172,7 +172,13 @@ const app = new Hono()
             or(
               eq(accounts.userId, auth.userId),
               eq(creditAccounts.userId, auth.userId),
-              eq(debitAccounts.userId, auth.userId)
+              eq(debitAccounts.userId, auth.userId),
+              and(
+                isNull(transactions.accountId),
+                isNull(transactions.creditAccountId),
+                isNull(transactions.debitAccountId),
+                eq(transactions.statusChangedBy, auth.userId)
+              )
             ),
             gte(transactions.date, startDate),
             lte(transactions.date, endDate)
@@ -275,7 +281,13 @@ const app = new Hono()
             or(
               eq(accounts.userId, auth.userId),
               eq(creditAccounts.userId, auth.userId),
-              eq(debitAccounts.userId, auth.userId)
+              eq(debitAccounts.userId, auth.userId),
+              and(
+                isNull(transactions.accountId),
+                isNull(transactions.creditAccountId),
+                isNull(transactions.debitAccountId),
+                eq(transactions.statusChangedBy, auth.userId)
+              )
             ),
           )
         );
@@ -388,11 +400,21 @@ const app = new Hono()
       const transactionId = createId();
       const status = values.status || "draft";
 
+      // Convert empty strings to null for foreign key fields
+      const cleanedValues = {
+        ...values,
+        accountId: values.accountId || null,
+        creditAccountId: values.creditAccountId || null,
+        debitAccountId: values.debitAccountId || null,
+        categoryId: values.categoryId || null,
+        payeeCustomerId: values.payeeCustomerId || null,
+      };
+
       const [data] = await db
         .insert(transactions)
         .values({
           id: transactionId,
-          ...values,
+          ...cleanedValues,
           status,
           statusChangedAt: new UTCDate(),
           statusChangedBy: auth.userId,
@@ -512,6 +534,12 @@ const app = new Hono()
           values.map((value) => ({
             id: createId(),
             ...value,
+            // Convert empty strings to null for foreign key fields
+            accountId: value.accountId || null,
+            creditAccountId: value.creditAccountId || null,
+            debitAccountId: value.debitAccountId || null,
+            categoryId: value.categoryId || null,
+            payeeCustomerId: value.payeeCustomerId || null,
           }))
         )
         .returning();
@@ -551,7 +579,13 @@ const app = new Hono()
               or(
                 eq(accounts.userId, auth.userId),
                 eq(creditAccounts.userId, auth.userId),
-                eq(debitAccounts.userId, auth.userId)
+                eq(debitAccounts.userId, auth.userId),
+                and(
+                  isNull(transactions.accountId),
+                  isNull(transactions.creditAccountId),
+                  isNull(transactions.debitAccountId),
+                  eq(transactions.statusChangedBy, auth.userId)
+                )
               ),
             )
           )
@@ -706,7 +740,13 @@ const app = new Hono()
               or(
                 eq(accounts.userId, auth.userId),
                 eq(creditAccounts.userId, auth.userId),
-                eq(debitAccounts.userId, auth.userId)
+                eq(debitAccounts.userId, auth.userId),
+                and(
+                  isNull(transactions.accountId),
+                  isNull(transactions.creditAccountId),
+                  isNull(transactions.debitAccountId),
+                  eq(transactions.statusChangedBy, auth.userId)
+                )
               ),
             )
           )
@@ -720,8 +760,18 @@ const app = new Hono()
         .from(transactions)
         .where(eq(transactions.id, id));
 
-      const updateData: any = {
+      // Convert empty strings to null for foreign key fields
+      const cleanedValues = {
         ...values,
+        accountId: values.accountId === undefined ? undefined : (values.accountId || null),
+        creditAccountId: values.creditAccountId === undefined ? undefined : (values.creditAccountId || null),
+        debitAccountId: values.debitAccountId === undefined ? undefined : (values.debitAccountId || null),
+        categoryId: values.categoryId === undefined ? undefined : (values.categoryId || null),
+        payeeCustomerId: values.payeeCustomerId === undefined ? undefined : (values.payeeCustomerId || null),
+      };
+
+      const updateData: any = {
+        ...cleanedValues,
       };
 
       // Track status changes

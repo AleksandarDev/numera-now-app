@@ -35,7 +35,7 @@ const formSchema = z.object({
   // Always allow valid transactions
   return true;
 }, {
-  message: "Either payee or customer must be selected",
+  message: "Select a payee or customer before saving.",
 });
 
 const apiSchema = insertTransactionSchema.omit({
