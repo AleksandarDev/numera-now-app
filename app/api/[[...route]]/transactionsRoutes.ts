@@ -114,22 +114,19 @@ const app = new Hono()
       const creditAccounts = aliasedTable(accounts, "creditAccounts");
       const debitAccounts = aliasedTable(accounts, "debitAccounts");
 
-      // Get user settings for minimum required documents
+      // Get user settings for required document types
       const [userSettings] = await db
-        .select({ minRequiredDocuments: settings.minRequiredDocuments })
+        .select({ 
+          minRequiredDocuments: settings.minRequiredDocuments,
+          requiredDocumentTypeIds: settings.requiredDocumentTypeIds,
+        })
         .from(settings)
         .where(eq(settings.userId, auth.userId));
+      
       const minRequiredDocs = userSettings?.minRequiredDocuments ?? 0;
-
-      // Get required document types for this user
-      const requiredDocTypes = await db
-        .select({ id: documentTypes.id })
-        .from(documentTypes)
-        .where(and(
-          eq(documentTypes.userId, auth.userId),
-          eq(documentTypes.isRequired, true)
-        ));
-      const requiredDocTypeIds = requiredDocTypes.map(dt => dt.id);
+      const requiredDocTypeIds = userSettings?.requiredDocumentTypeIds 
+        ? JSON.parse(userSettings.requiredDocumentTypeIds) 
+        : [];
 
       const data = await db
         .select({

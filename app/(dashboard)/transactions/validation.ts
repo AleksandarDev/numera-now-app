@@ -17,11 +17,11 @@ function getDocumentRequirementMessage(
   if (minRequiredDocuments === 0) {
     // All required types needed
     const missing = requiredDocumentTypes - attachedRequiredTypes;
-    return `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach all required documents before completing this transaction.`;
+    return `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach all required documents before reconciling this transaction.`;
   } else {
     // At least N required
     const needed = Math.min(minRequiredDocuments, requiredDocumentTypes);
-    return `Need at least ${needed} of ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached (currently ${attachedRequiredTypes}). Attach required documents before completing this transaction.`;
+    return `Need at least ${needed} of ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached (currently ${attachedRequiredTypes}). Attach required documents before reconciling this transaction.`;
   }
 }
 
@@ -144,14 +144,14 @@ export function hasMissingRequiredDocuments(transaction: ResponseType): boolean 
 
 /**
  * Checks if status progression should be blocked due to missing documents.
- * This is used to prevent advancing to "completed" status without required documents.
+ * This is used to prevent advancing to "reconciled" status without required documents.
  */
 export function canProgressToStatus(
   transaction: ResponseType,
   targetStatus: "draft" | "pending" | "completed" | "reconciled"
 ): { canProgress: boolean; blockedReason?: string } {
-  // Only block when trying to progress to "completed" or "reconciled"
-  if (targetStatus !== "completed" && targetStatus !== "reconciled") {
+  // Only block when trying to progress to "reconciled" status
+  if (targetStatus !== "reconciled") {
     return { canProgress: true };
   }
 
@@ -165,7 +165,7 @@ export function canProgressToStatus(
     return { canProgress: true };
   }
 
-  // Documents are missing - block status progression
+  // Documents are missing - block reconciliation
   const minRequired = (transaction as any).minRequiredDocuments ?? 0;
   const attachedCount = transaction.attachedRequiredTypes ?? 0;
   const totalRequired = transaction.requiredDocumentTypes;
@@ -173,10 +173,10 @@ export function canProgressToStatus(
   let message: string;
   if (minRequired === 0) {
     const missing = totalRequired - attachedCount;
-    message = `Cannot advance to ${targetStatus}. Missing ${missing} required document type${missing > 1 ? "s" : ""}. Please attach all required documents.`;
+    message = `Cannot reconcile. Missing ${missing} required document type${missing > 1 ? "s" : ""}. Please attach all required documents.`;
   } else {
     const needed = Math.min(minRequired, totalRequired);
-    message = `Cannot advance to ${targetStatus}. Need at least ${needed} of ${totalRequired} required document type${totalRequired > 1 ? "s" : ""} attached (currently ${attachedCount}).`;
+    message = `Cannot reconcile. Need at least ${needed} of ${totalRequired} required document type${totalRequired > 1 ? "s" : ""} attached (currently ${attachedCount}).`;
   }
 
   return { canProgress: false, blockedReason: message };

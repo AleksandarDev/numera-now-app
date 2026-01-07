@@ -65,8 +65,8 @@ export function StatusProgression({
 
   // Check if document requirements block progression
   const getDocumentBlocker = (): string | null => {
-    // Only check when advancing to completed or reconciled
-    if (nextStatus !== "completed" && nextStatus !== "reconciled") {
+    // Only check when advancing to reconciled
+    if (nextStatus !== "reconciled") {
       return null;
     }
 
@@ -193,7 +193,7 @@ export function StatusProgression({
               <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-amber-900 mb-2">
-                  Cannot advance to {nextStatus}. Missing required documents:
+                  Cannot reconcile. Missing required documents:
                 </p>
                 <p className="text-sm text-amber-800">
                   {documentBlocker}

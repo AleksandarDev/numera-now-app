@@ -66,9 +66,9 @@ export const StatusColumn = ({
     const canAdvance = canAdvanceStatus(currentStatus);
 
     // Check if status progression is blocked by document requirements
-    const isDocumentBlockedForCompletion = (): { blocked: boolean; message: string } => {
-        // Only block when trying to progress to "completed" or "reconciled"
-        if (nextStatus !== "completed" && nextStatus !== "reconciled") {
+    const isDocumentBlockedForReconciliation = (): { blocked: boolean; message: string } => {
+        // Only block when trying to progress to "reconciled"
+        if (nextStatus !== "reconciled") {
             return { blocked: false, message: "" };
         }
 
@@ -87,7 +87,7 @@ export const StatusColumn = ({
             const missing = requiredDocumentTypes - attachedRequiredTypes;
             return {
                 blocked: true,
-                message: `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach all required documents before advancing.`,
+                message: `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach all required documents before reconciling.`,
             };
         } else {
             const needed = Math.min(minRequiredDocuments, requiredDocumentTypes);
@@ -98,7 +98,7 @@ export const StatusColumn = ({
         }
     };
 
-    const documentBlock = isDocumentBlockedForCompletion();
+    const documentBlock = isDocumentBlockedForReconciliation();
 
     const statusVariants = {
         draft: "secondary",

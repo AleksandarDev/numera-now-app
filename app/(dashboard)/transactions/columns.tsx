@@ -136,7 +136,7 @@ export const columns: ColumnDef<ResponseType>[] = [
     },
     enableSorting: false,
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
+      const amount = row.original.amount;
       return (
         <AccountColumn
           account={row.original.account}

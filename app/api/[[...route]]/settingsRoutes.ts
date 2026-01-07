@@ -31,6 +31,7 @@ const app = new Hono()
           doubleEntryMode: false,
           reconciliationConditions: [],
           minRequiredDocuments: 0,
+          requiredDocumentTypeIds: [],
         },
       });
     }
@@ -39,6 +40,9 @@ const app = new Hono()
       ...data,
       reconciliationConditions: JSON.parse(
         data.reconciliationConditions || '[]'
+      ),
+      requiredDocumentTypeIds: JSON.parse(
+        data.requiredDocumentTypeIds || '[]'
       ),
     };
 
@@ -53,6 +57,7 @@ const app = new Hono()
         doubleEntryMode: z.boolean().optional(),
         reconciliationConditions: reconciliationConditionsSchema.optional(),
         minRequiredDocuments: z.number().int().min(0).optional(),
+        requiredDocumentTypeIds: z.array(z.string()).optional(),
       })
     ),
     async (ctx) => {
@@ -67,6 +72,7 @@ const app = new Hono()
         doubleEntryMode?: boolean;
         reconciliationConditions?: string;
         minRequiredDocuments?: number;
+        requiredDocumentTypeIds?: string;
       } = {};
 
       if (values.doubleEntryMode !== undefined) {
@@ -79,6 +85,10 @@ const app = new Hono()
 
       if (values.minRequiredDocuments !== undefined) {
         updateValues.minRequiredDocuments = values.minRequiredDocuments;
+      }
+
+      if (values.requiredDocumentTypeIds !== undefined) {
+        updateValues.requiredDocumentTypeIds = JSON.stringify(values.requiredDocumentTypeIds);
       }
 
       const [existingSettings] = await db
@@ -104,6 +114,9 @@ const app = new Hono()
               ? JSON.stringify(values.reconciliationConditions)
               : '[]',
             minRequiredDocuments: values.minRequiredDocuments ?? 0,
+            requiredDocumentTypeIds: values.requiredDocumentTypeIds !== undefined
+              ? JSON.stringify(values.requiredDocumentTypeIds)
+              : '[]',
           })
           .returning();
       }
@@ -112,6 +125,9 @@ const app = new Hono()
         ...data,
         reconciliationConditions: JSON.parse(
           data.reconciliationConditions || '[]'
+        ),
+        requiredDocumentTypeIds: JSON.parse(
+          data.requiredDocumentTypeIds || '[]'
         ),
       };
 

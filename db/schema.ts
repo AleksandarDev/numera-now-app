@@ -78,9 +78,12 @@ export const settings = pgTable("settings", {
     // Reconciliation conditions - JSON array of conditions
     // e.g., ["hasReceipt", "isReviewed", "isApproved"]
     reconciliationConditions: text("reconciliation_conditions").notNull().default('["hasReceipt"]'),
-    // Minimum number of required document types that must be attached before completing a transaction
+    // Minimum number of required document types that must be attached before reconciling a transaction
     // 0 means all required document types must be attached, 1 or more means at least N
     minRequiredDocuments: integer("min_required_documents").notNull().default(0),
+    // List of document type IDs that are required for reconciliation
+    // JSON array of document type IDs, e.g., ["doctype1", "doctype2"]
+    requiredDocumentTypeIds: text("required_document_type_ids").notNull().default('[]'),
 }, (table) => [
     index('settings_userid_idx').on(table.userId)
 ]);
@@ -93,11 +96,9 @@ export const documentTypes = pgTable("document_types", {
     name: text("name").notNull(), // e.g., "Receipt", "Invoice", "Contract"
     description: text("description"),
     userId: text("user_id").notNull(),
-    isRequired: boolean("is_required").notNull().default(false), // Whether this type is required for reconciliation
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 }, (table) => [
     index('document_types_userid_idx').on(table.userId),
-    index('document_types_isrequired_idx').on(table.isRequired),
     index('document_types_name_idx').on(table.name),
 ]);
 
