@@ -23,7 +23,7 @@ export const useAdvanceStatus = () => {
   const mutation = useMutation<
     ResponseType,
     Error,
-    { 
+    {
       transactionId: string;
       currentStatus: TransactionStatus;
       // Transaction data needed for the PATCH request
@@ -38,24 +38,28 @@ export const useAdvanceStatus = () => {
         debitAccountId?: string | null;
         categoryId?: string | null;
         splitGroupId?: string | null;
-        splitType?: "parent" | "child" | null;
+        splitType?: string | "parent" | "child" | null;
       };
     }
   >({
     mutationFn: async ({ transactionId, currentStatus, transactionData }) => {
       const currentIndex = STATUS_ORDER.indexOf(currentStatus);
-      const nextStatus = currentIndex < STATUS_ORDER.length - 1 
-        ? STATUS_ORDER[currentIndex + 1] 
+      const nextStatus = currentIndex < STATUS_ORDER.length - 1
+        ? STATUS_ORDER[currentIndex + 1]
         : null;
 
       if (!nextStatus) {
         throw new Error("Transaction is already at final status");
       }
 
+      // Validate split type
+      const dataSplitType: "parent" | "child" | null =
+        transactionData.splitType ? (transactionData.splitType === "parent" ? "parent" : "child") : null;
+
       const response = await client.api.transactions[":id"]["$patch"]({
         json: {
           date: new Date(transactionData.date),
-          amount: typeof transactionData.amount === 'number' 
+          amount: typeof transactionData.amount === 'number'
             ? convertAmountToMiliunits(transactionData.amount)
             : transactionData.amount,
           payee: transactionData.payee ?? undefined,
@@ -67,7 +71,7 @@ export const useAdvanceStatus = () => {
           categoryId: transactionData.categoryId ?? undefined,
           status: nextStatus,
           splitGroupId: transactionData.splitGroupId ?? undefined,
-          splitType: transactionData.splitType ?? undefined,
+          splitType: dataSplitType ?? undefined,
         },
         param: { id: transactionId },
       });

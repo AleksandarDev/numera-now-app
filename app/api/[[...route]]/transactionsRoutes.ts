@@ -6,7 +6,6 @@ import { aliasedTable, and, desc, eq, gte, inArray, lte, or, sql } from "drizzle
 import { Hono } from "hono";
 import { z } from "zod";
 import { UTCDate } from "@date-fns/utc";
-
 import { db } from "@/db/drizzle";
 import {
   accounts,
@@ -15,7 +14,6 @@ import {
   customers,
   documents,
   documentTypes,
-  insertTransactionSchema,
   transactions,
   settings,
   transactionStatusHistory,
@@ -115,7 +113,7 @@ const app = new Hono()
 
       const creditAccounts = aliasedTable(accounts, "creditAccounts");
       const debitAccounts = aliasedTable(accounts, "debitAccounts");
-      
+
       // Get required document types for this user
       const requiredDocTypes = await db
         .select({ id: documentTypes.id })
@@ -185,7 +183,7 @@ const app = new Hono()
       // Get document counts and required documents status for each transaction
       const transactionIds = data.map(t => t.id);
       let documentCounts: Map<string, { total: number; requiredTypes: string[] }> = new Map();
-      
+
       if (transactionIds.length > 0) {
         const docsData = await db
           .select({
@@ -215,7 +213,7 @@ const app = new Hono()
       const dataWithDocs = data.map(transaction => ({
         ...transaction,
         documentCount: documentCounts.get(transaction.id)?.total ?? 0,
-        hasAllRequiredDocuments: requiredDocTypeIds.length === 0 || 
+        hasAllRequiredDocuments: requiredDocTypeIds.length === 0 ||
           (documentCounts.get(transaction.id)?.requiredTypes.length ?? 0) >= requiredDocTypeIds.length,
         requiredDocumentTypes: requiredDocTypeIds.length,
         attachedRequiredTypes: documentCounts.get(transaction.id)?.requiredTypes.length ?? 0,
@@ -315,13 +313,13 @@ const app = new Hono()
       // Validate double-entry mode requirements (skip for draft transactions)
       if (doubleEntryMode && values.status !== "draft") {
         if (!values.creditAccountId || !values.debitAccountId) {
-          return ctx.json({ 
-            error: "Double-entry mode is enabled. Both credit and debit accounts are required." 
+          return ctx.json({
+            error: "Double-entry mode is enabled. Both credit and debit accounts are required."
           }, 400);
         }
         if (values.accountId) {
-          return ctx.json({ 
-            error: "Double-entry mode is enabled. Use creditAccountId and debitAccountId instead of accountId." 
+          return ctx.json({
+            error: "Double-entry mode is enabled. Use creditAccountId and debitAccountId instead of accountId."
           }, 400);
         }
       }
@@ -346,8 +344,8 @@ const app = new Hono()
 
         const readOnlyAccounts = accountsToCheck.filter(acc => acc.isReadOnly);
         if (readOnlyAccounts.length > 0) {
-          return ctx.json({ 
-            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}` 
+          return ctx.json({
+            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}`
           }, 400);
         }
       }
@@ -389,14 +387,14 @@ const app = new Hono()
 
       const transactionId = createId();
       const status = values.status || "draft";
-      
+
       const [data] = await db
         .insert(transactions)
         .values({
           id: transactionId,
           ...values,
           status,
-          statusChangedAt: new Date(),
+          statusChangedAt: new UTCDate(),
           statusChangedBy: auth.userId,
         })
         .returning();
@@ -463,8 +461,8 @@ const app = new Hono()
 
         const readOnlyAccounts = accountsToCheck.filter(acc => acc.isReadOnly);
         if (readOnlyAccounts.length > 0) {
-          return ctx.json({ 
-            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}` 
+          return ctx.json({
+            error: `Cannot use read-only account(s) in transactions: ${readOnlyAccounts.map(a => a.name).join(', ')}`
           }, 400);
         }
       }
@@ -594,9 +592,9 @@ const app = new Hono()
             return path ? `${path}: ${issue.message}` : issue.message;
           });
           console.error('[PATCH /transactions/:id] Validation failed:', JSON.stringify(result.error.issues, null, 2));
-          return ctx.json({ 
+          return ctx.json({
             error: errors.join('; '),
-            validationErrors: result.error.issues 
+            validationErrors: result.error.issues
           }, 400);
         }
       }
@@ -728,7 +726,7 @@ const app = new Hono()
 
       // Track status changes
       if (values.status && oldTransaction && values.status !== oldTransaction.status) {
-        updateData.statusChangedAt = new Date();
+        updateData.statusChangedAt = new UTCDate();
         updateData.statusChangedBy = auth.userId;
       }
 
@@ -918,7 +916,7 @@ const app = new Hono()
 
       const creditAccounts = aliasedTable(accounts, "creditAccounts");
       const debitAccounts = aliasedTable(accounts, "debitAccounts");
-      
+
       const data = await db
         .select({
           id: transactions.id,
@@ -1013,8 +1011,8 @@ const app = new Hono()
           .reduce((sum, s) => sum + s.amount, 0);
 
         if (Math.abs(totalDebits - totalCredits) > 0.01) {
-          return ctx.json({ 
-            error: "In double-entry mode, total debits must equal total credits in split transactions." 
+          return ctx.json({
+            error: "In double-entry mode, total debits must equal total credits in split transactions."
           }, 400);
         }
       }
@@ -1064,8 +1062,8 @@ const app = new Hono()
       // Validate that all splits have either accountId or both creditAccountId and debitAccountId
       for (const split of splits) {
         if (!split.accountId && (!split.creditAccountId || !split.debitAccountId)) {
-          return ctx.json({ 
-            error: "Each split must have either accountId or both creditAccountId and debitAccountId." 
+          return ctx.json({
+            error: "Each split must have either accountId or both creditAccountId and debitAccountId."
           }, 400);
         }
       }
@@ -1083,7 +1081,7 @@ const app = new Hono()
           splitGroupId,
           splitType: "parent",
           status,
-          statusChangedAt: new Date(),
+          statusChangedAt: new UTCDate(),
           statusChangedBy: auth.userId,
         })
         .returning();
@@ -1109,7 +1107,7 @@ const app = new Hono()
             splitGroupId,
             splitType: "child" as const,
             status,
-            statusChangedAt: new Date(),
+            statusChangedAt: new UTCDate(),
             statusChangedBy: auth.userId,
           }))
         )
@@ -1120,7 +1118,7 @@ const app = new Hono()
         await recordStatusChange(child.id, null, status, auth.userId, "Split transaction child created");
       }
 
-      return ctx.json({ 
+      return ctx.json({
         data: {
           parent,
           children: childTransactions,

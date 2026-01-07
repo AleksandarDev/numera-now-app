@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --experimental-strip-types ./scripts/migrate.ts",
+    "db:push": "node --experimental-strip-types ./scripts/migrate.ts",
     "db:studio": "drizzle-kit studio"
   },
   "engines": {

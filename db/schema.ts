@@ -13,7 +13,9 @@ export const accounts = pgTable("accounts", {
     isReadOnly: boolean("is_read_only").notNull().default(false),
     accountType: text("account_type", { enum: ["credit", "debit", "neutral"] }).notNull().default("neutral"),
 }, (table) => [
-    index('accounts_userid_idx').on(table.userId)
+    index('accounts_userid_idx').on(table.userId),
+    index('accounts_isopen_idx').on(table.isOpen),
+    index('accounts_code_idx').on(table.code),
 ]);
 
 export const accountsRelations = relations(accounts, ({ many }) => ({
@@ -37,7 +39,9 @@ export const categories = pgTable("categories", {
     plaidId: text("plaid_id"),
     name: text("name").notNull(),
     userId: text("user_id").notNull(),
-});
+}, (table) => [
+    index('categories_userid_idx').on(table.userId),
+]);
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
     transactions: many(transactions),
@@ -59,6 +63,7 @@ export const customers = pgTable("customers", {
     index('customers_userid_idx').on(table.userId),
     index('customers_name_idx').on(table.name),
     index('customers_pin_idx').on(table.pin),
+    index('customers_iscomplete_idx').on(table.isComplete),
 ]);
 
 export const customersRelations = relations(customers, ({ many }) => ({
@@ -89,6 +94,8 @@ export const documentTypes = pgTable("document_types", {
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 }, (table) => [
     index('document_types_userid_idx').on(table.userId),
+    index('document_types_isrequired_idx').on(table.isRequired),
+    index('document_types_name_idx').on(table.name),
 ]);
 
 export const insertDocumentTypeSchema = createInsertSchema(documentTypes);
@@ -117,6 +124,7 @@ export const documents = pgTable("documents", {
     index('documents_transactionid_idx').on(table.transactionId),
     index('documents_documenttypeid_idx').on(table.documentTypeId),
     index('documents_uploadedby_idx').on(table.uploadedBy),
+    index('documents_isdeleted_idx').on(table.isDeleted),
 ]);
 
 export const documentRelations = relations(documents, ({ one }) => ({
@@ -170,6 +178,7 @@ export const transactions = pgTable("transactions", {
     index('transactions_date_idx').on(table.date),
     index('transactions_status_idx').on(table.status),
     index('transactions_splitgroupid_idx').on(table.splitGroupId),
+    index('transactions_splittype_idx').on(table.splitType),
 ]);
 
 // Update transactions relations to include documents

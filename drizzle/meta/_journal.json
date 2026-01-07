@@ -127,6 +127,13 @@
       "when": 1767703373930,
       "tag": "0017_flawless_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1767787736381,
+      "tag": "0018_free_shockwave",
+      "breakpoints": true
     }
   ]
 }

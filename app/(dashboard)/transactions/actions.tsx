@@ -39,7 +39,7 @@ type ActionsProps = {
     creditAccountId?: string | null;
     debitAccountId?: string | null;
     splitGroupId?: string | null;
-    splitType?: "parent" | "child" | null;
+    splitType?: string | null;
   };
 };
 
@@ -167,7 +167,5 @@ export const Actions = ({ transaction }: ActionsProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
     </>
-  );
-};
   );
 };

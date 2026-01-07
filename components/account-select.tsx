@@ -11,7 +11,6 @@ import {
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { AccountName } from "./account-name";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import clsx from "clsx";
 import { Input } from "./ui/input";
 import { Typography } from "@signalco/ui-primitives/Typography";
 
@@ -99,11 +98,11 @@ export const AccountSelect = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <SelectTrigger className={clsx("text-left", className)}>
+      <SelectTrigger className={className}>
         {selectedAccount ? (
           <AccountName account={selectedAccount?.name} accountCode={selectedAccount?.code} />
         ) : (
-          <span className="text-muted-foreground">{placeholder ?? "Select account"}</span>
+          <span>{placeholder ?? "Select account"}</span>
         )}
       </SelectTrigger>
       <SelectContent
