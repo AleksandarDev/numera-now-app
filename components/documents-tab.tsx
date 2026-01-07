@@ -81,8 +81,13 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
 
     setIsUploading(false);
 
-    // Invalidate documents query to refresh the list
-    queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+    if (successCount > 0) {
+      // Invalidate documents query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+      // Invalidate transaction queries to refresh validation status in transaction table
+      queryClient.invalidateQueries({ queryKey: ["transaction", { id: transactionId }] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    }
 
     if (successCount > 0 && errorCount === 0) {
       toast.success(`${successCount} document${successCount > 1 ? "s" : ""} uploaded successfully`);
@@ -175,6 +180,9 @@ export function DocumentList({ transactionId }: DocumentListProps) {
     try {
       await deleteDocument.mutateAsync(documentId);
       queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+      // Invalidate transaction queries to refresh validation status in transaction table
+      queryClient.invalidateQueries({ queryKey: ["transaction", { id: transactionId }] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Document deleted successfully");
     } catch (error) {
       console.error("Delete error:", error);
@@ -189,6 +197,9 @@ export function DocumentList({ transactionId }: DocumentListProps) {
         documentTypeId: newTypeId,
       });
       queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+      // Invalidate transaction queries to refresh validation status in transaction table
+      queryClient.invalidateQueries({ queryKey: ["transaction", { id: transactionId }] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Document type updated");
     } catch (error) {
       console.error("Update error:", error);
