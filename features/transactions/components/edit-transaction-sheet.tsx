@@ -150,24 +150,13 @@ export const EditTransactionSheet = () => {
 
   const reconciliationStatus = canReconcileQuery.data;
   const canReconcile = reconciliationStatus?.isReconciled ?? false;
-  const reconciliationBlockers = reconciliationStatus?.conditions
-    ?.filter((c: any) => !c.met)
-    .map((c: any) => {
-      const labels: Record<string, string> = {
-        hasReceipt: "Attach a receipt or document",
-        isReviewed: "Mark as reviewed",
-        isApproved: "Get approval",
-      };
-      return labels[c.name] || c.name;
-    }) ?? [];
+  const reconciliationBlockers: string[] = [];
 
-  // Calculate document requirement status
+  // Calculate document requirement status from settings
   const documents = documentsQuery.data ?? [];
-  const documentTypes = documentTypesQuery.data ?? [];
-  const requiredDocumentTypes = documentTypes.filter((dt) => dt.isRequired);
-  const requiredDocTypeIds = requiredDocumentTypes.map((dt) => dt.id);
+  const requiredDocTypeIds: string[] = settingsQuery.data?.requiredDocumentTypeIds ?? [];
   const minRequiredDocuments = settingsQuery.data?.minRequiredDocuments ?? 0;
-  
+
   // Count attached required document types
   const attachedRequiredTypeIds = new Set(
     documents
@@ -175,7 +164,7 @@ export const EditTransactionSheet = () => {
       .map((doc) => doc.documentTypeId)
   );
   const attachedRequiredTypesCount = attachedRequiredTypeIds.size;
-  
+
   // Check if document requirements are met
   const hasAllRequiredDocuments = useMemo(() => {
     if (requiredDocTypeIds.length === 0) return true;
