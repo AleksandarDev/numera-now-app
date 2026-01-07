@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Split, Trash, ArrowRight, Paperclip } from "lucide-react";
+import { Edit, MoreHorizontal, Trash, ArrowRight, Paperclip } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,6 @@ import {
 import { useDeleteTransaction } from "@/features/transactions/api/use-delete-transaction";
 import { useAdvanceStatus, getNextStatus, canAdvanceStatus } from "@/features/transactions/api/use-advance-status";
 import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
-import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 import { useConfirm } from "@/hooks/use-confirm";
 
 type TransactionStatus = "draft" | "pending" | "completed" | "reconciled";
@@ -47,7 +46,6 @@ export const Actions = ({ transaction }: ActionsProps) => {
   const deleteMutation = useDeleteTransaction(transaction.id);
   const advanceStatusMutation = useAdvanceStatus();
   const { onOpen } = useOpenTransaction();
-  const { onOpenSplit } = useNewTransaction();
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Are you sure?",
@@ -137,24 +135,6 @@ export const Actions = ({ transaction }: ActionsProps) => {
           >
             <Edit className="mr-2 size-4" />
             Edit
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={() => onOpenSplit({
-              doubleEntry: Boolean(transaction.creditAccountId && transaction.debitAccountId),
-              prefillSplit: {
-                date: transaction.date ? new Date(transaction.date) : undefined,
-                payeeCustomerId: transaction.payeeCustomerId ?? undefined,
-                payee: transaction.payee ?? undefined,
-                categoryId: transaction.categoryId ?? undefined,
-                notes: transaction.notes ?? undefined,
-                status: transaction.status ?? "pending",
-              },
-            })}
-            disabled={isPending}
-          >
-            <Split className="mr-2 size-4" />
-            Split this transaction
           </DropdownMenuItem>
 
           <DropdownMenuItem

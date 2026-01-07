@@ -14,6 +14,7 @@ import { AccountColumn } from "./account-column";
 import { CategoryColumn } from "./category-column";
 import { CustomerColumn } from "./customer-column";
 import { DocumentsColumn } from "./documents-column";
+import { StatusColumn } from "./status-column";
 
 export type ResponseType = InferResponseType<typeof client.api.transactions.$get, 200>["data"][0];
 
@@ -54,29 +55,25 @@ export const columns: ColumnDef<ResponseType>[] = [
       )
     },
     cell: ({ row }) => {
-      const status = row.getValue("status") as string;
-      const statusVariants = {
-        draft: "secondary",
-        pending: "outline",
-        completed: "outline",
-        reconciled: "outline",
-      } as const;
-      
-      const statusColors = {
-        draft: "text-muted-foreground",
-        pending: "text-yellow-600",
-        completed: "text-blue-600",
-        reconciled: "text-green-600",
-      } as const;
-      
       return (
-        <Badge
-          variant={statusVariants[status as keyof typeof statusVariants] || "outline"}
-          className={`${statusColors[status as keyof typeof statusColors] || ""}`}
-        >
-          {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending"}
-        </Badge>
-      )
+        <StatusColumn
+          transactionId={row.original.id}
+          status={row.original.status ?? "pending"}
+          transaction={{
+            date: row.original.date,
+            amount: row.original.amount,
+            payeeCustomerId: row.original.payeeCustomerId,
+            payee: row.original.payee,
+            categoryId: row.original.categoryId,
+            notes: row.original.notes,
+            accountId: row.original.accountId,
+            creditAccountId: row.original.creditAccountId,
+            debitAccountId: row.original.debitAccountId,
+            splitGroupId: row.original.splitGroupId,
+            splitType: row.original.splitType,
+          }}
+        />
+      );
     }
   },
   {
@@ -205,6 +202,7 @@ export const columns: ColumnDef<ResponseType>[] = [
           requiredDocumentTypes={row.original.requiredDocumentTypes ?? 0}
           attachedRequiredTypes={row.original.attachedRequiredTypes ?? 0}
           status={row.original.status ?? "pending"}
+          transactionId={row.original.id}
         />
       );
     }

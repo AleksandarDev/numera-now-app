@@ -80,20 +80,43 @@ export const useUploadDocumentToBlob = () => {
       sasUrl: string;
       file: File;
     }) => {
-      const response = await fetch(sasUrl, {
-        method: "PUT",
-        headers: {
-          "x-ms-blob-type": "BlockBlob",
-          "Content-Type": file.type,
-        },
-        body: file,
-      });
+      try {
+        const response = await fetch(sasUrl, {
+          method: "PUT",
+          headers: {
+            "x-ms-blob-type": "BlockBlob",
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: file,
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to upload file to blob storage");
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Blob upload failed:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+          });
+
+          if (response.status === 0 || response.status === 403) {
+            throw new Error(
+              "CORS error: Azure Storage CORS must be configured. Check Azure Portal > Storage Account > CORS settings."
+            );
+          }
+
+          throw new Error(`Failed to upload to Azure Storage (${response.status}): ${errorText}`);
+        }
+
+        return response;
+      } catch (error) {
+        // Handle network errors separately
+        if (error instanceof TypeError && error.message === "Failed to fetch") {
+          throw new Error(
+            "Network error uploading to Azure Storage. This is likely a CORS issue. Ensure CORS is enabled in your Azure Storage account settings with allowed origins, methods (PUT), and headers (x-ms-blob-type, Content-Type)."
+          );
+        }
+        throw error;
       }
-
-      return response;
     },
   });
 

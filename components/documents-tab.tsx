@@ -34,7 +34,7 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
   const [selectedTypeId, setSelectedTypeId] = useState<string>(defaultDocumentTypeId || "auto");
   const [isUploading, setIsUploading] = useState(false);
   const queryClient = useQueryClient();
-  
+
   const { data: documentTypes = [], isLoading: typesLoading } = useGetDocumentTypes();
   const uploadDocument = useUploadDocument();
 
@@ -43,7 +43,7 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
 
     // Get the first available document type if none selected or "auto" is selected
     const typeIdToUse = selectedTypeId === "auto" ? documentTypes[0]?.id : selectedTypeId;
-    
+
     if (!typeIdToUse) {
       toast.error("No document types available. Please create a document type first.");
       return;
@@ -52,6 +52,7 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
     setIsUploading(true);
     let successCount = 0;
     let errorCount = 0;
+    const errors: string[] = [];
 
     for (const file of files) {
       try {
@@ -64,6 +65,17 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
       } catch (error) {
         console.error("Upload error for file:", file.name, error);
         errorCount++;
+
+        // Extract more detailed error information
+        let errorMessage = `${file.name}: `;
+        if (error instanceof TypeError && error.message === "Failed to fetch") {
+          errorMessage += "Network error. This may be due to CORS configuration on Azure Storage.";
+        } else if (error instanceof Error) {
+          errorMessage += error.message;
+        } else {
+          errorMessage += "Unknown error";
+        }
+        errors.push(errorMessage);
       }
     }
 
@@ -76,8 +88,16 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
       toast.success(`${successCount} document${successCount > 1 ? "s" : ""} uploaded successfully`);
     } else if (successCount > 0 && errorCount > 0) {
       toast.warning(`${successCount} uploaded, ${errorCount} failed`);
+      // Show first error as example
+      if (errors.length > 0) {
+        toast.error(errors[0], { duration: 5000 });
+      }
     } else {
       toast.error("Failed to upload documents");
+      // Show first error as example
+      if (errors.length > 0) {
+        toast.error(errors[0], { duration: 5000 });
+      }
     }
 
     // Reset type selection after upload

@@ -151,10 +151,10 @@ function AccountsDataTable() {
                             </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex">
                             <Button
-                                variant="outline"
-                                size="sm"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => {
                                     // Expand all accounts that have children
                                     const accountsWithChildren = allAccounts
@@ -165,17 +165,15 @@ function AccountsDataTable() {
                                 }}
                                 disabled={isDisabled}
                             >
-                                <Expand className="h-4 w-4 mr-1" />
-                                Expand All
+                                <Expand className="size-4" />
                             </Button>
                             <Button
-                                variant="outline"
-                                size="sm"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setExpandedAccounts(new Set())}
                                 disabled={isDisabled}
                             >
-                                <Minimize2 className="h-4 w-4 mr-1" />
-                                Collapse All
+                                <Minimize2 className="size-4" />
                             </Button>
                         </div>
                     </div>            <div
@@ -357,9 +355,8 @@ export default function AccountsPage() {
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="outline" className="w-full lg:w-auto">
-                                    <MoreHorizontal className="mr-2 size-4" />
-                                    More
+                                <Button size="sm" variant="ghost" className="w-full lg:w-auto">
+                                    <MoreHorizontal className="size-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">

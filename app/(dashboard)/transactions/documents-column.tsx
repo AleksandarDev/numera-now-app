@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
 
 type DocumentsColumnProps = {
   documentCount: number;
@@ -16,6 +17,7 @@ type DocumentsColumnProps = {
   requiredDocumentTypes: number;
   attachedRequiredTypes: number;
   status: string;
+  transactionId: string;
 };
 
 export const DocumentsColumn = ({
@@ -24,28 +26,35 @@ export const DocumentsColumn = ({
   requiredDocumentTypes,
   attachedRequiredTypes,
   status,
+  transactionId,
 }: DocumentsColumnProps) => {
+  const { onOpen } = useOpenTransaction();
   const showWarning = status !== "draft" && requiredDocumentTypes > 0 && !hasAllRequiredDocuments;
   const isReconciled = status === "reconciled";
-  
+
   if (documentCount === 0 && !showWarning) {
     return (
       <span className="text-muted-foreground text-sm">—</span>
     );
   }
 
+  const handleClick = () => {
+    onOpen(transactionId, "documents");
+  };
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1.5">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={cn(
-                "gap-1 px-2 py-0.5 text-xs font-normal",
-                showWarning && "border-amber-300 bg-amber-50 text-amber-700",
-                isReconciled && hasAllRequiredDocuments && "border-green-300 bg-green-50 text-green-700"
+                "gap-1 px-2 py-0.5 text-xs font-normal cursor-pointer hover:bg-accent transition-colors",
+                showWarning && "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
+                isReconciled && hasAllRequiredDocuments && "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
               )}
+              onClick={handleClick}
             >
               <FileText className="h-3 w-3" />
               {documentCount}
@@ -65,7 +74,7 @@ export const DocumentsColumn = ({
                 "text-xs",
                 showWarning ? "text-amber-600" : "text-green-600"
               )}>
-                {showWarning 
+                {showWarning
                   ? `${attachedRequiredTypes}/${requiredDocumentTypes} required document types attached`
                   : `All ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached`
                 }
@@ -76,6 +85,9 @@ export const DocumentsColumn = ({
                 Attach all required documents before completing this transaction.
               </p>
             )}
+            <p className="text-xs text-muted-foreground mt-2">
+              Click to view/manage documents
+            </p>
           </div>
         </TooltipContent>
       </Tooltip>
