@@ -81,11 +81,13 @@ export function DocumentUpload({ transactionId, defaultDocumentTypeId }: Documen
 
     setIsUploading(false);
 
-    // Invalidate documents query to refresh the list
-    queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
-    // Invalidate transaction queries to refresh validation status in transaction table
-    queryClient.invalidateQueries({ queryKey: ["transaction", { id: transactionId }] });
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    if (successCount > 0) {
+      // Invalidate documents query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["documents", transactionId] });
+      // Invalidate transaction queries to refresh validation status in transaction table
+      queryClient.invalidateQueries({ queryKey: ["transaction", { id: transactionId }] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    }
 
     if (successCount > 0 && errorCount === 0) {
       toast.success(`${successCount} document${successCount > 1 ? "s" : ""} uploaded successfully`);
