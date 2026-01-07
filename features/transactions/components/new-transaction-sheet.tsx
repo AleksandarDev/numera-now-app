@@ -23,7 +23,7 @@ import { useNewTransaction } from "@/features/transactions/hooks/use-new-transac
 import { UnifiedTransactionForm, UnifiedTransactionFormValues } from "./unified-transaction-form";
 
 export const NewTransactionSheet = () => {
-    const { isOpen, onClose } = useNewTransaction();
+    const { isOpen, onClose, defaultValues } = useNewTransaction();
     const [activeTab, setActiveTab] = useState("details");
 
     const createMutation = useCreateUnifiedTransaction();
@@ -84,6 +84,7 @@ export const NewTransactionSheet = () => {
                                     onCreateCategory={onCreateCategory}
                                     onCreateCustomer={onCreateCustomer}
                                     onSubmit={onSubmit}
+                                    defaultValues={defaultValues}
                                 />
                             </TabsContent>
 

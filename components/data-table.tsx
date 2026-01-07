@@ -33,7 +33,7 @@ interface DataTableProps<TData, TValue> {
     data: TData[]
     filterKey?: string
     filterPlaceholder?: string
-    onDelete: (rows: Row<TData>[]) => void;
+    onDelete?: (rows: Row<TData>[]) => void;
     disabled?: boolean;
     loading?: boolean;
     getRowClassName?: (row: TData) => string;
@@ -90,7 +90,7 @@ export function DataTable<TData, TValue>({
                         }
                         className="max-w-sm" />
                 )}
-                {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                {onDelete && table.getFilteredSelectedRowModel().rows.length > 0 && (
                     <Button
                         disabled={disabled}
                         size="sm"
@@ -139,30 +139,30 @@ export function DataTable<TData, TValue>({
                             </TableRow>
                         ) : (
                             <>
-                                    {table.getRowModel().rows?.length ? (
-                                        table.getRowModel().rows.map((row) => (
-                                            <TableRow
-                                                key={row.id}
-                                                data-state={row.getIsSelected() && "selected"}
-                                                className={cn(
-                                                    getRowClassName ? getRowClassName(row.original) : undefined
-                                                )}
-                                            >
-                                                {row.getVisibleCells().map((cell) => (
-                                                    <TableCell key={cell.id}>
-                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                    </TableCell>
-                                                ))}
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={columns.length} className="h-24 text-center">
-                                                No results.
-                                            </TableCell>
+                                {table.getRowModel().rows?.length ? (
+                                    table.getRowModel().rows.map((row) => (
+                                        <TableRow
+                                            key={row.id}
+                                            data-state={row.getIsSelected() && "selected"}
+                                            className={cn(
+                                                getRowClassName ? getRowClassName(row.original) : undefined
+                                            )}
+                                        >
+                                            {row.getVisibleCells().map((cell) => (
+                                                <TableCell key={cell.id}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            ))}
                                         </TableRow>
-                                    )}
-                                </>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                                            No results.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </>
                         )}
                     </TableBody>
                 </Table>

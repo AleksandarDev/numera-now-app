@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash, ArrowRight, Paperclip } from "lucide-react";
+import { Edit, MoreHorizontal, Trash, ArrowRight, Paperclip, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,9 @@ import {
 import { useDeleteTransaction } from "@/features/transactions/api/use-delete-transaction";
 import { useAdvanceStatus, getNextStatus, canAdvanceStatus } from "@/features/transactions/api/use-advance-status";
 import { useOpenTransaction } from "@/features/transactions/hooks/use-open-transaction";
+import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 import { useConfirm } from "@/hooks/use-confirm";
+import { convertAmountFromMiliunits } from "@/lib/utils";
 
 type TransactionStatus = "draft" | "pending" | "completed" | "reconciled";
 
@@ -46,11 +48,32 @@ export const Actions = ({ transaction }: ActionsProps) => {
   const deleteMutation = useDeleteTransaction(transaction.id);
   const advanceStatusMutation = useAdvanceStatus();
   const { onOpen } = useOpenTransaction();
+  const { onOpen: onOpenNew } = useNewTransaction();
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Are you sure?",
     "You are about to delete this transaction."
   );
+
+  const handleDuplicate = () => {
+    const amount = transaction.amount ? convertAmountFromMiliunits(Math.abs(transaction.amount)).toString() : "0";
+
+    // Prepare default values for the new transaction form
+    const defaultValues = {
+      date: new Date(),
+      payeeCustomerId: transaction.payeeCustomerId ?? "",
+      notes: transaction.notes ?? "",
+      categoryId: transaction.categoryId ?? "",
+      creditEntries: transaction.creditAccountId
+        ? [{ accountId: transaction.creditAccountId, amount, categoryId: transaction.categoryId ?? "", notes: "" }]
+        : [{ accountId: "", amount: "", categoryId: "", notes: "" }],
+      debitEntries: transaction.debitAccountId
+        ? [{ accountId: transaction.debitAccountId, amount, categoryId: transaction.categoryId ?? "", notes: "" }]
+        : [{ accountId: "", amount: "", categoryId: "", notes: "" }],
+    };
+
+    onOpenNew(defaultValues);
+  };
 
   const handleDelete = async () => {
     const ok = await confirm();
@@ -135,6 +158,14 @@ export const Actions = ({ transaction }: ActionsProps) => {
           >
             <Edit className="mr-2 size-4" />
             Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            disabled={isPending}
+            onClick={handleDuplicate}
+          >
+            <Copy className="mr-2 size-4" />
+            Duplicate
           </DropdownMenuItem>
 
           <DropdownMenuItem
