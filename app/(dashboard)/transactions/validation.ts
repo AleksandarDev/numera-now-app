@@ -1,7 +1,7 @@
 import { ResponseType } from "./columns";
 
 export type ValidationIssue = {
-  type: "customer" | "account" | "account-closed";
+  type: "customer" | "account" | "account-closed" | "documents";
   message: string;
   severity: "warning" | "error";
 };
@@ -56,6 +56,37 @@ export function validateTransaction(transaction: ResponseType): ValidationIssue[
     });
   }
 
+  // Account type validation: Check if credit/debit accounts match their type requirements
+  if (transaction.creditAccount && transaction.creditAccountType === "debit") {
+    issues.push({
+      type: "account",
+      message: `Credit account "${transaction.creditAccount}" is debit-only and should not be used as a credit account.`,
+      severity: "error",
+    });
+  }
+
+  if (transaction.debitAccount && transaction.debitAccountType === "credit") {
+    issues.push({
+      type: "account",
+      message: `Debit account "${transaction.debitAccount}" is credit-only and should not be used as a debit account.`,
+      severity: "error",
+    });
+  }
+
+  // Document validation: Check if all required documents are attached
+  // Only warn if transaction is not in draft status and has required document types defined
+  if (transaction.status !== "draft" && 
+      transaction.requiredDocumentTypes !== undefined && 
+      transaction.requiredDocumentTypes > 0 && 
+      !transaction.hasAllRequiredDocuments) {
+    const missing = transaction.requiredDocumentTypes - (transaction.attachedRequiredTypes ?? 0);
+    issues.push({
+      type: "documents",
+      message: `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach required documents before completing this transaction.`,
+      severity: "warning",
+    });
+  }
+
   return issues;
 }
 
@@ -74,4 +105,16 @@ export function getValidationMessage(transaction: ResponseType): string {
   if (issues.length === 0) return "";
   
   return issues.map(issue => issue.message).join("\n");
+}
+
+/**
+ * Checks if a transaction has missing required documents.
+ */
+export function hasMissingRequiredDocuments(transaction: ResponseType): boolean {
+  return (
+    transaction.status !== "draft" &&
+    transaction.requiredDocumentTypes !== undefined &&
+    transaction.requiredDocumentTypes > 0 &&
+    !transaction.hasAllRequiredDocuments
+  );
 }

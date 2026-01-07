@@ -14,6 +14,7 @@ type AmountInputProps = {
   onChange: (value: string | undefined) => void;
   placeholder?: string;
   disabled?: boolean;
+  hideSign?: boolean;
 };
 
 export const AmountInput = ({
@@ -21,6 +22,7 @@ export const AmountInput = ({
   onChange,
   placeholder,
   disabled,
+  hideSign = false,
 }: AmountInputProps) => {
   const parsedValue = parseFloat(value);
   const isIncome = parsedValue > 0;
@@ -32,6 +34,22 @@ export const AmountInput = ({
     const reversedValue = parseFloat(value) * -1;
     onChange(reversedValue.toString());
   };
+
+  // Simple version without sign toggle (for double-entry bookkeeping)
+  if (hideSign) {
+    return (
+      <CurrencyInput
+        prefix="€"
+        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        placeholder={placeholder}
+        value={value}
+        decimalScale={2}
+        decimalsLimit={2}
+        onValueChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
 
   return (
     <div className="relative">
@@ -60,7 +78,7 @@ export const AmountInput = ({
       </TooltipProvider>
 
       <CurrencyInput
-        prefix="$"
+        prefix="€"
         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         placeholder={placeholder}
         value={value}

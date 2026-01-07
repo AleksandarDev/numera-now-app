@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, MoreHorizontal } from "lucide-react";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,11 +10,11 @@ import { transactions as transactionSchema } from "@/db/schema";
 import { useSelectAccount } from "@/features/accounts/hooks/use-select-account";
 import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-create-transactions";
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
-import { useGetSettings } from "@/features/settings/api/use-get-settings";
 
 import { TransactionsDataTable } from "./TransactionsDataTable";
 import { ImportButton } from "@/components/import-button";
 import { ImportCard } from "@/components/import/import-card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 enum VARIANTS {
   LIST = "LIST",
@@ -43,6 +43,8 @@ function TransactionsImportView({ importResults, onDone }: { importResults: type
     const data = values.map((value) => ({
       ...value,
       accountId,
+      status: (value.status ?? "pending") as "draft" | "pending" | "completed" | "reconciled",
+      splitType: value.splitType as "parent" | "child" | undefined,
     }));
 
     createTransactions.mutate(data, {
@@ -71,8 +73,6 @@ export default function TransactionsPage() {
   const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
 
   const newTransaction = useNewTransaction();
-  const settingsQuery = useGetSettings();
-  const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
 
   const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
     setImportResults(results);
@@ -80,14 +80,16 @@ export default function TransactionsPage() {
   };
 
   if (variant === VARIANTS.IMPORT) {
-    <Suspense>
-      <TransactionsImportView
-        importResults={importResults}
-        onDone={() => {
-          setImportResults(INITIAL_IMPORT_RESULTS);
-          setVariant(VARIANTS.LIST);
-        }} />
-    </Suspense>
+    return (
+      <Suspense>
+        <TransactionsImportView
+          importResults={importResults}
+          onDone={() => {
+            setImportResults(INITIAL_IMPORT_RESULTS);
+            setVariant(VARIANTS.LIST);
+          }} />
+      </Suspense>
+    );
   }
 
   return (
@@ -95,17 +97,26 @@ export default function TransactionsPage() {
       <Card>
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>
-            Transaction History
+            Transactions
           </CardTitle>
           <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
             <Button
               size="sm"
-              onClick={() => newTransaction.onOpen(doubleEntryMode)}
+              onClick={() => newTransaction.onOpen()}
               className="w-full lg:w-auto"
             >
               <Plus className="mr-2 size-4" /> Add new
             </Button>
-            <ImportButton onUpload={onUpload} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="w-full lg:w-auto">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <ImportButton onUpload={onUpload} variant="menu" />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
 

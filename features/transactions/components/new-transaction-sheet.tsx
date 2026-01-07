@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { z } from "zod";
+import { useState } from "react";
 
 import {
     Sheet,
@@ -8,26 +8,25 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import { insertTransactionSchema } from "@/db/schema";
-import { useCreateAccount } from "@/features/accounts/api/use-create-account";
-import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
 import { useCreateCategory } from "@/features/categories/api/use-create-category";
 import { useGetCategories } from "@/features/categories/api/use-get-categories";
 import { useCreateCustomer } from "@/features/customers/api/use-create-customer";
-import { useCreateTransaction } from "@/features/transactions/api/use-create-transaction";
+import { useCreateUnifiedTransaction } from "@/features/transactions/api/use-create-unified-transaction";
 import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
 
-import { TransactionForm } from "./transaction-form";
-import { TransactionDoubleEntryForm } from "./transaction-double-entry-form";
-
-const formSchema = insertTransactionSchema.omit({ id: true });
-
-type FormValues = z.infer<typeof formSchema>;
+import { UnifiedTransactionForm, UnifiedTransactionFormValues } from "./unified-transaction-form";
 
 export const NewTransactionSheet = () => {
-    const { doubleEntry, isOpen, onClose } = useNewTransaction();
+    const { isOpen, onClose } = useNewTransaction();
+    const [activeTab, setActiveTab] = useState("details");
 
-    const createMutation = useCreateTransaction();
+    const createMutation = useCreateUnifiedTransaction();
     const categoryMutation = useCreateCategory();
     const categoryQuery = useGetCategories();
     const categoryOptions = (categoryQuery.data ?? []).map((category) => ({
@@ -35,35 +34,18 @@ export const NewTransactionSheet = () => {
         value: category.id,
     }));
 
-    const accountMutation = useCreateAccount();
-    const accountsQuery = useGetAccounts();
-    const accountOptions = (accountsQuery.data ?? []).map((account) => ({
-        label: account.name,
-        value: account.id,
-    }));
-    const creditAccountOptions = (accountsQuery.data ?? []).map((account) => ({
-        label: account.name,
-        value: account.id,
-    }));
-    const debitAccountOptions = (accountsQuery.data ?? []).map((account) => ({
-        label: account.name,
-        value: account.id,
-    }));
-
     const customerMutation = useCreateCustomer();
 
-    const onCreateAccount = (name: string) => accountMutation.mutate({ name });
     const onCreateCategory = (name: string) => categoryMutation.mutate({ name });
     const onCreateCustomer = (name: string) => customerMutation.mutate({ name });
 
     const isPending =
         createMutation.isPending ||
         categoryMutation.isPending ||
-        accountMutation.isPending ||
         customerMutation.isPending;
-    const isLoading = categoryQuery.isLoading || accountsQuery.isLoading;
+    const isLoading = categoryQuery.isLoading;
 
-    const onSubmit = (values: FormValues) => {
+    const onSubmit = (values: UnifiedTransactionFormValues) => {
         createMutation.mutate(values, {
             onSuccess: () => {
                 onClose();
@@ -73,11 +55,10 @@ export const NewTransactionSheet = () => {
 
     return (
         <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-            <SheetContent className="flex flex-col h-full p-0">
+            <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg">
                 <div className="px-6 pt-6">
                     <SheetHeader>
                         <SheetTitle>New Transaction</SheetTitle>
-
                         <SheetDescription>Add a new transaction.</SheetDescription>
                     </SheetHeader>
                 </div>
@@ -87,43 +68,37 @@ export const NewTransactionSheet = () => {
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto px-6">
-                        {doubleEntry ? (
-                            <TransactionDoubleEntryForm
-                                onSubmit={onSubmit}
-                                disabled={isPending}
-                                categoryOptions={categoryOptions}
-                                onCreateCategory={onCreateCategory}
-                                creditAccountOptions={creditAccountOptions}
-                                debitAccountOptions={debitAccountOptions}
-                                onCreateAccount={onCreateAccount}
-                                onCreateCustomer={onCreateCustomer}
-                                defaultValues={{
-                                    date: new Date(),
-                                    amount: "",
-                                    notes: "",
-                                    creditAccountId: "",
-                                    debitAccountId: "",
-                                }}
-                            />
-                        ) : (
-                            <TransactionForm
-                                onSubmit={onSubmit}
-                                disabled={isPending}
-                                categoryOptions={categoryOptions}
-                                onCreateCategory={onCreateCategory}
-                                accountOptions={accountOptions}
-                                onCreateAccount={onCreateAccount}
-                                defaultValues={{
-                                    date: new Date(),
-                                    payeeCustomerId: "",
-                                    amount: "",
-                                    notes: "",
-                                    accountId: "",
-                                }}
-                            />
-                        )}
-                    </div>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                        <div className="px-6 mb-4">
+                            <TabsList className="w-full">
+                                <TabsTrigger value="details">Details</TabsTrigger>
+                                <TabsTrigger value="documents">Documents</TabsTrigger>
+                            </TabsList>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-6">
+                            <TabsContent value="details" className="mt-6">
+                                <UnifiedTransactionForm
+                                    disabled={isPending}
+                                    categoryOptions={categoryOptions}
+                                    onCreateCategory={onCreateCategory}
+                                    onCreateCustomer={onCreateCustomer}
+                                    onSubmit={onSubmit}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="documents" className="mt-6">
+                                <div className="rounded-md border border-dashed p-8 text-center">
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                        Documents can be attached after creating the transaction
+                                    </div>
+                                    <div className="mt-2 text-xs text-muted-foreground">
+                                        Save this transaction first, then edit it to upload documents
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
                 )}
             </SheetContent>
         </Sheet>

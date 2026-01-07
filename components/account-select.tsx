@@ -11,7 +11,6 @@ import {
 import { useGetAccounts } from "@/features/accounts/api/use-get-accounts";
 import { AccountName } from "./account-name";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import clsx from "clsx";
 import { Input } from "./ui/input";
 import { Typography } from "@signalco/ui-primitives/Typography";
 
@@ -23,10 +22,20 @@ export type AccountSelectProps = {
   placeholder?: string;
   disabled?: boolean;
   showClosed?: boolean;
+  excludeReadOnly?: boolean;
+  allowedTypes?: Array<"credit" | "debit" | "neutral">;
 };
 
 export const AccountSelect = ({
-  value, onChange, selectAll, className, placeholder, disabled, showClosed = false
+  value,
+  onChange,
+  selectAll,
+  className,
+  placeholder,
+  disabled,
+  showClosed = false,
+  excludeReadOnly = false,
+  allowedTypes,
 }: AccountSelectProps) => {
   const [open, setOpen] = useState(false);
   const [accountsFilter, setAccountsFilter] = useState("");
@@ -38,9 +47,28 @@ export const AccountSelect = ({
     showClosed
   });
 
-  const resolvedAccounts = useMemo(() => selectAll
-    ? [{ id: "all", name: "All accounts", code: "" }, ...(accounts ?? [])]
-    : accounts, [accounts, selectAll]);
+  const resolvedAccounts = useMemo(() => {
+    let result = accounts ?? [];
+
+    // Filter out read-only accounts if needed
+    if (excludeReadOnly) {
+      result = result.filter(account => !account.isReadOnly);
+    }
+
+    if (allowedTypes && allowedTypes.length > 0) {
+      result = result.filter((account) => {
+        const type = (account.accountType ?? "neutral") as "credit" | "debit" | "neutral";
+        return allowedTypes.includes(type);
+      });
+    }
+
+    // Add "all" option if needed
+    if (selectAll) {
+      result = [{ id: "all", name: "All accounts", code: "", isOpen: true, isReadOnly: false, accountType: "neutral" as const, hasInvalidConfig: false }, ...result];
+    }
+
+    return result;
+  }, [accounts, selectAll, excludeReadOnly, allowedTypes]);
   const filteredAccounts = useMemo(() => resolvedAccounts?.filter((account) => {
     const filter = accountsFilter.toLowerCase();
     return account.name.toLowerCase().includes(filter) || account.code?.toLowerCase().includes(filter);
@@ -56,8 +84,9 @@ export const AccountSelect = ({
     initialOffset: (filteredAccounts?.findIndex((account) => account.id === value) ?? 0) * 45,
   });
 
-  const selectedAccount = ((value?.length ?? 0 > 0) && resolvedAccounts)
-    ? resolvedAccounts.find((account) => account.id === value)
+  // Find selected account from all accounts (not just resolved/filtered ones) so we can display it even if invalid
+  const selectedAccount = ((value?.length ?? 0 > 0) && accounts)
+    ? accounts.find((account) => account.id === value)
     : null;
 
   const shouldRefocus = useRef(false);
@@ -69,11 +98,11 @@ export const AccountSelect = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <SelectTrigger className={clsx("text-left", className)}>
+      <SelectTrigger className={className}>
         {selectedAccount ? (
           <AccountName account={selectedAccount?.name} accountCode={selectedAccount?.code} />
         ) : (
-          <span className="text-muted-foreground">{placeholder ?? "Select account"}</span>
+          <span>{placeholder ?? "Select account"}</span>
         )}
       </SelectTrigger>
       <SelectContent

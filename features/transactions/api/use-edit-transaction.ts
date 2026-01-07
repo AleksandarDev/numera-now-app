@@ -21,7 +21,10 @@ export const useEditTransaction = (id?: string) => {
         param: { id },
       });
       if (!response.ok) {
-        throw new Error("Failed to edit transaction.");
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = (errorData as { error?: string })?.error || "Failed to edit transaction.";
+        console.error('[useEditTransaction] Error:', { status: response.status, errorData });
+        throw new Error(errorMessage);
       }
       return await response.json();
     },
@@ -31,8 +34,8 @@ export const useEditTransaction = (id?: string) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
     },
-    onError: () => {
-      toast.error("Failed to edit transaction.");
+    onError: (error) => {
+      toast.error(error.message || "Failed to edit transaction.");
     },
   });
 

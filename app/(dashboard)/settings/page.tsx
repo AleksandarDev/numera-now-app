@@ -14,6 +14,8 @@ import { useUpdateSettings } from "@/features/settings/api/use-update-settings";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+import { DocumentTypesSettingsCard } from "@/components/document-types-settings-card";
+import { ReconciliationSettingsCard } from "@/components/reconciliation-settings-card";
 function DoubleEntrySettings() {
     const settingsQuery = useGetSettings();
     const updateSettings = useUpdateSettings();
@@ -29,17 +31,17 @@ function DoubleEntrySettings() {
         <Card>
             <CardHeader>
                 <CardTitle>Accounting Mode</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground">
                     Configure how transactions are recorded in your system
                 </p>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-center justify-between space-x-2">
-                    <div className="flex-1 space-y-1">
+                    <div className="flex-1">
                         <Label htmlFor="double-entry-mode">
                             Double-Entry Bookkeeping
                         </Label>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                             When enabled, all transactions must have both credit and debit accounts
                         </p>
                     </div>
@@ -101,6 +103,8 @@ export default function SettingsPage() {
                 </div>
             )}>
                 <DoubleEntrySettings />
+                                <DocumentTypesSettingsCard />
+                                <ReconciliationSettingsCard />
                 <CategoriesSection />
             </Suspense>
         </div>
