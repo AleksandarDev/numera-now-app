@@ -11,6 +11,7 @@ type DocumentsResponseType = InferResponseType<
 export const useGetDocuments = (transactionId: string) => {
     const query = useQuery<DocumentsResponseType>({
         queryKey: ['documents', transactionId],
+        enabled: Boolean(transactionId),
         queryFn: async () => {
             const response = await client.api.documents.transaction[
                 ':transactionId'

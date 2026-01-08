@@ -83,6 +83,7 @@ function CategoriesSection() {
             <CardContent>
                 <DataTable
                     filterKey="name"
+                    paginationKey="settingsCategories"
                     columns={columns}
                     data={categories}
                     onDelete={(row) => {

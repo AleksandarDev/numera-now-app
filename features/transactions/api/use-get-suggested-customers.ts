@@ -11,26 +11,33 @@ type SuggestedCustomersOptions = {
 
 export const useGetSuggestedCustomers = (
     query?: string,
+    notes?: string,
     options?: SuggestedCustomersOptions,
 ) => {
     const normalizedQuery = query?.trim() ?? '';
+    const normalizedNotes = notes?.trim() ?? '';
 
     const suggestedQuery = useQuery({
-        enabled: normalizedQuery.length > 0 && (options?.enabled ?? true),
+        enabled:
+            (normalizedQuery.length > 0 || normalizedNotes.length > 0) &&
+            (options?.enabled ?? true),
         queryKey: [
             'transactions',
             'suggested-customers',
-            { query: normalizedQuery },
+            { query: normalizedQuery, notes: normalizedNotes },
         ],
         queryFn: async () => {
-            if (!normalizedQuery) {
-                throw new Error('Query is required');
+            if (!normalizedQuery && !normalizedNotes) {
+                throw new Error('Query or notes is required');
             }
 
             const response = await client.api.transactions[
                 'suggested-customers'
             ].$get({
-                query: { query: normalizedQuery },
+                query: {
+                    query: normalizedQuery || undefined,
+                    notes: normalizedNotes || undefined,
+                },
             });
 
             if (!response.ok) {

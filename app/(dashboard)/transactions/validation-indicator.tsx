@@ -25,6 +25,7 @@ export const ValidationIndicator = ({
                 <TooltipTrigger asChild>
                     <AlertTriangle
                         className={`size-4 min-w-4 ${colorClass} cursor-help`}
+                        data-row-interactive="true"
                     />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">

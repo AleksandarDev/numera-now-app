@@ -161,6 +161,7 @@ export const StatusColumn = ({
         return (
             <Badge
                 variant={statusVariants[currentStatus] || 'outline'}
+                data-row-interactive="true"
                 className={`${statusColors[currentStatus] || ''}`}
             >
                 {currentStatus
@@ -183,6 +184,7 @@ export const StatusColumn = ({
                                 variant={
                                     statusVariants[currentStatus] || 'outline'
                                 }
+                                data-row-interactive="true"
                                 className={cn(
                                     statusColors[currentStatus] || '',
                                     'cursor-pointer hover:opacity-80 transition-opacity',

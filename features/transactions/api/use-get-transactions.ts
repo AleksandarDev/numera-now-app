@@ -38,9 +38,16 @@ export const useGetTransactions = () => {
                 amount: convertAmountFromMiliunits(transaction.amount),
             }));
 
+            const sortedByDateDesc = [...converted].sort((a, b) => {
+                const aTime = new Date(a.date).getTime();
+                const bTime = new Date(b.date).getTime();
+                if (aTime !== bTime) return bTime - aTime;
+                return a.id.localeCompare(b.id);
+            });
+
             // Group splits so parent is followed by its children
             const childrenByGroup = new Map<string, typeof converted>();
-            for (const tx of converted) {
+            for (const tx of sortedByDateDesc) {
                 if (tx.splitGroupId && tx.splitType === 'child') {
                     const list = childrenByGroup.get(tx.splitGroupId) ?? [];
                     list.push(tx);
@@ -51,7 +58,7 @@ export const useGetTransactions = () => {
             const ordered: typeof converted = [];
             const seen = new Set<string>();
 
-            for (const tx of converted) {
+            for (const tx of sortedByDateDesc) {
                 if (seen.has(tx.id)) continue;
 
                 if (tx.splitGroupId && tx.splitType === 'parent') {
@@ -71,7 +78,7 @@ export const useGetTransactions = () => {
             }
 
             // Any orphan children (missing parent) get appended at end
-            for (const tx of converted) {
+            for (const tx of sortedByDateDesc) {
                 if (!seen.has(tx.id)) {
                     ordered.push(tx);
                     seen.add(tx.id);

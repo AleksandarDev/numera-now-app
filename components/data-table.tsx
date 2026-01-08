@@ -35,9 +35,14 @@ interface DataTableProps<TData, TValue> {
     filterKey?: string;
     filterPlaceholder?: string;
     onDelete?: (rows: Row<TData>[]) => void;
+    onRowClick?: (row: Row<TData>) => void;
     disabled?: boolean;
     loading?: boolean;
     getRowClassName?: (row: TData) => string;
+    autoPageSize?: boolean;
+    rowHeight?: number;
+    paginationKey?: string;
+    autoResetPageIndex?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -46,25 +51,37 @@ export function DataTable<TData, TValue>({
     filterKey,
     filterPlaceholder,
     onDelete,
+    onRowClick,
     disabled,
     loading,
     getRowClassName,
+    autoPageSize = false,
+    rowHeight = 44.5,
+    paginationKey,
+    autoResetPageIndex = true,
 }: DataTableProps<TData, TValue>) {
     const [ConfirmationDialog, confirm] = useConfirm(
         'Are you sure?',
         'You are about to perform a bulk delete.',
     );
 
+    const tableWrapperRef = React.useRef<HTMLDivElement>(null);
+    const tableHeaderRef = React.useRef<HTMLTableSectionElement>(null);
+    const paginationRef = React.useRef<HTMLDivElement>(null);
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] =
         React.useState<ColumnFiltersState>([]);
     const [rowSelection, setRowSelection] = React.useState({});
+    const pageQueryKey = paginationKey ? `${paginationKey}Page` : 'page';
+    const pageSizeQueryKey = paginationKey
+        ? `${paginationKey}PageSize`
+        : 'pageSize';
     const [pageParam, setPageParam] = useQueryState(
-        'page',
+        pageQueryKey,
         parseAsInteger.withDefault(1),
     );
     const [pageSizeParam, setPageSizeParam] = useQueryState(
-        'pageSize',
+        pageSizeQueryKey,
         parseAsInteger.withDefault(10),
     );
 
@@ -90,11 +107,56 @@ export function DataTable<TData, TValue>({
         [pagination, setPageParam, setPageSizeParam],
     );
 
+    const recalcPageSize = React.useCallback(() => {
+        if (!autoPageSize) return;
+        if (!tableWrapperRef.current || !tableHeaderRef.current) return;
+
+        const tableTop = tableWrapperRef.current.getBoundingClientRect().top;
+        const headerHeight =
+            tableHeaderRef.current.getBoundingClientRect().height;
+        const paginationHeight =
+            paginationRef.current?.getBoundingClientRect().height ?? 0;
+        const availableHeight = window.innerHeight - tableTop - paginationHeight;
+        const nextPageSize = Math.max(
+            1,
+            Math.floor((availableHeight - headerHeight) / rowHeight),
+        );
+
+        if (nextPageSize !== pageSizeParam) {
+            void setPageSizeParam(nextPageSize);
+        }
+    }, [autoPageSize, pageSizeParam, rowHeight, setPageSizeParam]);
+
+    React.useEffect(() => {
+        if (!autoPageSize) return;
+
+        recalcPageSize();
+        const handleResize = () => recalcPageSize();
+        window.addEventListener('resize', handleResize);
+
+        const observer = new ResizeObserver(() => recalcPageSize());
+        if (tableWrapperRef.current) {
+            observer.observe(tableWrapperRef.current);
+        }
+        if (tableHeaderRef.current) {
+            observer.observe(tableHeaderRef.current);
+        }
+        if (paginationRef.current) {
+            observer.observe(paginationRef.current);
+        }
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            observer.disconnect();
+        };
+    }, [autoPageSize, recalcPageSize]);
+
     const table = useReactTable({
         data,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        autoResetPageIndex,
         onSortingChange: setSorting,
         getSortedRowModel: getSortedRowModel(),
         onColumnFiltersChange: setColumnFilters,
@@ -108,6 +170,15 @@ export function DataTable<TData, TValue>({
             pagination,
         },
     });
+
+    const shouldIgnoreRowClick = (target: HTMLElement | null) => {
+        if (!target) return false;
+        return Boolean(
+            target.closest(
+                'button, a, input, select, textarea, label, [role="button"], [role="menuitem"], [data-row-interactive]',
+            ),
+        );
+    };
 
     return (
         <div>
@@ -156,9 +227,9 @@ export function DataTable<TData, TValue>({
                         </Button>
                     )}
             </div>
-            <div className="rounded-md border">
+            <div ref={tableWrapperRef} className="rounded-md border">
                 <Table>
-                    <TableHeader>
+                    <TableHeader ref={tableHeaderRef}>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
@@ -198,13 +269,21 @@ export function DataTable<TData, TValue>({
                                         getRowClassName
                                             ? getRowClassName(row.original)
                                             : undefined,
-                                        onDelete && 'cursor-pointer',
+                                        (onDelete || onRowClick) &&
+                                            'cursor-pointer',
                                     )}
-                                    onClick={
-                                        onDelete
-                                            ? () => row.toggleSelected()
-                                            : undefined
-                                    }
+                                    onClick={(event) => {
+                                        if (shouldIgnoreRowClick(
+                                            event.target as HTMLElement | null,
+                                        )) {
+                                            return;
+                                        }
+                                        if (onDelete) {
+                                            row.toggleSelected();
+                                            return;
+                                        }
+                                        onRowClick?.(row);
+                                    }}
                                 >
                                     {row.getVisibleCells().map((cell) => (
                                         <TableCell key={cell.id}>
@@ -229,7 +308,10 @@ export function DataTable<TData, TValue>({
                     </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-end space-x-2 py-4">
+            <div
+                ref={paginationRef}
+                className="flex items-center justify-end space-x-2 py-4"
+            >
                 <div className="flex-1 text-sm text-muted-foreground">
                     {table.getFilteredSelectedRowModel().rows.length} of{' '}
                     {table.getFilteredRowModel().rows.length} row(s) selected.

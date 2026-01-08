@@ -52,6 +52,7 @@ const CustomersPage = () => {
                 <CardContent>
                     <DataTable
                         filterKey="name"
+                        paginationKey="customers"
                         columns={columns}
                         data={customers}
                         onDelete={() => {}}

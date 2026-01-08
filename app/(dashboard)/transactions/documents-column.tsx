@@ -89,13 +89,17 @@ export const DocumentsColumn = ({
                                     hasAllRequiredDocuments &&
                                     'border-green-300 bg-green-50 text-green-700 hover:bg-green-100',
                             )}
+                            data-row-interactive="true"
                             onClick={handleClick}
                         >
                             <FileText className="h-3 w-3" />
                             {documentCount}
                         </Badge>
                         {showWarning && (
-                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            <AlertTriangle
+                                className="h-4 w-4 text-amber-500"
+                                data-row-interactive="true"
+                            />
                         )}
                     </div>
                 </TooltipTrigger>

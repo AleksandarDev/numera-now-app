@@ -37,7 +37,15 @@ export const NewTransactionSheet = () => {
     const onCreateCategory = (name: string) =>
         categoryMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>
-        customerMutation.mutate({ name });
+        customerMutation
+            .mutateAsync({ name })
+            .then((response) => {
+                if ('data' in response) {
+                    return response.data.id;
+                }
+
+                throw new Error(response.error ?? 'Failed to create customer.');
+            });
 
     const isPending =
         createMutation.isPending ||
