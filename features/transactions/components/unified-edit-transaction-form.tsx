@@ -1,12 +1,14 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronRight, Trash } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
-import { AmountInput } from "@/components/amount-input";
-import { DatePicker } from "@/components/date-picker";
-import { Select } from "@/components/select";
-import { Button } from "@/components/ui/button";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronRight, Lock, Trash } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { AccountSelect } from '@/components/account-select';
+import { AmountInput } from '@/components/amount-input';
+import { CustomerSelect } from '@/components/customer-select';
+import { DatePicker } from '@/components/date-picker';
+import { Select } from '@/components/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
     Form,
     FormControl,
@@ -14,25 +16,48 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { SheetFooter } from "@/components/ui/sheet";
-import { AccountSelect } from "@/components/account-select";
-import { CustomerSelect } from "@/components/customer-select";
+} from '@/components/ui/form';
+import { SheetFooter } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 
-// Form schema for editing (single entry)
-const formSchema = z.object({
+// Base form schema - accounts are optional, validation depends on status
+const baseFormSchema = z.object({
     date: z.date(),
-    creditAccountId: z.string().min(1, "Select credit account"),
-    debitAccountId: z.string().min(1, "Select debit account"),
-    amount: z.string().min(1, "Enter an amount"),
+    creditAccountId: z.string().optional(),
+    debitAccountId: z.string().optional(),
+    amount: z.string().min(1, 'Enter an amount'),
     payeeCustomerId: z.string().optional(),
     categoryId: z.string().optional(),
     notes: z.string().optional(),
-    status: z.enum(["draft", "pending", "completed", "reconciled"]).optional(),
+    status: z.enum(['draft', 'pending', 'completed', 'reconciled']).optional(),
 });
 
-export type UnifiedEditTransactionFormValues = z.infer<typeof formSchema>;
+// Create a schema that validates accounts based on current status
+const createFormSchema = (
+    currentStatus: 'draft' | 'pending' | 'completed' | 'reconciled',
+) => {
+    return baseFormSchema.superRefine((data, ctx) => {
+        // For non-draft transactions, require both accounts
+        if (currentStatus !== 'draft') {
+            if (!data.creditAccountId || data.creditAccountId === '') {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Select credit account',
+                    path: ['creditAccountId'],
+                });
+            }
+            if (!data.debitAccountId || data.debitAccountId === '') {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Select debit account',
+                    path: ['debitAccountId'],
+                });
+            }
+        }
+    });
+};
+
+export type UnifiedEditTransactionFormValues = z.infer<typeof baseFormSchema>;
 
 type Props = {
     id?: string;
@@ -43,6 +68,10 @@ type Props = {
     onSubmit: (values: UnifiedEditTransactionFormValues) => void;
     onDelete?: () => void;
     defaultValues?: Partial<UnifiedEditTransactionFormValues>;
+    /** Raw payee text (when customer is not matched) */
+    payeeText?: string | null;
+    /** Current transaction status - used for conditional validation and field disabling */
+    currentStatus?: 'draft' | 'pending' | 'completed' | 'reconciled';
 };
 
 export const UnifiedEditTransactionForm = ({
@@ -54,17 +83,22 @@ export const UnifiedEditTransactionForm = ({
     onSubmit,
     onDelete,
     defaultValues,
+    payeeText,
+    currentStatus = 'draft',
 }: Props) => {
+    // Create schema based on current status
+    const formSchema = createFormSchema(currentStatus);
+
     const form = useForm<UnifiedEditTransactionFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             date: new Date(),
-            creditAccountId: "",
-            debitAccountId: "",
-            amount: "0",
-            payeeCustomerId: "",
-            categoryId: "",
-            notes: "",
+            creditAccountId: '',
+            debitAccountId: '',
+            amount: '0',
+            payeeCustomerId: '',
+            categoryId: '',
+            notes: '',
             ...defaultValues,
         },
     });
@@ -73,7 +107,14 @@ export const UnifiedEditTransactionForm = ({
         onSubmit(values);
     };
 
-    const isPending = disabled;
+    // Check if transaction is reconciled (fully locked)
+    const isReconciled = currentStatus === 'reconciled';
+    // Check if transaction is completed (lock financial fields)
+    const isCompleted = currentStatus === 'completed';
+
+    // Determine which fields should be disabled
+    const isPending = disabled || isReconciled;
+    const isFinancialFieldsLocked = isCompleted || isReconciled;
 
     return (
         <Form {...form}>
@@ -81,14 +122,33 @@ export const UnifiedEditTransactionForm = ({
                 onSubmit={form.handleSubmit(handleSubmit)}
                 autoCapitalize="off"
                 autoComplete="off"
-                className="space-y-6 pt-4 pb-6"
+                className="space-y-6"
             >
+                {/* Status-based alerts */}
+                {isReconciled && (
+                    <Alert>
+                        <Lock className="size-4" />
+                        <AlertDescription>
+                            This transaction is reconciled and cannot be edited.
+                        </AlertDescription>
+                    </Alert>
+                )}
+                {isCompleted && !isReconciled && (
+                    <Alert>
+                        <Lock className="size-4" />
+                        <AlertDescription>
+                            This transaction is completed. Accounts, amount, date, and
+                            customer cannot be changed.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Date and Customer Section */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
                         name="date"
                         control={form.control}
-                        disabled={isPending}
+                        disabled={isFinancialFieldsLocked}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Date</FormLabel>
@@ -96,7 +156,7 @@ export const UnifiedEditTransactionForm = ({
                                     <DatePicker
                                         value={field.value}
                                         onChange={field.onChange}
-                                        disabled={isPending}
+                                        disabled={isFinancialFieldsLocked}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -107,19 +167,32 @@ export const UnifiedEditTransactionForm = ({
                     <FormField
                         name="payeeCustomerId"
                         control={form.control}
-                        disabled={isPending}
+                        disabled={isFinancialFieldsLocked}
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Customer</FormLabel>
+                                <FormLabel>
+                                    Customer{' '}
+                                    {isFinancialFieldsLocked && (
+                                        <Lock className="inline h-3 w-3 ml-1" />
+                                    )}
+                                </FormLabel>
                                 <FormControl>
                                     <CustomerSelect
                                         value={field.value}
                                         onChange={field.onChange}
-                                        disabled={isPending}
+                                        disabled={isFinancialFieldsLocked}
                                         placeholder="Select customer..."
                                         onCreate={onCreateCustomer}
                                     />
                                 </FormControl>
+                                {payeeText && !field.value && (
+                                    <p className="text-xs text-amber-600 mt-1">
+                                        Imported payee:{' '}
+                                        <span className="font-medium">
+                                            {payeeText}
+                                        </span>
+                                    </p>
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -129,72 +202,74 @@ export const UnifiedEditTransactionForm = ({
                 <hr />
 
                 {/* Transaction Entry Section - Credit | Amount | Debit */}
-                <div className="space-y-4">
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-start">
-                        {/* Credit Account */}
-                        <FormField
-                            control={form.control}
-                            name="creditAccountId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <AccountSelect
-                                            value={field.value}
-                                            onChange={field.onChange}
-                                            disabled={isPending}
-                                            placeholder="Credit account..."
-                                            excludeReadOnly
-                                            allowedTypes={["credit", "neutral"]}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                <div className="grid grid-cols-[2fr_16px_minmax(min-content,1fr)_16px_2fr] items-center gap-1">
+                    {/* Credit Account */}
+                    <FormField
+                        control={form.control}
+                        name="creditAccountId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <AccountSelect
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                        disabled={isFinancialFieldsLocked}
+                                        placeholder="Credit account..."
+                                        excludeReadOnly
+                                        allowedTypes={['credit', 'neutral']}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                        {/* Amount Column */}
-                        <div className="w-[140px]">
-                            <FormField
-                                control={form.control}
-                                name="amount"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <AmountInput
-                                                {...field}
-                                                value={field.value || ""}
-                                                disabled={isPending}
-                                                placeholder="0.00"
-                                                hideSign
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
+                    <ChevronRight className="size-4 opacity-60" />
 
-                        {/* Debit Account */}
-                        <FormField
-                            control={form.control}
-                            name="debitAccountId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <AccountSelect
-                                            value={field.value}
-                                            onChange={field.onChange}
-                                            disabled={isPending}
-                                            placeholder="Debit account..."
-                                            excludeReadOnly
-                                            allowedTypes={["debit", "neutral"]}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
+                    {/* Amount Column */}
+                    <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <AmountInput
+                                        {...field}
+                                        value={field.value || ''}
+                                        disabled={
+                                            isFinancialFieldsLocked
+                                        }
+                                        placeholder="0.00"
+                                        hideSign
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <ChevronRight className="size-4 opacity-60" />
+
+                    {/* Debit Account */}
+                    <FormField
+                        control={form.control}
+                        name="debitAccountId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <AccountSelect
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                        disabled={isFinancialFieldsLocked}
+                                        placeholder="Debit account..."
+                                        excludeReadOnly
+                                        allowedTypes={['debit', 'neutral']}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
 
                 <hr />
@@ -233,7 +308,7 @@ export const UnifiedEditTransactionForm = ({
                                 <FormControl>
                                     <Textarea
                                         {...field}
-                                        value={field.value || ""}
+                                        value={field.value || ''}
                                         disabled={isPending}
                                         placeholder="Optional notes..."
                                     />

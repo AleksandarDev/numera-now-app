@@ -20,6 +20,11 @@ export const useBulkDeleteTransactions = () => {
       const response = await client.api.transactions["bulk-delete"]["$post"]({
         json,
       });
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = "error" in errorData ? errorData.error : "Failed to delete transaction(s).";
+        throw new Error(errorMessage);
+      }
       return await response.json();
     },
     onSuccess: () => {
@@ -27,8 +32,8 @@ export const useBulkDeleteTransactions = () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
     },
-    onError: () => {
-      toast.error("Failed to delete transaction(s).");
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete transaction(s).");
     },
   });
 

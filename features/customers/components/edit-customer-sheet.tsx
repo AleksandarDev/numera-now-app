@@ -8,12 +8,14 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useConfirm } from "@/hooks/use-confirm";
 import { insertCustomerSchema } from "@/db/schema";
 import { useDeleteCustomer } from "@/features/customers/api/use-delete-customer";
 import { useEditCustomer } from "@/features/customers/api/use-edit-customer";
 import { useGetCustomer } from "@/features/customers/api/use-get-customer";
 import { CustomerForm } from "@/features/customers/components/customer-form";
+import { CustomerIbansManager } from "@/features/customers/components/customer-ibans-manager";
 import { useOpenCustomer } from "@/features/customers/hooks/use-open-customer";
 
 const formSchema = insertCustomerSchema.omit({
@@ -96,15 +98,37 @@ export const EditCustomerSheet = () => {
                             <Loader2 className="size-4 text-muted-foreground animate-spin" />
                         </div>
                     ) : (
-                        <div className="flex-1 overflow-y-auto px-6">
-                            <CustomerForm
-                                id={id}
-                                defaultValues={defaultValues}
-                                onSubmit={onSubmit}
-                                onDelete={onDelete}
-                                disabled={isPending}
-                            />
-                        </div>
+                        <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+                            <div className="px-6 mb-4">
+                                <TabsList className="w-full">
+                                    <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
+                                    <TabsTrigger value="ibans" className="flex-1">Bank Accounts</TabsTrigger>
+                                </TabsList>
+                            </div>
+                            <TabsContent value="details" className="flex-1 overflow-y-auto px-6 mt-0">
+                                <CustomerForm
+                                    id={id}
+                                    defaultValues={defaultValues}
+                                    onSubmit={onSubmit}
+                                    onDelete={onDelete}
+                                    disabled={isPending}
+                                />
+                            </TabsContent>
+                            <TabsContent value="ibans" className="flex-1 overflow-y-auto px-6 mt-0">
+                                {id ? (
+                                    <CustomerIbansManager
+                                        customerId={id}
+                                        disabled={isPending}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center py-12">
+                                        <p className="text-sm text-muted-foreground">
+                                            Save the customer first to manage bank accounts.
+                                        </p>
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </Tabs>
                     )}
                 </SheetContent>
             </Sheet>

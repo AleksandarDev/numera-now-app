@@ -13,6 +13,7 @@ type ImportTableProps = {
   body: string[][];
   selectedColumns: Record<string, string | null>;
   onTableHeadSelectChange: (columnIndex: number, value: string | null) => void;
+  options: string[];
 };
 
 export const ImportTable = ({
@@ -20,6 +21,7 @@ export const ImportTable = ({
   body,
   onTableHeadSelectChange,
   selectedColumns,
+  options,
 }: ImportTableProps) => {
   return (
     <div className="overflow-hidden rounded-md border">
@@ -29,7 +31,7 @@ export const ImportTable = ({
             {headers.map((_header, index) => (
               <TableHead key={index}>
                 <TableHeadSelect
-                  options={["name", "code"]}
+                  options={options}
                   columnIndex={index}
                   selectedColumns={selectedColumns}
                   onChange={onTableHeadSelectChange}

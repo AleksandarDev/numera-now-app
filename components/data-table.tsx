@@ -145,8 +145,10 @@ export function DataTable<TData, TValue>({
                                             key={row.id}
                                             data-state={row.getIsSelected() && "selected"}
                                             className={cn(
-                                                getRowClassName ? getRowClassName(row.original) : undefined
+                                                getRowClassName ? getRowClassName(row.original) : undefined,
+                                                onDelete && "cursor-pointer"
                                             )}
+                                            onClick={onDelete ? () => row.toggleSelected() : undefined}
                                         >
                                             {row.getVisibleCells().map((cell) => (
                                                 <TableCell key={cell.id}>

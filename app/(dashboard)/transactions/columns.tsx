@@ -4,6 +4,7 @@ import { InferResponseType } from "hono";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { client } from "@/lib/hono";
 import { Actions } from "./actions";
 import { format } from "date-fns";
@@ -15,6 +16,30 @@ import { DocumentsColumn } from "./documents-column";
 import { StatusColumn } from "./status-column";
 
 export type ResponseType = InferResponseType<typeof client.api.transactions.$get, 200>["data"][0];
+
+// Separate select column for conditional rendering
+export const selectColumn: ColumnDef<ResponseType> = {
+  id: "select",
+  header: ({ table }) => (
+    <Checkbox
+      checked={
+        table.getIsAllPageRowsSelected() ||
+        (table.getIsSomePageRowsSelected() && "indeterminate")
+      }
+      onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      aria-label="Select all"
+    />
+  ),
+  cell: ({ row }) => (
+    <Checkbox
+      checked={row.getIsSelected()}
+      onCheckedChange={(value) => row.toggleSelected(!!value)}
+      aria-label="Select row"
+    />
+  ),
+  enableSorting: false,
+  enableHiding: false,
+};
 
 export const columns: ColumnDef<ResponseType>[] = [
   {
@@ -73,7 +98,7 @@ export const columns: ColumnDef<ResponseType>[] = [
       const date = row.getValue("date") as Date;
       return (
         <span>
-          {format(date, "MMMM dd, yyyy")}
+          {format(date, "dd.MM.yyyy")}
         </span>
       )
     }
