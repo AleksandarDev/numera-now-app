@@ -73,15 +73,13 @@ export const EditTransactionSheet = () => {
     const onCreateCategory = (name: string) =>
         categoryMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>
-        customerMutation
-            .mutateAsync({ name })
-            .then((response) => {
-                if ('data' in response) {
-                    return response.data.id;
-                }
+        customerMutation.mutateAsync({ name }).then((response) => {
+            if ('data' in response) {
+                return response.data.id;
+            }
 
-                throw new Error(response.error ?? 'Failed to create customer.');
-            });
+            throw new Error(response.error ?? 'Failed to create customer.');
+        });
 
     const isPending =
         editMutation.isPending ||
@@ -94,6 +92,21 @@ export const EditTransactionSheet = () => {
     const isLoading = transactionQuery.isLoading || categoryQuery.isLoading;
 
     const onSubmit = (values: UnifiedEditTransactionFormValues) => {
+        const autoDraftToPending =
+            settingsQuery.data?.autoDraftToPending ?? false;
+        const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
+
+        const existingPayee = transactionQuery.data?.payee ?? null;
+        const nextPayeeCustomerId = values.payeeCustomerId || null;
+        const nextPayee = nextPayeeCustomerId ? null : existingPayee;
+
+        const shouldAutoPromoteDraftToPending =
+            autoDraftToPending &&
+            currentStatus === 'draft' &&
+            !!(nextPayee || nextPayeeCustomerId) &&
+            (!doubleEntryMode ||
+                (!!values.creditAccountId && !!values.debitAccountId));
+
         // Convert to FormValues format expected by the API
         const formValues: FormValues = {
             date: values.date,
@@ -101,9 +114,10 @@ export const EditTransactionSheet = () => {
             debitAccountId: values.debitAccountId,
             categoryId: values.categoryId || null,
             payeeCustomerId: values.payeeCustomerId || null,
+            payee: nextPayee,
             amount: convertAmountToMiliunits(parseFloat(values.amount)),
             notes: values.notes || null,
-            status: values.status || currentStatus,
+            status: shouldAutoPromoteDraftToPending ? 'pending' : currentStatus,
         };
 
         editMutation.mutate(formValues);
@@ -278,6 +292,10 @@ export const EditTransactionSheet = () => {
                                         currentStatus={currentStatus}
                                         onAdvance={onAdvanceStatus}
                                         disabled={isPending}
+                                        autoDraftToPendingEnabled={
+                                            settingsQuery.data
+                                                ?.autoDraftToPending ?? false
+                                        }
                                         canReconcile={canReconcile}
                                         reconciliationBlockers={
                                             reconciliationBlockers
@@ -366,6 +384,22 @@ export const EditTransactionSheet = () => {
                                             <div className="text-sm font-semibold">
                                                 Status history
                                             </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                Created:{' '}
+                                                {statusHistoryQuery.data[
+                                                    statusHistoryQuery.data
+                                                        .length - 1
+                                                ]?.changedAt
+                                                    ? new Date(
+                                                          statusHistoryQuery
+                                                              .data[
+                                                              statusHistoryQuery
+                                                                  .data.length -
+                                                                  1
+                                                          ].changedAt,
+                                                      ).toLocaleString()
+                                                    : ''}
+                                            </div>
                                             <div className="space-y-2 text-sm text-muted-foreground">
                                                 {statusHistoryQuery.data.map(
                                                     (entry, idx) => (
@@ -386,6 +420,16 @@ export const EditTransactionSheet = () => {
                                                                                 entry.toStatus
                                                                             }
                                                                         </div>
+                                                                        {!!entry.notes &&
+                                                                            entry.notes
+                                                                                .toLowerCase()
+                                                                                .includes(
+                                                                                    'automatic',
+                                                                                ) && (
+                                                                                <div className="text-xs text-muted-foreground">
+                                                                                    Automatic
+                                                                                </div>
+                                                                            )}
                                                                         <div className="text-xs">
                                                                             {entry.changedAt
                                                                                 ? new Date(

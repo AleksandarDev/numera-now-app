@@ -63,6 +63,49 @@ function DoubleEntrySettings() {
     );
 }
 
+function TransactionStatusAutomationSettings() {
+    const settingsQuery = useGetSettings();
+    const updateSettings = useUpdateSettings();
+
+    const isLoading = settingsQuery.isLoading;
+    const autoDraftToPending = settingsQuery.data?.autoDraftToPending ?? false;
+
+    const handleToggle = (checked: boolean) => {
+        updateSettings.mutate({ autoDraftToPending: checked });
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Transaction Status</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Configure automatic status changes
+                </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between space-x-2">
+                    <div className="flex-1">
+                        <Label htmlFor="auto-draft-to-pending">
+                            Auto Draft &gt; Pending
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            When enabled, a draft transaction will automatically
+                            move to Pending once required fields are filled and
+                            validation passes.
+                        </p>
+                    </div>
+                    <Switch
+                        id="auto-draft-to-pending"
+                        checked={autoDraftToPending}
+                        onCheckedChange={handleToggle}
+                        disabled={isLoading || updateSettings.isPending}
+                    />
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 function CategoriesSection() {
     const newCategory = useNewCategory();
     const deleteCategories = useBulkDeleteCategories();
@@ -108,6 +151,7 @@ export default function SettingsPage() {
                 }
             >
                 <DoubleEntrySettings />
+                <TransactionStatusAutomationSettings />
                 <DocumentTypesSettingsCard />
                 <ReconciliationSettingsCard />
                 <CategoriesSection />

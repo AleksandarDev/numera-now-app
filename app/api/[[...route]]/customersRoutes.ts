@@ -206,6 +206,7 @@ const app = new Hono()
     // Add IBAN to customer
     .post(
         '/:id/ibans',
+        clerkMiddleware(),
         zValidator(
             'param',
             z.object({
@@ -219,7 +220,6 @@ const app = new Hono()
                 bankName: z.string().optional(),
             }),
         ),
-        clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
             const { id } = ctx.req.valid('param');

@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferResponseType } from 'hono';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, MoreHorizontal, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -107,12 +107,13 @@ export const columns: ColumnDef<ResponseType>[] = [
         cell: ({ row }) => {
             return (
                 <div className="flex items-center gap-2">
-                    <span>{row.getValue('name')}</span>
                     {!row.original.isComplete && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="destructive" className="text-xs">
+                            <TriangleAlert className="size-4 mr-2" />
                             Incomplete
                         </Badge>
                     )}
+                    <span>{row.getValue('name')}</span>
                 </div>
             );
         },

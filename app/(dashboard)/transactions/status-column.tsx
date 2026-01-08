@@ -15,6 +15,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import {
     canAdvanceStatus,
     getNextStatus,
@@ -64,10 +65,17 @@ export const StatusColumn = ({
     minRequiredDocuments = 0,
 }: StatusColumnProps) => {
     const advanceStatusMutation = useAdvanceStatus();
+    const settingsQuery = useGetSettings();
 
     const currentStatus = (status ?? 'pending') as TransactionStatus;
     const nextStatus = getNextStatus(currentStatus);
     const canAdvance = canAdvanceStatus(currentStatus);
+
+    const autoDraftToPending = settingsQuery.data?.autoDraftToPending ?? false;
+    const isAutoDraftToPendingBlocked =
+        autoDraftToPending &&
+        currentStatus === 'draft' &&
+        nextStatus === 'pending';
 
     // Check if status progression is blocked by document requirements
     const isDocumentBlockedForReconciliation = (): {
@@ -157,18 +165,33 @@ export const StatusColumn = ({
     const isPending = advanceStatusMutation.isPending;
 
     // If cannot advance, just show the badge without dropdown
-    if (!canAdvance || !nextStatus) {
+    if (!canAdvance || !nextStatus || isAutoDraftToPendingBlocked) {
         return (
-            <Badge
-                variant={statusVariants[currentStatus] || 'outline'}
-                data-row-interactive="true"
-                className={`${statusColors[currentStatus] || ''}`}
-            >
-                {currentStatus
-                    ? currentStatus.charAt(0).toUpperCase() +
-                      currentStatus.slice(1)
-                    : 'Pending'}
-            </Badge>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Badge
+                            variant={statusVariants[currentStatus] || 'outline'}
+                            data-row-interactive="true"
+                            className={`${statusColors[currentStatus] || ''}`}
+                        >
+                            {currentStatus
+                                ? currentStatus.charAt(0).toUpperCase() +
+                                  currentStatus.slice(1)
+                                : 'Pending'}
+                        </Badge>
+                    </TooltipTrigger>
+                    {isAutoDraftToPendingBlocked && (
+                        <TooltipContent className="max-w-xs">
+                            <p>
+                                Automatic status is enabled for Draft  Pending.
+                                Fill required fields and save to move to
+                                Pending.
+                            </p>
+                        </TooltipContent>
+                    )}
+                </Tooltip>
+            </TooltipProvider>
         );
     }
 

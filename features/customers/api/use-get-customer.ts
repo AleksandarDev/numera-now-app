@@ -2,9 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import { client } from '@/lib/hono';
 
-export const useGetCustomer = (id?: string) => {
+type GetCustomerOptions = {
+    enabled?: boolean;
+};
+
+export const useGetCustomer = (id?: string, options?: GetCustomerOptions) => {
     const query = useQuery({
-        enabled: !!id,
+        enabled: !!id && (options?.enabled ?? true),
         queryKey: ['customer', { id }],
         queryFn: async () => {
             const response = await client.api.customers[':id'].$get({

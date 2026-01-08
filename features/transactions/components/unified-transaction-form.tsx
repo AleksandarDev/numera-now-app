@@ -1,8 +1,7 @@
-import { zodResolver } from '@hookform/resolvers/zod';
+'use client';
+
 import { ChevronRight, Plus, Trash, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { z } from 'zod';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
 import { AmountInput } from '@/components/amount-input';
 import { CustomerSelect } from '@/components/customer-select';
@@ -13,14 +12,7 @@ import {
 } from '@/components/quick-assign-suggestions';
 import { Select } from '@/components/select';
 import { Button } from '@/components/ui/button';
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
@@ -29,68 +21,50 @@ import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-s
 import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
 import { cn } from '@/lib/utils';
 
-// Schema for individual credit/debit entries
-const creditEntrySchema = z.object({
-    accountId: z.string().min(1, 'Select an account'),
-    amount: z.string().min(1, 'Enter an amount'),
-    categoryId: z.string().optional(),
-    notes: z.string().optional(),
-});
+// Types for entries
+type CreditEntry = {
+    id: string;
+    accountId: string;
+    amount: string;
+    categoryId?: string;
+    notes?: string;
+};
 
-const debitEntrySchema = z.object({
-    accountId: z.string().min(1, 'Select an account'),
-    amount: z.string().min(1, 'Enter an amount'),
-    categoryId: z.string().optional(),
-    notes: z.string().optional(),
-});
+type DebitEntry = {
+    id: string;
+    accountId: string;
+    amount: string;
+    categoryId?: string;
+    notes?: string;
+};
 
-// Main form schema
-const formSchema = z
-    .object({
-        date: z.date(),
-        payeeCustomerId: z.string().optional(),
-        notes: z.string().optional(),
-        categoryId: z.string().optional(),
-        creditEntries: z
-            .array(creditEntrySchema)
-            .min(1, 'Add at least one credit entry'),
-        debitEntries: z
-            .array(debitEntrySchema)
-            .min(1, 'Add at least one debit entry'),
-    })
-    .superRefine((data, ctx) => {
-        const creditTotal = data.creditEntries.reduce(
-            (sum, entry) => sum + parseFloat(entry.amount || '0'),
-            0,
-        );
-        const debitTotal = data.debitEntries.reduce(
-            (sum, entry) => sum + parseFloat(entry.amount || '0'),
-            0,
-        );
-
-        if (Math.abs(creditTotal - debitTotal) > 0.001) {
-            ctx.addIssue({
-                code: 'custom',
-                message: `Credits (${creditTotal.toFixed(2)}) must equal debits (${debitTotal.toFixed(2)})`,
-                path: ['creditEntries'],
-            });
-        }
-    });
-
-export type UnifiedTransactionFormValues = z.infer<typeof formSchema>;
+export type UnifiedTransactionFormValues = {
+    date: Date;
+    payeeCustomerId?: string;
+    notes?: string;
+    categoryId?: string;
+    creditEntries: Array<Omit<CreditEntry, 'id'>>;
+    debitEntries: Array<Omit<DebitEntry, 'id'>>;
+};
 
 type Props = {
     id?: string;
     disabled?: boolean;
     categoryOptions: { label: string; value: string }[];
     onCreateCategory: (name: string) => void;
-    onCreateCustomer: (name: string) => Promise<string | undefined> | void;
+    onCreateCustomer: (name: string) => Promise<string | undefined>;
     onSubmit: (values: UnifiedTransactionFormValues) => void;
     onDelete?: () => void;
     defaultValues?: Partial<UnifiedTransactionFormValues>;
 };
 
-const defaultEntry = { accountId: '', amount: '', categoryId: '', notes: '' };
+const createDefaultEntry = (id: string) => ({
+    id,
+    accountId: '',
+    amount: '',
+    categoryId: '',
+    notes: '',
+});
 
 export const UnifiedTransactionForm = ({
     id,
@@ -102,57 +76,49 @@ export const UnifiedTransactionForm = ({
     onDelete,
     defaultValues,
 }: Props) => {
-    const form = useForm<UnifiedTransactionFormValues>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            date: new Date(),
-            payeeCustomerId: '',
-            notes: '',
-            categoryId: '',
-            creditEntries: [{ ...defaultEntry }],
-            debitEntries: [{ ...defaultEntry }],
-            ...defaultValues,
-        },
+    const baseId = useId();
+
+    // Form state
+    const [date, setDate] = useState<Date>(defaultValues?.date ?? new Date());
+    const [payeeCustomerId, setPayeeCustomerId] = useState(
+        defaultValues?.payeeCustomerId ?? '',
+    );
+    const [notes, setNotes] = useState(defaultValues?.notes ?? '');
+    const [categoryId, setCategoryId] = useState(
+        defaultValues?.categoryId ?? '',
+    );
+
+    // Entry state with unique IDs
+    const [creditEntries, setCreditEntries] = useState<CreditEntry[]>(() => {
+        if (defaultValues?.creditEntries?.length) {
+            return defaultValues.creditEntries.map((entry, idx) => ({
+                ...entry,
+                id: `${baseId}-credit-${idx}`,
+            }));
+        }
+        return [createDefaultEntry(`${baseId}-credit-0`)];
     });
 
-    const {
-        fields: creditFields,
-        append: appendCredit,
-        remove: removeCredit,
-    } = useFieldArray({
-        control: form.control,
-        name: 'creditEntries',
+    const [debitEntries, setDebitEntries] = useState<DebitEntry[]>(() => {
+        if (defaultValues?.debitEntries?.length) {
+            return defaultValues.debitEntries.map((entry, idx) => ({
+                ...entry,
+                id: `${baseId}-debit-${idx}`,
+            }));
+        }
+        return [createDefaultEntry(`${baseId}-debit-0`)];
     });
 
-    const {
-        fields: debitFields,
-        append: appendDebit,
-        remove: removeDebit,
-    } = useFieldArray({
-        control: form.control,
-        name: 'debitEntries',
-    });
+    // Counter for generating unique IDs
+    const [creditCounter, setCreditCounter] = useState(
+        defaultValues?.creditEntries?.length ?? 1,
+    );
+    const [debitCounter, setDebitCounter] = useState(
+        defaultValues?.debitEntries?.length ?? 1,
+    );
 
-    const creditEntries = useWatch({
-        control: form.control,
-        name: 'creditEntries',
-    });
-    const debitEntries = useWatch({
-        control: form.control,
-        name: 'debitEntries',
-    });
-    const payeeCustomerId = useWatch({
-        control: form.control,
-        name: 'payeeCustomerId',
-    });
-    const notesValue = useWatch({
-        control: form.control,
-        name: 'notes',
-    });
-    const categoryId = useWatch({
-        control: form.control,
-        name: 'categoryId',
-    });
+    // Validation errors
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [isAccountSelectOpen, setIsAccountSelectOpen] = useState(false);
     const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
@@ -160,8 +126,8 @@ export const UnifiedTransactionForm = ({
     // Fetch customers list for quick-assign display
     const { data: customers } = useGetCustomers();
 
-    // Use either watched value or default value (for initial render)
-    const effectiveNotes = notesValue || defaultValues?.notes || '';
+    // Use either current value or default value for notes
+    const effectiveNotes = notes || defaultValues?.notes || '';
     const effectiveCustomerId =
         payeeCustomerId || defaultValues?.payeeCustomerId || '';
     const effectiveCategoryId = categoryId || defaultValues?.categoryId || '';
@@ -178,8 +144,8 @@ export const UnifiedTransactionForm = ({
     );
 
     // Check first credit entry for quick-assign (simplified for split transactions)
-    const firstCreditAccountId = creditEntries?.[0]?.accountId;
-    const firstDebitAccountId = debitEntries?.[0]?.accountId;
+    const firstCreditAccountId = creditEntries[0]?.accountId;
+    const firstDebitAccountId = debitEntries[0]?.accountId;
 
     // Account suggestions - fetch when customer is selected
     const shouldFetchAccountSuggestions =
@@ -274,517 +240,540 @@ export const UnifiedTransactionForm = ({
 
     const creditTotal = useMemo(
         () =>
-            creditEntries?.reduce(
-                (sum, entry) => sum + parseFloat(entry?.amount || '0'),
+            creditEntries.reduce(
+                (sum, entry) => sum + parseFloat(entry.amount || '0'),
                 0,
-            ) || 0,
+            ),
         [creditEntries],
     );
 
     const debitTotal = useMemo(
         () =>
-            debitEntries?.reduce(
-                (sum, entry) => sum + parseFloat(entry?.amount || '0'),
+            debitEntries.reduce(
+                (sum, entry) => sum + parseFloat(entry.amount || '0'),
                 0,
-            ) || 0,
+            ),
         [debitEntries],
     );
 
     const isBalanced = Math.abs(creditTotal - debitTotal) < 0.001;
-    const isSplitCredit = creditFields.length > 1;
-    const isSplitDebit = debitFields.length > 1;
+    const isSplitCredit = creditEntries.length > 1;
+    const isSplitDebit = debitEntries.length > 1;
     const isAnySplit = isSplitCredit || isSplitDebit;
 
     // Auto-sync amounts when one side is split and other is not
-    // When credits are split and single debit, debit amount should equal credit total
-    // When debits are split and single credit, credit amount should equal debit total
     useEffect(() => {
         if (isSplitCredit && !isSplitDebit && creditTotal > 0) {
-            // Multiple credits, single debit - set debit to credit total
-            form.setValue('debitEntries.0.amount', creditTotal.toFixed(2));
+            setDebitEntries((prev) => {
+                if (prev[0]?.amount !== creditTotal.toFixed(2)) {
+                    return [{ ...prev[0], amount: creditTotal.toFixed(2) }];
+                }
+                return prev;
+            });
         } else if (isSplitDebit && !isSplitCredit && debitTotal > 0) {
-            // Multiple debits, single credit - set credit to debit total
-            form.setValue('creditEntries.0.amount', debitTotal.toFixed(2));
+            setCreditEntries((prev) => {
+                if (prev[0]?.amount !== debitTotal.toFixed(2)) {
+                    return [{ ...prev[0], amount: debitTotal.toFixed(2) }];
+                }
+                return prev;
+            });
         }
-    }, [isSplitCredit, isSplitDebit, creditTotal, debitTotal, form]);
+    }, [isSplitCredit, isSplitDebit, creditTotal, debitTotal]);
 
-    const handleSubmit = (values: UnifiedTransactionFormValues) => {
-        onSubmit(values);
+    // Entry management functions
+    const appendCredit = () => {
+        const newEntry = createDefaultEntry(
+            `${baseId}-credit-${creditCounter}`,
+        );
+        setCreditCounter((c) => c + 1);
+        setCreditEntries((prev) => [...prev, newEntry]);
+    };
+
+    const removeCredit = (index: number) => {
+        setCreditEntries((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const updateCreditEntry = (
+        index: number,
+        field: keyof CreditEntry,
+        value: string,
+    ) => {
+        setCreditEntries((prev) =>
+            prev.map((entry, i) =>
+                i === index ? { ...entry, [field]: value } : entry,
+            ),
+        );
+    };
+
+    const appendDebit = () => {
+        const newEntry = createDefaultEntry(`${baseId}-debit-${debitCounter}`);
+        setDebitCounter((c) => c + 1);
+        setDebitEntries((prev) => [...prev, newEntry]);
+    };
+
+    const removeDebit = (index: number) => {
+        setDebitEntries((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const updateDebitEntry = (
+        index: number,
+        field: keyof DebitEntry,
+        value: string,
+    ) => {
+        setDebitEntries((prev) =>
+            prev.map((entry, i) =>
+                i === index ? { ...entry, [field]: value } : entry,
+            ),
+        );
+    };
+
+    const validate = (): boolean => {
+        const newErrors: Record<string, string> = {};
+
+        // Check all credit entries have accounts and amounts
+        creditEntries.forEach((entry, index) => {
+            if (!entry.accountId) {
+                newErrors[`creditEntries.${index}.accountId`] =
+                    'Select an account';
+            }
+            if (!entry.amount) {
+                newErrors[`creditEntries.${index}.amount`] = 'Enter an amount';
+            }
+        });
+
+        // Check all debit entries have accounts and amounts
+        debitEntries.forEach((entry, index) => {
+            if (!entry.accountId) {
+                newErrors[`debitEntries.${index}.accountId`] =
+                    'Select an account';
+            }
+            if (!entry.amount) {
+                newErrors[`debitEntries.${index}.amount`] = 'Enter an amount';
+            }
+        });
+
+        // Check balance
+        if (!isBalanced) {
+            newErrors.balance = `Credits (${creditTotal.toFixed(2)}) must equal debits (${debitTotal.toFixed(2)})`;
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validate()) return;
+
+        onSubmit({
+            date,
+            payeeCustomerId: payeeCustomerId || undefined,
+            notes: notes || undefined,
+            categoryId: categoryId || undefined,
+            creditEntries: creditEntries.map(({ id: _id, ...entry }) => entry),
+            debitEntries: debitEntries.map(({ id: _id, ...entry }) => entry),
+        });
     };
 
     const isPending = disabled;
 
     return (
-        <Form {...form}>
-            <form
-                onSubmit={form.handleSubmit(handleSubmit)}
-                autoCapitalize="off"
-                autoComplete="off"
-                className="space-y-6 pt-4 pb-6"
-            >
-                {/* Date and Customer Section */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <FormField
-                        name="date"
-                        control={form.control}
+        <form
+            onSubmit={handleSubmit}
+            autoCapitalize="off"
+            autoComplete="off"
+            className="space-y-6"
+        >
+            {/* Date, Customer Section */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                    <Label>Date</Label>
+                    <DatePicker
+                        value={date}
+                        onChange={(newDate) => newDate && setDate(newDate)}
                         disabled={isPending}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Date</FormLabel>
-                                <FormControl>
-                                    <DatePicker
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={isPending}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
                     />
+                </div>
 
-                    <FormField
-                        name="payeeCustomerId"
-                        control={form.control}
+                <div className="space-y-2">
+                    <Label>Customer</Label>
+                    <CustomerSelect
+                        value={payeeCustomerId}
+                        onChange={(value) => setPayeeCustomerId(value ?? '')}
                         disabled={isPending}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Customer</FormLabel>
-                                <FormControl>
-                                    <CustomerSelect
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={isPending}
-                                        placeholder="Select customer..."
-                                        onCreate={onCreateCustomer}
-                                        suggestionNotes={notesValue ?? ''}
-                                    />
-                                </FormControl>
-                                {!field.value && (
-                                    <QuickAssignSuggestions
-                                        suggestions={
-                                            customerQuickAssignSuggestions
-                                        }
-                                        isLoading={
-                                            shouldFetchCustomerSuggestions &&
-                                            suggestedCustomersQuery.isLoading
-                                        }
-                                        onSelect={(id) =>
-                                            form.setValue(
-                                                'payeeCustomerId',
-                                                id,
-                                                {
-                                                    shouldValidate: true,
-                                                    shouldDirty: true,
-                                                    shouldTouch: true,
-                                                },
+                        placeholder="Select customer..."
+                        onCreate={onCreateCustomer}
+                        suggestionNotes={notes ?? ''}
+                    />
+                    {!payeeCustomerId && (
+                        <QuickAssignSuggestions
+                            suggestions={customerQuickAssignSuggestions}
+                            isLoading={
+                                shouldFetchCustomerSuggestions &&
+                                suggestedCustomersQuery.isLoading
+                            }
+                            onSelect={setPayeeCustomerId}
+                            disabled={isPending}
+                        />
+                    )}
+                </div>
+            </div>
+
+            <hr />
+
+            {/* Transaction Entries Section */}
+            <div className="space-y-4">
+                {/* Main Entry Row - First line always visible */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-start">
+                    {/* Credit Account Column */}
+                    <div className="space-y-2">
+                        {creditEntries.map((entry, index) => (
+                            <div key={entry.id} className="flex items-start">
+                                <div className="flex-1 space-y-1">
+                                    <AccountSelect
+                                        value={entry.accountId}
+                                        onChange={(value) =>
+                                            updateCreditEntry(
+                                                index,
+                                                'accountId',
+                                                value,
                                             )
                                         }
                                         disabled={isPending}
+                                        placeholder="Credit account..."
+                                        excludeReadOnly
+                                        allowedTypes={['credit', 'neutral']}
+                                        suggestedAccountIds={
+                                            suggestedCreditAccountIds
+                                        }
+                                        onOpenChange={setIsAccountSelectOpen}
                                     />
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                <hr />
-
-                {/* Transaction Entries Section */}
-                <div className="space-y-4">
-                    {/* Main Entry Row - First line always visible */}
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-start">
-                        {/* Credit Account Column */}
-                        <div className="space-y-2">
-                            {creditFields.map((field, index) => (
-                                <div
-                                    key={field.id}
-                                    className="flex items-start"
-                                >
-                                    <div className="flex-1 space-y-1">
-                                        <FormField
-                                            control={form.control}
-                                            name={`creditEntries.${index}.accountId`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <AccountSelect
-                                                            value={field.value}
-                                                            onChange={
-                                                                field.onChange
-                                                            }
-                                                            disabled={isPending}
-                                                            placeholder="Credit account..."
-                                                            excludeReadOnly
-                                                            allowedTypes={[
-                                                                'credit',
-                                                                'neutral',
-                                                            ]}
-                                                            suggestedAccountIds={
-                                                                suggestedCreditAccountIds
-                                                            }
-                                                            onOpenChange={
-                                                                setIsAccountSelectOpen
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        {/* Show amount field for each credit when: credits are split, OR debits are split (need individual amounts) */}
-                                        {(isSplitCredit ||
-                                            (isSplitDebit &&
-                                                !isSplitCredit)) && (
-                                            <FormField
-                                                control={form.control}
-                                                name={`creditEntries.${index}.amount`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            {/* When debits are split but credit is single, show read-only synced amount */}
-                                                            {isSplitDebit &&
-                                                            !isSplitCredit ? (
-                                                                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
-                                                                    {debitTotal.toFixed(
-                                                                        2,
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <AmountInput
-                                                                    {...field}
-                                                                    value={
-                                                                        field.value ||
-                                                                        ''
-                                                                    }
-                                                                    disabled={
-                                                                        isPending
-                                                                    }
-                                                                    placeholder="0.00"
-                                                                    hideSign
-                                                                />
-                                                            )}
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        )}
-                                    </div>
-                                    {creditFields.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => removeCredit(index)}
-                                            disabled={isPending}
-                                        >
-                                            <X className="size-4" />
-                                        </Button>
+                                    {errors[
+                                        `creditEntries.${index}.accountId`
+                                    ] && (
+                                        <p className="text-sm font-medium text-destructive">
+                                            {
+                                                errors[
+                                                    `creditEntries.${index}.accountId`
+                                                ]
+                                            }
+                                        </p>
                                     )}
-                                </div>
-                            ))}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="w-full"
-                                onClick={() =>
-                                    appendCredit({ ...defaultEntry })
-                                }
-                                disabled={isPending}
-                            >
-                                <Plus className="h-4 w-4 mr-1" /> Add Credit
-                            </Button>
-                        </div>
-
-                        {/* Amount Column - Only show for single entry mode (1:1) */}
-                        <div className="w-[140px]">
-                            {!isAnySplit && (
-                                <FormField
-                                    control={form.control}
-                                    name="creditEntries.0.amount"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
+                                    {/* Show amount field for each credit when: credits are split, OR debits are split */}
+                                    {(isSplitCredit ||
+                                        (isSplitDebit && !isSplitCredit)) && (
+                                        <>
+                                            {/* When debits are split but credit is single, show read-only synced amount */}
+                                            {isSplitDebit && !isSplitCredit ? (
+                                                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
+                                                    {debitTotal.toFixed(2)}
+                                                </div>
+                                            ) : (
                                                 <AmountInput
-                                                    {...field}
-                                                    value={field.value || ''}
+                                                    value={entry.amount}
+                                                    onChange={(value) =>
+                                                        updateCreditEntry(
+                                                            index,
+                                                            'amount',
+                                                            value ?? '',
+                                                        )
+                                                    }
                                                     disabled={isPending}
                                                     placeholder="0.00"
                                                     hideSign
-                                                    onChange={(value) => {
-                                                        field.onChange(value);
-                                                        // Sync with debit amount in single entry mode
-                                                        form.setValue(
-                                                            'debitEntries.0.amount',
-                                                            value || '',
-                                                        );
-                                                    }}
                                                 />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-                            {isAnySplit && (
-                                <div className="h-9 flex items-center justify-center text-sm text-muted-foreground">
-                                    <ChevronRight className="size-4" />
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Debit Account Column */}
-                        <div className="space-y-2">
-                            {debitFields.map((field, index) => (
-                                <div
-                                    key={field.id}
-                                    className="flex gap-2 items-start"
-                                >
-                                    <div className="flex-1 space-y-2">
-                                        <FormField
-                                            control={form.control}
-                                            name={`debitEntries.${index}.accountId`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <AccountSelect
-                                                            value={field.value}
-                                                            onChange={
-                                                                field.onChange
-                                                            }
-                                                            disabled={isPending}
-                                                            placeholder="Debit account..."
-                                                            excludeReadOnly
-                                                            allowedTypes={[
-                                                                'debit',
-                                                                'neutral',
-                                                            ]}
-                                                            suggestedAccountIds={
-                                                                suggestedDebitAccountIds
-                                                            }
-                                                            onOpenChange={
-                                                                setIsAccountSelectOpen
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
                                             )}
-                                        />
-                                        {/* Show amount field for each debit when: debits are split, OR credits are split (need individual amounts) */}
-                                        {(isSplitDebit ||
-                                            (isSplitCredit &&
-                                                !isSplitDebit)) && (
-                                            <FormField
-                                                control={form.control}
-                                                name={`debitEntries.${index}.amount`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            {/* When credits are split but debit is single, show read-only synced amount */}
-                                                            {isSplitCredit &&
-                                                            !isSplitDebit ? (
-                                                                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
-                                                                    {creditTotal.toFixed(
-                                                                        2,
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <AmountInput
-                                                                    {...field}
-                                                                    value={
-                                                                        field.value ||
-                                                                        ''
-                                                                    }
-                                                                    disabled={
-                                                                        isPending
-                                                                    }
-                                                                    placeholder="0.00"
-                                                                    hideSign
-                                                                />
-                                                            )}
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        )}
-                                    </div>
-                                    {debitFields.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => removeDebit(index)}
-                                            disabled={isPending}
-                                        >
-                                            <X className="size-4" />
-                                        </Button>
+                                            {errors[
+                                                `creditEntries.${index}.amount`
+                                            ] && (
+                                                <p className="text-sm font-medium text-destructive">
+                                                    {
+                                                        errors[
+                                                            `creditEntries.${index}.amount`
+                                                        ]
+                                                    }
+                                                </p>
+                                            )}
+                                        </>
                                     )}
                                 </div>
-                            ))}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="w-full"
-                                onClick={() => appendDebit({ ...defaultEntry })}
-                                disabled={isPending}
-                            >
-                                <Plus className="h-4 w-4 mr-1" /> Add Debit
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Summary Section */}
-                <div
-                    className={cn(
-                        'rounded-lg border p-4 space-y-2',
-                        isBalanced
-                            ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950'
-                            : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950',
-                    )}
-                >
-                    <div className="flex justify-between text-sm">
-                        <span className="font-medium">Summary</span>
-                        {isBalanced ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">
-                                ✓ Balanced
-                            </span>
-                        ) : (
-                            <span className="text-red-600 dark:text-red-400 font-medium">
-                                ⚠ Unbalanced
-                            </span>
-                        )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-1 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                                Total Credits:
-                            </span>
-                            <span className="font-mono font-medium">
-                                {creditTotal.toFixed(2)}
-                            </span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                                Total Debits:
-                            </span>
-                            <span className="font-mono font-medium">
-                                {debitTotal.toFixed(2)}
-                            </span>
-                        </div>
-                    </div>
-                    {!isBalanced && (
-                        <div className="text-xs text-red-600 dark:text-red-400">
-                            Difference:{' '}
-                            {Math.abs(creditTotal - debitTotal).toFixed(2)}
-                            {creditTotal > debitTotal
-                                ? ' (Credits exceed Debits)'
-                                : ' (Debits exceed Credits)'}
-                        </div>
-                    )}
-                </div>
-
-                <hr />
-
-                {/* Optional Fields */}
-                <div className="space-y-4">
-                    <FormField
-                        name="categoryId"
-                        control={form.control}
-                        disabled={isPending}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Category (Optional)</FormLabel>
-                                <FormControl>
-                                    <Select
-                                        placeholder="Select a category"
-                                        options={resolvedCategoryOptions}
-                                        onCreate={onCreateCategory}
-                                        value={field.value}
-                                        onChange={field.onChange}
+                                {creditEntries.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => removeCredit(index)}
                                         disabled={isPending}
-                                        onMenuOpen={() =>
-                                            setIsCategoryMenuOpen(true)
-                                        }
-                                        onMenuClose={() =>
-                                            setIsCategoryMenuOpen(false)
-                                        }
-                                    />
-                                </FormControl>
-                                {!field.value && effectiveCustomerId && (
-                                    <QuickAssignSuggestions
-                                        suggestions={
-                                            categoryQuickAssignSuggestions
-                                        }
-                                        isLoading={
-                                            shouldFetchCategorySuggestions &&
-                                            suggestedCategoriesQuery.isLoading
-                                        }
-                                        onSelect={(id) =>
-                                            form.setValue('categoryId', id, {
-                                                shouldValidate: true,
-                                                shouldDirty: true,
-                                                shouldTouch: true,
-                                            })
-                                        }
-                                        disabled={isPending}
-                                    />
+                                    >
+                                        <X className="size-4" />
+                                    </Button>
                                 )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        name="notes"
-                        control={form.control}
-                        disabled={isPending}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Notes (Optional)</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        {...field}
-                                        value={field.value || ''}
-                                        disabled={isPending}
-                                        placeholder="Optional notes..."
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                <SheetFooter>
-                    <Button
-                        className="w-full"
-                        disabled={isPending || !isBalanced}
-                        type="submit"
-                    >
-                        {id ? 'Save changes' : 'Create transaction'}
-                    </Button>
-
-                    {!!id && onDelete && (
+                            </div>
+                        ))}
                         <Button
                             type="button"
-                            disabled={isPending}
-                            onClick={onDelete}
-                            className="w-full"
                             variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={appendCredit}
+                            disabled={isPending}
                         >
-                            <Trash className="mr-2 size-4" />
-                            Delete transaction
+                            <Plus className="h-4 w-4 mr-1" /> Add Credit
                         </Button>
+                    </div>
+
+                    {/* Amount Column - Only show for single entry mode (1:1) */}
+                    <div className="w-[140px]">
+                        {!isAnySplit && (
+                            <div className="space-y-1">
+                                <AmountInput
+                                    value={creditEntries[0]?.amount ?? ''}
+                                    onChange={(value) => {
+                                        updateCreditEntry(
+                                            0,
+                                            'amount',
+                                            value ?? '',
+                                        );
+                                        // Sync with debit amount in single entry mode
+                                        updateDebitEntry(
+                                            0,
+                                            'amount',
+                                            value ?? '',
+                                        );
+                                    }}
+                                    disabled={isPending}
+                                    placeholder="0.00"
+                                    hideSign
+                                />
+                                {errors['creditEntries.0.amount'] && (
+                                    <p className="text-sm font-medium text-destructive">
+                                        {errors['creditEntries.0.amount']}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {isAnySplit && (
+                            <div className="h-9 flex items-center justify-center text-sm text-muted-foreground">
+                                <ChevronRight className="size-4" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Debit Account Column */}
+                    <div className="space-y-2">
+                        {debitEntries.map((entry, index) => (
+                            <div
+                                key={entry.id}
+                                className="flex gap-2 items-start"
+                            >
+                                <div className="flex-1 space-y-2">
+                                    <AccountSelect
+                                        value={entry.accountId}
+                                        onChange={(value) =>
+                                            updateDebitEntry(
+                                                index,
+                                                'accountId',
+                                                value,
+                                            )
+                                        }
+                                        disabled={isPending}
+                                        placeholder="Debit account..."
+                                        excludeReadOnly
+                                        allowedTypes={['debit', 'neutral']}
+                                        suggestedAccountIds={
+                                            suggestedDebitAccountIds
+                                        }
+                                        onOpenChange={setIsAccountSelectOpen}
+                                    />
+                                    {errors[
+                                        `debitEntries.${index}.accountId`
+                                    ] && (
+                                        <p className="text-sm font-medium text-destructive">
+                                            {
+                                                errors[
+                                                    `debitEntries.${index}.accountId`
+                                                ]
+                                            }
+                                        </p>
+                                    )}
+                                    {/* Show amount field for each debit when: debits are split, OR credits are split */}
+                                    {(isSplitDebit ||
+                                        (isSplitCredit && !isSplitDebit)) && (
+                                        <>
+                                            {/* When credits are split but debit is single, show read-only synced amount */}
+                                            {isSplitCredit && !isSplitDebit ? (
+                                                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
+                                                    {creditTotal.toFixed(2)}
+                                                </div>
+                                            ) : (
+                                                <AmountInput
+                                                    value={entry.amount}
+                                                    onChange={(value) =>
+                                                        updateDebitEntry(
+                                                            index,
+                                                            'amount',
+                                                            value ?? '',
+                                                        )
+                                                    }
+                                                    disabled={isPending}
+                                                    placeholder="0.00"
+                                                    hideSign
+                                                />
+                                            )}
+                                            {errors[
+                                                `debitEntries.${index}.amount`
+                                            ] && (
+                                                <p className="text-sm font-medium text-destructive">
+                                                    {
+                                                        errors[
+                                                            `debitEntries.${index}.amount`
+                                                        ]
+                                                    }
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                                {debitEntries.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => removeDebit(index)}
+                                        disabled={isPending}
+                                    >
+                                        <X className="size-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={appendDebit}
+                            disabled={isPending}
+                        >
+                            <Plus className="h-4 w-4 mr-1" /> Add Debit
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Summary Section */}
+            <div
+                className={cn(
+                    'rounded-lg border p-4 space-y-2',
+                    isBalanced
+                        ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950'
+                        : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950',
+                )}
+            >
+                <div className="flex justify-between text-sm">
+                    <span className="font-medium">Summary</span>
+                    {isBalanced ? (
+                        <span className="text-green-600 dark:text-green-400 font-medium">
+                            ✓ Balanced
+                        </span>
+                    ) : (
+                        <span className="text-red-600 dark:text-red-400 font-medium">
+                            ⚠ Unbalanced
+                        </span>
                     )}
-                </SheetFooter>
-            </form>
-        </Form>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                            Total Credits:
+                        </span>
+                        <span className="font-mono font-medium">
+                            {creditTotal.toFixed(2)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                            Total Debits:
+                        </span>
+                        <span className="font-mono font-medium">
+                            {debitTotal.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+                {!isBalanced && (
+                    <div className="text-xs text-red-600 dark:text-red-400">
+                        Difference:{' '}
+                        {Math.abs(creditTotal - debitTotal).toFixed(2)}
+                        {creditTotal > debitTotal
+                            ? ' (Credits exceed Debits)'
+                            : ' (Debits exceed Credits)'}
+                    </div>
+                )}
+            </div>
+
+            <hr />
+
+            {/* Optional Fields */}
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Category (Optional)</Label>
+                    <Select
+                        placeholder="Select a category"
+                        options={resolvedCategoryOptions}
+                        onCreate={onCreateCategory}
+                        value={categoryId}
+                        onChange={(value) => setCategoryId(value ?? '')}
+                        disabled={isPending}
+                        onMenuOpen={() => setIsCategoryMenuOpen(true)}
+                        onMenuClose={() => setIsCategoryMenuOpen(false)}
+                    />
+                    {!categoryId && effectiveCustomerId && (
+                        <QuickAssignSuggestions
+                            suggestions={categoryQuickAssignSuggestions}
+                            isLoading={
+                                shouldFetchCategorySuggestions &&
+                                suggestedCategoriesQuery.isLoading
+                            }
+                            onSelect={setCategoryId}
+                            disabled={isPending}
+                        />
+                    )}
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Notes (Optional)</Label>
+                    <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        disabled={isPending}
+                        placeholder="Optional notes..."
+                    />
+                </div>
+            </div>
+
+            <SheetFooter>
+                <Button
+                    className="w-full"
+                    disabled={isPending || !isBalanced}
+                    type="submit"
+                >
+                    {id ? 'Save changes' : 'Create transaction'}
+                </Button>
+
+                {!!id && onDelete && (
+                    <Button
+                        type="button"
+                        disabled={isPending}
+                        onClick={onDelete}
+                        className="w-full"
+                        variant="outline"
+                    >
+                        <Trash className="mr-2 size-4" />
+                        Delete transaction
+                    </Button>
+                )}
+            </SheetFooter>
+        </form>
     );
 };

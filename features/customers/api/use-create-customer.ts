@@ -18,8 +18,44 @@ export const useCreateCustomer = () => {
             }
             return await response.json();
         },
-        onSuccess: () => {
+        onSuccess: (response) => {
             toast.success('Customer created.');
+            if ('data' in response) {
+                const createdCustomer = response.data;
+                queryClient.setQueriesData(
+                    { queryKey: ['customers'] },
+                    (oldData) => {
+                        if (!Array.isArray(oldData)) {
+                            return oldData;
+                        }
+
+                        const exists = oldData.some(
+                            (customer) => customer.id === createdCustomer.id,
+                        );
+                        const next = exists
+                            ? oldData.map((customer) =>
+                                  customer.id === createdCustomer.id
+                                      ? createdCustomer
+                                      : customer,
+                              )
+                            : [...oldData, createdCustomer];
+
+                        return [...next].sort((a, b) => {
+                            const aName = a.name ?? '';
+                            const bName = b.name ?? '';
+                            const nameCompare = aName.localeCompare(
+                                bName,
+                                undefined,
+                                {
+                                    sensitivity: 'base',
+                                },
+                            );
+                            if (nameCompare !== 0) return nameCompare;
+                            return a.id.localeCompare(b.id);
+                        });
+                    },
+                );
+            }
             queryClient.invalidateQueries({ queryKey: ['customers'] });
         },
         onError: () => {

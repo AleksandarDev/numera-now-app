@@ -1,8 +1,7 @@
-import { zodResolver } from '@hookform/resolvers/zod';
+'use client';
+
 import { ChevronRight, Lock, Trash } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { z } from 'zod';
 import { AccountSelect } from '@/components/account-select';
 import { AmountInput } from '@/components/amount-input';
 import { CustomerSelect } from '@/components/customer-select';
@@ -14,14 +13,7 @@ import {
 import { Select } from '@/components/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
@@ -30,51 +22,23 @@ import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-sug
 import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-suggested-categories';
 import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
 
-// Base form schema - accounts are optional, validation depends on status
-const baseFormSchema = z.object({
-    date: z.date(),
-    creditAccountId: z.string().optional(),
-    debitAccountId: z.string().optional(),
-    amount: z.string().min(1, 'Enter an amount'),
-    payeeCustomerId: z.string().optional(),
-    categoryId: z.string().optional(),
-    notes: z.string().optional(),
-    status: z.enum(['draft', 'pending', 'completed', 'reconciled']).optional(),
-});
-
-// Create a schema that validates accounts based on current status
-const createFormSchema = (
-    currentStatus: 'draft' | 'pending' | 'completed' | 'reconciled',
-) => {
-    return baseFormSchema.superRefine((data, ctx) => {
-        // For non-draft transactions, require both accounts
-        if (currentStatus !== 'draft') {
-            if (!data.creditAccountId || data.creditAccountId === '') {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: 'Select credit account',
-                    path: ['creditAccountId'],
-                });
-            }
-            if (!data.debitAccountId || data.debitAccountId === '') {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: 'Select debit account',
-                    path: ['debitAccountId'],
-                });
-            }
-        }
-    });
+export type UnifiedEditTransactionFormValues = {
+    date: Date;
+    creditAccountId?: string;
+    debitAccountId?: string;
+    amount: string;
+    payeeCustomerId?: string;
+    categoryId?: string;
+    notes?: string;
+    status?: 'draft' | 'pending' | 'completed' | 'reconciled';
 };
-
-export type UnifiedEditTransactionFormValues = z.infer<typeof baseFormSchema>;
 
 type Props = {
     id?: string;
     disabled?: boolean;
     categoryOptions: { label: string; value: string }[];
     onCreateCategory: (name: string) => void;
-    onCreateCustomer: (name: string) => Promise<string | undefined> | void;
+    onCreateCustomer: (name: string) => Promise<string | undefined>;
     onSubmit: (values: UnifiedEditTransactionFormValues) => void;
     onDelete?: () => void;
     defaultValues?: Partial<UnifiedEditTransactionFormValues>;
@@ -96,47 +60,29 @@ export const UnifiedEditTransactionForm = ({
     payeeText,
     currentStatus = 'draft',
 }: Props) => {
-    // Create schema based on current status
-    const formSchema = createFormSchema(currentStatus);
+    // Form state
+    const [date, setDate] = useState<Date>(defaultValues?.date ?? new Date());
+    const [creditAccountId, setCreditAccountId] = useState(
+        defaultValues?.creditAccountId ?? '',
+    );
+    const [debitAccountId, setDebitAccountId] = useState(
+        defaultValues?.debitAccountId ?? '',
+    );
+    const [amount, setAmount] = useState(defaultValues?.amount ?? '0');
+    const [payeeCustomerId, _setPayeeCustomerId] = useState(
+        defaultValues?.payeeCustomerId ?? '',
+    );
+    const setPayeeCustomerId = (value: string) => {
+        console.trace('setPayeeCustomerId', value);
+        _setPayeeCustomerId(value);
+    };
+    const [categoryId, setCategoryId] = useState(
+        defaultValues?.categoryId ?? '',
+    );
+    const [notes, setNotes] = useState(defaultValues?.notes ?? '');
 
-    const form = useForm<UnifiedEditTransactionFormValues>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            date: new Date(),
-            creditAccountId: '',
-            debitAccountId: '',
-            amount: '0',
-            payeeCustomerId: '',
-            categoryId: '',
-            notes: '',
-            ...defaultValues,
-        },
-    });
-
-    const payeeCustomerId = useWatch({
-        control: form.control,
-        name: 'payeeCustomerId',
-    });
-
-    const notesValue = useWatch({
-        control: form.control,
-        name: 'notes',
-    });
-
-    const creditAccountId = useWatch({
-        control: form.control,
-        name: 'creditAccountId',
-    });
-
-    const debitAccountId = useWatch({
-        control: form.control,
-        name: 'debitAccountId',
-    });
-
-    const categoryId = useWatch({
-        control: form.control,
-        name: 'categoryId',
-    });
+    // Validation errors
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [isAccountSelectOpen, setIsAccountSelectOpen] = useState(false);
     const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
@@ -147,8 +93,8 @@ export const UnifiedEditTransactionForm = ({
     // Fetch accounts list for quick-assign display
     const { data: accounts } = useGetAccounts({ pageSize: 9999 });
 
-    // Use either watched value or default value for notes (watched value may be empty on first render)
-    const effectiveNotes = notesValue || defaultValues?.notes || '';
+    // Use either current value or default value for notes
+    const effectiveNotes = notes || defaultValues?.notes || '';
 
     // Customer suggestions - fetch when customer is not set and we have payee text or notes
     const shouldFetchCustomerSuggestions =
@@ -162,7 +108,6 @@ export const UnifiedEditTransactionForm = ({
     );
 
     // Account suggestions - fetch when customer is selected but accounts are not set
-    // Use defaultValues as fallback for initial render
     const effectiveCustomerId =
         payeeCustomerId || defaultValues?.payeeCustomerId || '';
     const effectiveCreditAccountId =
@@ -295,8 +240,41 @@ export const UnifiedEditTransactionForm = ({
         return [...suggested, ...remaining];
     }, [categoryOptions, suggestedCategoryIds]);
 
-    const handleSubmit = (values: UnifiedEditTransactionFormValues) => {
-        onSubmit(values);
+    const validate = (): boolean => {
+        const newErrors: Record<string, string> = {};
+
+        if (!amount || amount === '0') {
+            newErrors.amount = 'Enter an amount';
+        }
+
+        // For non-draft transactions, require both accounts
+        if (currentStatus !== 'draft') {
+            if (!creditAccountId) {
+                newErrors.creditAccountId = 'Select credit account';
+            }
+            if (!debitAccountId) {
+                newErrors.debitAccountId = 'Select debit account';
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validate()) return;
+
+        onSubmit({
+            date,
+            creditAccountId: creditAccountId || undefined,
+            debitAccountId: debitAccountId || undefined,
+            amount,
+            payeeCustomerId: payeeCustomerId || undefined,
+            categoryId: categoryId || undefined,
+            notes: notes || undefined,
+        });
     };
 
     // Check if transaction is reconciled (fully locked)
@@ -309,327 +287,221 @@ export const UnifiedEditTransactionForm = ({
     const isFinancialFieldsLocked = isCompleted || isReconciled;
 
     return (
-        <Form {...form}>
-            <form
-                onSubmit={form.handleSubmit(handleSubmit)}
-                autoCapitalize="off"
-                autoComplete="off"
-                className="space-y-6"
-            >
-                {/* Status-based alerts */}
-                {isReconciled && (
-                    <Alert>
-                        <Lock className="size-4" />
-                        <AlertDescription>
-                            This transaction is reconciled and cannot be edited.
-                        </AlertDescription>
-                    </Alert>
-                )}
-                {isCompleted && !isReconciled && (
-                    <Alert>
-                        <Lock className="size-4" />
-                        <AlertDescription>
-                            This transaction is completed. Accounts, amount,
-                            date, and customer cannot be changed.
-                        </AlertDescription>
-                    </Alert>
-                )}
+        <form
+            onSubmit={handleSubmit}
+            autoCapitalize="off"
+            autoComplete="off"
+            className="space-y-6"
+        >
+            {/* Status-based alerts */}
+            {isReconciled && (
+                <Alert>
+                    <Lock className="size-4" />
+                    <AlertDescription>
+                        This transaction is reconciled and cannot be edited.
+                    </AlertDescription>
+                </Alert>
+            )}
+            {isCompleted && !isReconciled && (
+                <Alert>
+                    <Lock className="size-4" />
+                    <AlertDescription>
+                        This transaction is completed. Accounts, amount, date,
+                        and customer cannot be changed.
+                    </AlertDescription>
+                </Alert>
+            )}
 
-                {/* Date and Customer Section */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <FormField
-                        name="date"
-                        control={form.control}
+            {/* Date and Customer Section */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                    <Label>Date</Label>
+                    <DatePicker
+                        value={date}
+                        onChange={(newDate) => newDate && setDate(newDate)}
                         disabled={isFinancialFieldsLocked}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Date</FormLabel>
-                                <FormControl>
-                                    <DatePicker
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={isFinancialFieldsLocked}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
                     />
+                </div>
 
-                    <FormField
-                        name="payeeCustomerId"
-                        control={form.control}
+                <div className="space-y-2">
+                    <Label>
+                        Customer{' '}
+                        {isFinancialFieldsLocked && (
+                            <Lock className="inline h-3 w-3 ml-1" />
+                        )}
+                    </Label>
+                    <CustomerSelect
+                        value={payeeCustomerId}
+                        onChange={(value) => setPayeeCustomerId(value ?? '')}
                         disabled={isFinancialFieldsLocked}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>
-                                    Customer{' '}
-                                    {isFinancialFieldsLocked && (
-                                        <Lock className="inline h-3 w-3 ml-1" />
-                                    )}
-                                </FormLabel>
-                                <FormControl>
-                                    <CustomerSelect
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={isFinancialFieldsLocked}
-                                        placeholder="Select customer..."
-                                        onCreate={onCreateCustomer}
-                                        suggestionQuery={payeeText ?? ''}
-                                        suggestionNotes={notesValue ?? ''}
-                                    />
-                                </FormControl>
-                                {!field.value && (
-                                    <QuickAssignSuggestions
-                                        suggestions={
-                                            customerQuickAssignSuggestions
-                                        }
-                                        isLoading={
-                                            shouldFetchCustomerSuggestions &&
-                                            suggestedCustomersQuery.isLoading
-                                        }
-                                        onSelect={(id) =>
-                                            form.setValue(
-                                                'payeeCustomerId',
-                                                id,
-                                                {
-                                                    shouldValidate: true,
-                                                    shouldDirty: true,
-                                                    shouldTouch: true,
-                                                },
-                                            )
-                                        }
-                                        disabled={isFinancialFieldsLocked}
-                                    />
-                                )}
-                                {payeeText && !field.value && (
-                                    <p className="text-xs text-amber-600 mt-1">
-                                        Imported payee:{' '}
-                                        <span className="font-medium">
-                                            {payeeText}
-                                        </span>
-                                    </p>
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                        placeholder="Select customer..."
+                        onCreate={onCreateCustomer}
+                        suggestionQuery={payeeText ?? ''}
+                        suggestionNotes={notes ?? ''}
                     />
-                </div>
-
-                <hr />
-
-                {/* Transaction Entry Section - Credit | Amount | Debit */}
-                <div className="grid grid-cols-[2fr_16px_minmax(min-content,1fr)_16px_2fr] items-start gap-1">
-                    {/* Credit Account */}
-                    <FormField
-                        control={form.control}
-                        name="creditAccountId"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <AccountSelect
-                                        value={field.value ?? ''}
-                                        onChange={field.onChange}
-                                        disabled={isFinancialFieldsLocked}
-                                        placeholder="Credit account..."
-                                        excludeReadOnly
-                                        allowedTypes={['credit', 'neutral']}
-                                        suggestedAccountIds={
-                                            suggestedCreditAccountIds
-                                        }
-                                        onOpenChange={setIsAccountSelectOpen}
-                                    />
-                                </FormControl>
-                                {!field.value && effectiveCustomerId && (
-                                    <QuickAssignSuggestions
-                                        suggestions={
-                                            creditAccountQuickAssignSuggestions
-                                        }
-                                        isLoading={
-                                            shouldFetchAccountSuggestions &&
-                                            suggestedAccountsQuery.isLoading
-                                        }
-                                        onSelect={(id) =>
-                                            form.setValue(
-                                                'creditAccountId',
-                                                id,
-                                                {
-                                                    shouldValidate: true,
-                                                    shouldDirty: true,
-                                                    shouldTouch: true,
-                                                },
-                                            )
-                                        }
-                                        disabled={isFinancialFieldsLocked}
-                                    />
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <ChevronRight className="size-4 opacity-60 mt-2.5" />
-
-                    {/* Amount Column */}
-                    <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <AmountInput
-                                        {...field}
-                                        value={field.value || ''}
-                                        disabled={isFinancialFieldsLocked}
-                                        placeholder="0.00"
-                                        hideSign
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <ChevronRight className="size-4 opacity-60 mt-2.5" />
-
-                    {/* Debit Account */}
-                    <FormField
-                        control={form.control}
-                        name="debitAccountId"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <AccountSelect
-                                        value={field.value ?? ''}
-                                        onChange={field.onChange}
-                                        disabled={isFinancialFieldsLocked}
-                                        placeholder="Debit account..."
-                                        excludeReadOnly
-                                        allowedTypes={['debit', 'neutral']}
-                                        suggestedAccountIds={
-                                            suggestedDebitAccountIds
-                                        }
-                                        onOpenChange={setIsAccountSelectOpen}
-                                    />
-                                </FormControl>
-                                {!field.value && effectiveCustomerId && (
-                                    <QuickAssignSuggestions
-                                        suggestions={
-                                            debitAccountQuickAssignSuggestions
-                                        }
-                                        isLoading={
-                                            shouldFetchAccountSuggestions &&
-                                            suggestedAccountsQuery.isLoading
-                                        }
-                                        onSelect={(id) =>
-                                            form.setValue(
-                                                'debitAccountId',
-                                                id,
-                                                {
-                                                    shouldValidate: true,
-                                                    shouldDirty: true,
-                                                    shouldTouch: true,
-                                                },
-                                            )
-                                        }
-                                        disabled={isFinancialFieldsLocked}
-                                    />
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                <hr />
-
-                {/* Optional Fields */}
-                <div className="space-y-4">
-                    <FormField
-                        name="categoryId"
-                        control={form.control}
-                        disabled={isPending}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Category (Optional)</FormLabel>
-                                <FormControl>
-                                    <Select
-                                        placeholder="Select a category"
-                                        options={resolvedCategoryOptions}
-                                        onCreate={onCreateCategory}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={isPending}
-                                        onMenuOpen={() =>
-                                            setIsCategoryMenuOpen(true)
-                                        }
-                                        onMenuClose={() =>
-                                            setIsCategoryMenuOpen(false)
-                                        }
-                                    />
-                                </FormControl>
-                                {!field.value && effectiveCustomerId && (
-                                    <QuickAssignSuggestions
-                                        suggestions={
-                                            categoryQuickAssignSuggestions
-                                        }
-                                        isLoading={
-                                            shouldFetchCategorySuggestions &&
-                                            suggestedCategoriesQuery.isLoading
-                                        }
-                                        onSelect={field.onChange}
-                                        disabled={isPending}
-                                    />
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        name="notes"
-                        control={form.control}
-                        disabled={isPending}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Notes (Optional)</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        {...field}
-                                        value={field.value || ''}
-                                        disabled={isPending}
-                                        placeholder="Optional notes..."
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                <SheetFooter>
-                    <Button
-                        className="w-full"
-                        disabled={isPending}
-                        type="submit"
-                    >
-                        Save changes
-                    </Button>
-
-                    {!!id && onDelete && (
-                        <Button
-                            type="button"
-                            disabled={isPending}
-                            onClick={onDelete}
-                            className="w-full"
-                            variant="outline"
-                        >
-                            <Trash className="mr-2 size-4" />
-                            Delete transaction
-                        </Button>
+                    {!payeeCustomerId && (
+                        <QuickAssignSuggestions
+                            suggestions={customerQuickAssignSuggestions}
+                            isLoading={
+                                shouldFetchCustomerSuggestions &&
+                                suggestedCustomersQuery.isLoading
+                            }
+                            onSelect={setPayeeCustomerId}
+                            disabled={isFinancialFieldsLocked}
+                        />
                     )}
-                </SheetFooter>
-            </form>
-        </Form>
+                    {payeeText && !payeeCustomerId && (
+                        <p className="text-xs text-amber-600 mt-1">
+                            Imported payee:{' '}
+                            <span className="font-medium">{payeeText}</span>
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <hr />
+
+            {/* Transaction Entry Section - Credit | Amount | Debit */}
+            <div className="grid grid-cols-[2fr_16px_minmax(min-content,1fr)_16px_2fr] items-start gap-1">
+                {/* Credit Account */}
+                <div className="space-y-1">
+                    <AccountSelect
+                        value={creditAccountId}
+                        onChange={setCreditAccountId}
+                        disabled={isFinancialFieldsLocked}
+                        placeholder="Credit account..."
+                        excludeReadOnly
+                        allowedTypes={['credit', 'neutral']}
+                        suggestedAccountIds={suggestedCreditAccountIds}
+                        onOpenChange={setIsAccountSelectOpen}
+                    />
+                    {!creditAccountId && effectiveCustomerId && (
+                        <QuickAssignSuggestions
+                            suggestions={creditAccountQuickAssignSuggestions}
+                            isLoading={
+                                shouldFetchAccountSuggestions &&
+                                suggestedAccountsQuery.isLoading
+                            }
+                            onSelect={setCreditAccountId}
+                            disabled={isFinancialFieldsLocked}
+                        />
+                    )}
+                    {errors.creditAccountId && (
+                        <p className="text-sm font-medium text-destructive">
+                            {errors.creditAccountId}
+                        </p>
+                    )}
+                </div>
+
+                <ChevronRight className="size-4 opacity-60 mt-2.5" />
+
+                {/* Amount Column */}
+                <div className="space-y-1">
+                    <AmountInput
+                        value={amount}
+                        onChange={(value) => setAmount(value ?? '')}
+                        disabled={isFinancialFieldsLocked}
+                        placeholder="0.00"
+                        hideSign
+                    />
+                    {errors.amount && (
+                        <p className="text-sm font-medium text-destructive">
+                            {errors.amount}
+                        </p>
+                    )}
+                </div>
+
+                <ChevronRight className="size-4 opacity-60 mt-2.5" />
+
+                {/* Debit Account */}
+                <div className="space-y-1">
+                    <AccountSelect
+                        value={debitAccountId}
+                        onChange={setDebitAccountId}
+                        disabled={isFinancialFieldsLocked}
+                        placeholder="Debit account..."
+                        excludeReadOnly
+                        allowedTypes={['debit', 'neutral']}
+                        suggestedAccountIds={suggestedDebitAccountIds}
+                        onOpenChange={setIsAccountSelectOpen}
+                    />
+                    {!debitAccountId && effectiveCustomerId && (
+                        <QuickAssignSuggestions
+                            suggestions={debitAccountQuickAssignSuggestions}
+                            isLoading={
+                                shouldFetchAccountSuggestions &&
+                                suggestedAccountsQuery.isLoading
+                            }
+                            onSelect={setDebitAccountId}
+                            disabled={isFinancialFieldsLocked}
+                        />
+                    )}
+                    {errors.debitAccountId && (
+                        <p className="text-sm font-medium text-destructive">
+                            {errors.debitAccountId}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <hr />
+
+            {/* Optional Fields */}
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Category (Optional)</Label>
+                    <Select
+                        placeholder="Select a category"
+                        options={resolvedCategoryOptions}
+                        onCreate={onCreateCategory}
+                        value={categoryId}
+                        onChange={(value) => setCategoryId(value ?? '')}
+                        disabled={isPending}
+                        onMenuOpen={() => setIsCategoryMenuOpen(true)}
+                        onMenuClose={() => setIsCategoryMenuOpen(false)}
+                    />
+                    {!categoryId && effectiveCustomerId && (
+                        <QuickAssignSuggestions
+                            suggestions={categoryQuickAssignSuggestions}
+                            isLoading={
+                                shouldFetchCategorySuggestions &&
+                                suggestedCategoriesQuery.isLoading
+                            }
+                            onSelect={setCategoryId}
+                            disabled={isPending}
+                        />
+                    )}
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Notes (Optional)</Label>
+                    <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        disabled={isPending}
+                        placeholder="Optional notes..."
+                    />
+                </div>
+            </div>
+
+            <SheetFooter>
+                <Button className="w-full" disabled={isPending} type="submit">
+                    Save changes
+                </Button>
+
+                {!!id && onDelete && (
+                    <Button
+                        type="button"
+                        disabled={isPending}
+                        onClick={onDelete}
+                        className="w-full"
+                        variant="outline"
+                    >
+                        <Trash className="mr-2 size-4" />
+                        Delete transaction
+                    </Button>
+                )}
+            </SheetFooter>
+        </form>
     );
 };

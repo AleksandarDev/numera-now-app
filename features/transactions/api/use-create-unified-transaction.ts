@@ -44,9 +44,23 @@ export const useCreateUnifiedTransaction = () => {
         UnifiedTransactionInput
     >({
         mutationFn: async (input) => {
+            const cachedSettings = queryClient.getQueryData(['settings']) as
+                | {
+                      autoDraftToPending?: boolean;
+                  }
+                | undefined;
+            const autoDraftToPending =
+                cachedSettings?.autoDraftToPending ?? false;
+
             const { creditEntries, debitEntries, ...baseTransaction } = input;
             const isSingleEntry =
                 creditEntries.length === 1 && debitEntries.length === 1;
+
+            const shouldAutoPromoteDraftToPending =
+                autoDraftToPending && !!baseTransaction.payeeCustomerId;
+            const status = shouldAutoPromoteDraftToPending
+                ? 'pending'
+                : 'draft';
 
             if (isSingleEntry) {
                 // Single transaction - use regular endpoint
@@ -67,7 +81,7 @@ export const useCreateUnifiedTransaction = () => {
                         creditAccountId: creditEntries[0].accountId,
                         debitAccountId: debitEntries[0].accountId,
                         amount,
-                        status: 'draft',
+                        status,
                     },
                 });
 
@@ -143,7 +157,7 @@ export const useCreateUnifiedTransaction = () => {
                             notes: baseTransaction.notes || undefined,
                             categoryId: baseTransaction.categoryId || undefined,
                             amount: totalAmount,
-                            status: 'draft',
+                            status,
                         },
                         splits,
                     },

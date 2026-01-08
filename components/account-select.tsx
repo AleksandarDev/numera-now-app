@@ -9,6 +9,7 @@ import {
     SelectItem,
     SelectTrigger,
 } from '@/components/ui/select';
+import { useGetAccount } from '@/features/accounts/api/use-get-account';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 import { cn } from '@/lib/utils';
 import { AccountName } from './account-name';
@@ -61,8 +62,53 @@ export const AccountSelect = ({
         showClosed,
     });
 
+    const selectedAccountId = value && value !== 'all' ? value : '';
+    const selectedAccountFromList = useMemo(() => {
+        if (!selectedAccountId || !accounts) return null;
+        return (
+            accounts.find((account) => account.id === selectedAccountId) ?? null
+        );
+    }, [accounts, selectedAccountId]);
+    const shouldFetchSelectedAccount =
+        !!selectedAccountId && (!accounts || !selectedAccountFromList);
+    const selectedAccountQuery = useGetAccount(selectedAccountId, {
+        enabled: shouldFetchSelectedAccount,
+    });
+    const selectedAccount = useMemo(() => {
+        if (selectAll && value === 'all') {
+            return {
+                id: 'all',
+                name: 'All accounts',
+                code: '',
+                isOpen: true,
+                isReadOnly: false,
+                accountType: 'neutral' as const,
+                hasInvalidConfig: false,
+            };
+        }
+        return selectedAccountFromList ?? selectedAccountQuery.data ?? null;
+    }, [selectAll, selectedAccountFromList, selectedAccountQuery.data, value]);
+
     const resolvedAccounts = useMemo(() => {
-        let result = accounts ?? [];
+        let result = (accounts ?? []).map((account) => ({
+            ...account,
+            hasInvalidConfig:
+                (account as { hasInvalidConfig?: boolean }).hasInvalidConfig ??
+                false,
+        }));
+
+        const normalizedSelectedAccount =
+            selectedAccount === null
+                ? null
+                : {
+                      ...selectedAccount,
+                      hasInvalidConfig:
+                          (
+                              selectedAccount as {
+                                  hasInvalidConfig?: boolean;
+                              }
+                          ).hasInvalidConfig ?? false,
+                  };
 
         // Filter out read-only accounts if needed
         if (excludeReadOnly) {
@@ -77,6 +123,16 @@ export const AccountSelect = ({
                     | 'neutral';
                 return allowedTypes.includes(type);
             });
+        }
+
+        if (
+            normalizedSelectedAccount &&
+            normalizedSelectedAccount.id !== 'all' &&
+            !result.some(
+                (account) => account.id === normalizedSelectedAccount.id,
+            )
+        ) {
+            result = [normalizedSelectedAccount, ...result];
         }
 
         if (suggestedIdOrder.size > 0) {
@@ -115,6 +171,7 @@ export const AccountSelect = ({
         selectAll,
         excludeReadOnly,
         allowedTypes,
+        selectedAccount,
         suggestedIdOrder.get,
         suggestedIdOrder.has,
         suggestedIdOrder.size,
@@ -143,22 +200,26 @@ export const AccountSelect = ({
                 0) * 45,
     });
 
-    // Find selected account from all accounts (not just resolved/filtered ones) so we can display it even if invalid
-    const selectedAccount =
-        (value?.length ?? 0) > 0 && accounts
-            ? accounts.find((account) => account.id === value)
-            : null;
-
     const handleOpenChange = (nextOpen: boolean) => {
         setOpen(nextOpen);
         onOpenChange?.(nextOpen);
     };
 
+    const handleValueChange = (newValue: string) => {
+        // If Select is trying to clear the value but we have a valid value set,
+        // and the dropdown is not open, ignore it (this happens when value is set
+        // but the account data hasn't loaded yet)
+        if (!newValue && value && !open) {
+            return;
+        }
+        onChange(newValue);
+    };
+
     const shouldRefocus = useRef(false);
     return (
         <Select
-            value={value}
-            onValueChange={onChange}
+            value={value || ''}
+            onValueChange={handleValueChange}
             disabled={isLoadingAccounts || disabled}
             open={open}
             onOpenChange={handleOpenChange}
