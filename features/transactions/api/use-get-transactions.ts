@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { parseAsString, useQueryStates } from 'nuqs';
 
 import { client } from '@/lib/hono';
@@ -19,6 +19,7 @@ export const useGetTransactions = () => {
             'transactions',
             { from: queryFrom, to: queryTo, accountId: queryAccountId },
         ],
+        placeholderData: keepPreviousData,
         queryFn: async () => {
             const response = await client.api.transactions.$get({
                 query: {
