@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
+import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
 
 export type CustomerSelectProps = {
     value?: string;
@@ -23,6 +24,7 @@ export type CustomerSelectProps = {
     placeholder?: string;
     disabled?: boolean;
     onCreate?: (name: string) => void;
+    suggestionQuery?: string;
 };
 
 export const CustomerSelect = ({
@@ -32,6 +34,7 @@ export const CustomerSelect = ({
     placeholder = 'Select customer...',
     disabled,
     onCreate,
+    suggestionQuery,
 }: CustomerSelectProps) => {
     const [open, setOpen] = useState(false);
     const [customerFilter, setCustomerFilter] = useState('');
@@ -40,16 +43,67 @@ export const CustomerSelect = ({
     const { data: customers, isLoading: isLoadingCustomers } =
         useGetCustomers();
 
-    const filteredCustomers = useMemo(
+    const resolvedSuggestionQuery = useMemo(() => {
+        const trimmedFilter = customerFilter.trim();
+        if (trimmedFilter.length > 0) {
+            return trimmedFilter;
+        }
+        return suggestionQuery?.trim() ?? '';
+    }, [customerFilter, suggestionQuery]);
+
+    const suggestedCustomersQuery = useGetSuggestedCustomers(
+        resolvedSuggestionQuery,
+        {
+            enabled: open,
+        },
+    );
+    const suggestedCustomerIds = useMemo(
         () =>
-            customers?.filter((customer) => {
-                const filter = customerFilter.toLowerCase();
-                return (
-                    customer.name.toLowerCase().includes(filter) ||
-                    customer.pin?.toLowerCase().includes(filter)
+            suggestedCustomersQuery.data?.map(
+                (suggestion) => suggestion.customerId,
+            ) ?? [],
+        [suggestedCustomersQuery.data],
+    );
+
+    const suggestedIdOrder = useMemo(
+        () =>
+            new Map(
+                suggestedCustomerIds.map((customerId, index) => [
+                    customerId,
+                    index,
+                ]),
+            ),
+        [suggestedCustomerIds],
+    );
+
+    const filteredCustomers = useMemo(
+        () => {
+            let result =
+                customers?.filter((customer) => {
+                    const filter = customerFilter.toLowerCase();
+                    return (
+                        customer.name.toLowerCase().includes(filter) ||
+                        customer.pin?.toLowerCase().includes(filter)
+                    );
+                }) ?? [];
+
+            if (suggestedIdOrder.size > 0) {
+                const suggested = result
+                    .filter((customer) => suggestedIdOrder.has(customer.id))
+                    .sort(
+                        (a, b) =>
+                            (suggestedIdOrder.get(a.id) ?? 0) -
+                            (suggestedIdOrder.get(b.id) ?? 0),
+                    );
+                const remaining = result.filter(
+                    (customer) => !suggestedIdOrder.has(customer.id),
                 );
-            }),
-        [customers, customerFilter],
+                result = [...suggested, ...remaining];
+            }
+
+            return result;
+        },
+        [customers, customerFilter, suggestedIdOrder],
     );
 
     // Virtualization
@@ -133,6 +187,9 @@ export const CustomerSelect = ({
                         {rowVirtualizer.getVirtualItems().map((item) => {
                             const customer = filteredCustomers?.[item.index];
                             if (!customer) return null;
+                            const isSuggested = suggestedIdOrder.has(
+                                customer.id,
+                            );
 
                             return (
                                 <SelectItem
@@ -151,7 +208,7 @@ export const CustomerSelect = ({
                                         transform: `translateY(${item.start}px)`,
                                     }}
                                 >
-                                    <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center justify-between w-full gap-2">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="font-medium truncate">
                                                 {customer.name}
@@ -167,6 +224,11 @@ export const CustomerSelect = ({
                                                 </span>
                                             )}
                                         </div>
+                                        {isSuggested && (
+                                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                                Suggested
+                                            </span>
+                                        )}
                                     </div>
                                 </SelectItem>
                             );

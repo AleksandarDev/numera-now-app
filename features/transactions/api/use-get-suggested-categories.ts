@@ -1,45 +1,40 @@
 import { useQuery } from '@tanstack/react-query';
 import { client } from '@/lib/hono';
 
-export type SuggestedAccount = {
-    accountId: string;
+export type SuggestedCategory = {
+    categoryId: string;
     usageCount: number;
     lastUsed: string | null;
 };
 
-type SuggestedAccountsResponse = {
-    credit: SuggestedAccount[];
-    debit: SuggestedAccount[];
-};
-
-type SuggestedAccountsOptions = {
+type SuggestedCategoriesOptions = {
     enabled?: boolean;
 };
 
-export const useGetSuggestedAccounts = (
+export const useGetSuggestedCategories = (
     customerId?: string,
-    options?: SuggestedAccountsOptions,
+    options?: SuggestedCategoriesOptions,
 ) => {
     const query = useQuery({
         enabled: Boolean(customerId) && (options?.enabled ?? true),
-        queryKey: ['transactions', 'suggested-accounts', { customerId }],
+        queryKey: ['transactions', 'suggested-categories', { customerId }],
         queryFn: async () => {
             if (!customerId) {
                 throw new Error('Customer ID is required');
             }
 
             const response = await client.api.transactions[
-                'suggested-accounts'
+                'suggested-categories'
             ].$get({
                 query: { customerId },
             });
 
             if (!response.ok) {
-                throw new Error('Failed to fetch suggested accounts.');
+                throw new Error('Failed to fetch suggested categories.');
             }
 
             const { data } = await response.json();
-            return data as SuggestedAccountsResponse;
+            return data as SuggestedCategory[];
         },
     });
 

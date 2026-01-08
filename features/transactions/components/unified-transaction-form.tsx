@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronRight, Plus, Trash, X } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { AccountSelect } from '@/components/account-select';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-suggested-categories';
 import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
 import { cn } from '@/lib/utils';
 
@@ -139,7 +140,12 @@ export const UnifiedTransactionForm = ({
         name: 'payeeCustomerId',
     });
 
-    const suggestedAccountsQuery = useGetSuggestedAccounts(payeeCustomerId);
+    const [isAccountSelectOpen, setIsAccountSelectOpen] = useState(false);
+    const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+
+    const suggestedAccountsQuery = useGetSuggestedAccounts(payeeCustomerId, {
+        enabled: isAccountSelectOpen,
+    });
     const suggestedCreditAccountIds = useMemo(
         () =>
             suggestedAccountsQuery.data?.credit.map(
@@ -154,6 +160,32 @@ export const UnifiedTransactionForm = ({
             ) ?? [],
         [suggestedAccountsQuery.data?.debit],
     );
+
+    const suggestedCategoriesQuery = useGetSuggestedCategories(payeeCustomerId, {
+        enabled: isCategoryMenuOpen,
+    });
+    const suggestedCategoryIds = useMemo(
+        () =>
+            suggestedCategoriesQuery.data?.map(
+                (suggestion) => suggestion.categoryId,
+            ) ?? [],
+        [suggestedCategoriesQuery.data],
+    );
+    const resolvedCategoryOptions = useMemo(() => {
+        if (suggestedCategoryIds.length === 0) {
+            return categoryOptions;
+        }
+
+        const suggestedIdSet = new Set(suggestedCategoryIds);
+        const suggested = categoryOptions
+            .filter((option) => suggestedIdSet.has(option.value))
+            .map((option) => ({ ...option, suggested: true }));
+        const remaining = categoryOptions.filter(
+            (option) => !suggestedIdSet.has(option.value),
+        );
+
+        return [...suggested, ...remaining];
+    }, [categoryOptions, suggestedCategoryIds]);
 
     const creditTotal = useMemo(
         () =>
@@ -282,6 +314,9 @@ export const UnifiedTransactionForm = ({
                                                             ]}
                                                             suggestedAccountIds={
                                                                 suggestedCreditAccountIds
+                                                            }
+                                                            onOpenChange={
+                                                                setIsAccountSelectOpen
                                                             }
                                                         />
                                                     </FormControl>
@@ -421,6 +456,9 @@ export const UnifiedTransactionForm = ({
                                                             suggestedAccountIds={
                                                                 suggestedDebitAccountIds
                                                             }
+                                                            onOpenChange={
+                                                                setIsAccountSelectOpen
+                                                            }
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -557,11 +595,17 @@ export const UnifiedTransactionForm = ({
                                 <FormControl>
                                     <Select
                                         placeholder="Select a category"
-                                        options={categoryOptions}
+                                        options={resolvedCategoryOptions}
                                         onCreate={onCreateCategory}
                                         value={field.value}
                                         onChange={field.onChange}
                                         disabled={isPending}
+                                        onMenuOpen={() =>
+                                            setIsCategoryMenuOpen(true)
+                                        }
+                                        onMenuClose={() =>
+                                            setIsCategoryMenuOpen(false)
+                                        }
                                     />
                                 </FormControl>
                                 <FormMessage />
