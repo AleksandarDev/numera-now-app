@@ -1,13 +1,14 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronRight, Minus, Plus, Trash, X } from "lucide-react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { z } from "zod";
-import { useEffect, useMemo } from "react";
-
-import { AmountInput } from "@/components/amount-input";
-import { DatePicker } from "@/components/date-picker";
-import { Select } from "@/components/select";
-import { Button } from "@/components/ui/button";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronRight, Plus, Trash, X } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { z } from 'zod';
+import { AccountSelect } from '@/components/account-select';
+import { AmountInput } from '@/components/amount-input';
+import { CustomerSelect } from '@/components/customer-select';
+import { DatePicker } from '@/components/date-picker';
+import { Select } from '@/components/select';
+import { Button } from '@/components/ui/button';
 import {
     Form,
     FormControl,
@@ -15,55 +16,58 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { SheetFooter } from "@/components/ui/sheet";
-import { AccountSelect } from "@/components/account-select";
-import { CustomerSelect } from "@/components/customer-select";
-import { convertAmountToMiliunits } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/form';
+import { SheetFooter } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
+import { cn, } from '@/lib/utils';
 
 // Schema for individual credit/debit entries
 const creditEntrySchema = z.object({
-    accountId: z.string().min(1, "Select an account"),
-    amount: z.string().min(1, "Enter an amount"),
+    accountId: z.string().min(1, 'Select an account'),
+    amount: z.string().min(1, 'Enter an amount'),
     categoryId: z.string().optional(),
     notes: z.string().optional(),
 });
 
 const debitEntrySchema = z.object({
-    accountId: z.string().min(1, "Select an account"),
-    amount: z.string().min(1, "Enter an amount"),
+    accountId: z.string().min(1, 'Select an account'),
+    amount: z.string().min(1, 'Enter an amount'),
     categoryId: z.string().optional(),
     notes: z.string().optional(),
 });
 
 // Main form schema
-const formSchema = z.object({
-    date: z.date(),
-    payeeCustomerId: z.string().optional(),
-    notes: z.string().optional(),
-    categoryId: z.string().optional(),
-    creditEntries: z.array(creditEntrySchema).min(1, "Add at least one credit entry"),
-    debitEntries: z.array(debitEntrySchema).min(1, "Add at least one debit entry"),
-}).superRefine((data, ctx) => {
-    const creditTotal = data.creditEntries.reduce(
-        (sum, entry) => sum + parseFloat(entry.amount || "0"),
-        0
-    );
-    const debitTotal = data.debitEntries.reduce(
-        (sum, entry) => sum + parseFloat(entry.amount || "0"),
-        0
-    );
+const formSchema = z
+    .object({
+        date: z.date(),
+        payeeCustomerId: z.string().optional(),
+        notes: z.string().optional(),
+        categoryId: z.string().optional(),
+        creditEntries: z
+            .array(creditEntrySchema)
+            .min(1, 'Add at least one credit entry'),
+        debitEntries: z
+            .array(debitEntrySchema)
+            .min(1, 'Add at least one debit entry'),
+    })
+    .superRefine((data, ctx) => {
+        const creditTotal = data.creditEntries.reduce(
+            (sum, entry) => sum + parseFloat(entry.amount || '0'),
+            0,
+        );
+        const debitTotal = data.debitEntries.reduce(
+            (sum, entry) => sum + parseFloat(entry.amount || '0'),
+            0,
+        );
 
-    if (Math.abs(creditTotal - debitTotal) > 0.001) {
-        ctx.addIssue({
-            code: "custom",
-            message: `Credits (${creditTotal.toFixed(2)}) must equal debits (${debitTotal.toFixed(2)})`,
-            path: ["creditEntries"],
-        });
-    }
-});
+        if (Math.abs(creditTotal - debitTotal) > 0.001) {
+            ctx.addIssue({
+                code: 'custom',
+                message: `Credits (${creditTotal.toFixed(2)}) must equal debits (${debitTotal.toFixed(2)})`,
+                path: ['creditEntries'],
+            });
+        }
+    });
 
 export type UnifiedTransactionFormValues = z.infer<typeof formSchema>;
 
@@ -78,7 +82,7 @@ type Props = {
     defaultValues?: Partial<UnifiedTransactionFormValues>;
 };
 
-const defaultEntry = { accountId: "", amount: "", categoryId: "", notes: "" };
+const defaultEntry = { accountId: '', amount: '', categoryId: '', notes: '' };
 
 export const UnifiedTransactionForm = ({
     id,
@@ -94,9 +98,9 @@ export const UnifiedTransactionForm = ({
         resolver: zodResolver(formSchema),
         defaultValues: {
             date: new Date(),
-            payeeCustomerId: "",
-            notes: "",
-            categoryId: "",
+            payeeCustomerId: '',
+            notes: '',
+            categoryId: '',
             creditEntries: [{ ...defaultEntry }],
             debitEntries: [{ ...defaultEntry }],
             ...defaultValues,
@@ -109,7 +113,7 @@ export const UnifiedTransactionForm = ({
         remove: removeCredit,
     } = useFieldArray({
         control: form.control,
-        name: "creditEntries",
+        name: 'creditEntries',
     });
 
     const {
@@ -118,20 +122,34 @@ export const UnifiedTransactionForm = ({
         remove: removeDebit,
     } = useFieldArray({
         control: form.control,
-        name: "debitEntries",
+        name: 'debitEntries',
     });
 
-    const creditEntries = useWatch({ control: form.control, name: "creditEntries" });
-    const debitEntries = useWatch({ control: form.control, name: "debitEntries" });
+    const creditEntries = useWatch({
+        control: form.control,
+        name: 'creditEntries',
+    });
+    const debitEntries = useWatch({
+        control: form.control,
+        name: 'debitEntries',
+    });
 
     const creditTotal = useMemo(
-        () => creditEntries?.reduce((sum, entry) => sum + parseFloat(entry?.amount || "0"), 0) || 0,
-        [creditEntries]
+        () =>
+            creditEntries?.reduce(
+                (sum, entry) => sum + parseFloat(entry?.amount || '0'),
+                0,
+            ) || 0,
+        [creditEntries],
     );
 
     const debitTotal = useMemo(
-        () => debitEntries?.reduce((sum, entry) => sum + parseFloat(entry?.amount || "0"), 0) || 0,
-        [debitEntries]
+        () =>
+            debitEntries?.reduce(
+                (sum, entry) => sum + parseFloat(entry?.amount || '0'),
+                0,
+            ) || 0,
+        [debitEntries],
     );
 
     const isBalanced = Math.abs(creditTotal - debitTotal) < 0.001;
@@ -145,10 +163,10 @@ export const UnifiedTransactionForm = ({
     useEffect(() => {
         if (isSplitCredit && !isSplitDebit && creditTotal > 0) {
             // Multiple credits, single debit - set debit to credit total
-            form.setValue("debitEntries.0.amount", creditTotal.toFixed(2));
+            form.setValue('debitEntries.0.amount', creditTotal.toFixed(2));
         } else if (isSplitDebit && !isSplitCredit && debitTotal > 0) {
             // Multiple debits, single credit - set credit to debit total
-            form.setValue("creditEntries.0.amount", debitTotal.toFixed(2));
+            form.setValue('creditEntries.0.amount', debitTotal.toFixed(2));
         }
     }, [isSplitCredit, isSplitDebit, creditTotal, debitTotal, form]);
 
@@ -218,7 +236,10 @@ export const UnifiedTransactionForm = ({
                         {/* Credit Account Column */}
                         <div className="space-y-2">
                             {creditFields.map((field, index) => (
-                                <div key={field.id} className="flex items-start">
+                                <div
+                                    key={field.id}
+                                    className="flex items-start"
+                                >
                                     <div className="flex-1 space-y-1">
                                         <FormField
                                             control={form.control}
@@ -228,11 +249,16 @@ export const UnifiedTransactionForm = ({
                                                     <FormControl>
                                                         <AccountSelect
                                                             value={field.value}
-                                                            onChange={field.onChange}
+                                                            onChange={
+                                                                field.onChange
+                                                            }
                                                             disabled={isPending}
                                                             placeholder="Credit account..."
                                                             excludeReadOnly
-                                                            allowedTypes={["credit", "neutral"]}
+                                                            allowedTypes={[
+                                                                'credit',
+                                                                'neutral',
+                                                            ]}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -240,7 +266,9 @@ export const UnifiedTransactionForm = ({
                                             )}
                                         />
                                         {/* Show amount field for each credit when: credits are split, OR debits are split (need individual amounts) */}
-                                        {(isSplitCredit || (isSplitDebit && !isSplitCredit)) && (
+                                        {(isSplitCredit ||
+                                            (isSplitDebit &&
+                                                !isSplitCredit)) && (
                                             <FormField
                                                 control={form.control}
                                                 name={`creditEntries.${index}.amount`}
@@ -248,15 +276,23 @@ export const UnifiedTransactionForm = ({
                                                     <FormItem>
                                                         <FormControl>
                                                             {/* When debits are split but credit is single, show read-only synced amount */}
-                                                            {isSplitDebit && !isSplitCredit ? (
+                                                            {isSplitDebit &&
+                                                            !isSplitCredit ? (
                                                                 <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
-                                                                    {debitTotal.toFixed(2)}
+                                                                    {debitTotal.toFixed(
+                                                                        2,
+                                                                    )}
                                                                 </div>
                                                             ) : (
                                                                 <AmountInput
                                                                     {...field}
-                                                                    value={field.value || ""}
-                                                                    disabled={isPending}
+                                                                    value={
+                                                                        field.value ||
+                                                                        ''
+                                                                    }
+                                                                    disabled={
+                                                                        isPending
+                                                                    }
                                                                     placeholder="0.00"
                                                                     hideSign
                                                                 />
@@ -286,7 +322,9 @@ export const UnifiedTransactionForm = ({
                                 variant="outline"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => appendCredit({ ...defaultEntry })}
+                                onClick={() =>
+                                    appendCredit({ ...defaultEntry })
+                                }
                                 disabled={isPending}
                             >
                                 <Plus className="h-4 w-4 mr-1" /> Add Credit
@@ -304,14 +342,17 @@ export const UnifiedTransactionForm = ({
                                             <FormControl>
                                                 <AmountInput
                                                     {...field}
-                                                    value={field.value || ""}
+                                                    value={field.value || ''}
                                                     disabled={isPending}
                                                     placeholder="0.00"
                                                     hideSign
                                                     onChange={(value) => {
                                                         field.onChange(value);
                                                         // Sync with debit amount in single entry mode
-                                                        form.setValue("debitEntries.0.amount", value || "");
+                                                        form.setValue(
+                                                            'debitEntries.0.amount',
+                                                            value || '',
+                                                        );
                                                     }}
                                                 />
                                             </FormControl>
@@ -330,7 +371,10 @@ export const UnifiedTransactionForm = ({
                         {/* Debit Account Column */}
                         <div className="space-y-2">
                             {debitFields.map((field, index) => (
-                                <div key={field.id} className="flex gap-2 items-start">
+                                <div
+                                    key={field.id}
+                                    className="flex gap-2 items-start"
+                                >
                                     <div className="flex-1 space-y-2">
                                         <FormField
                                             control={form.control}
@@ -340,11 +384,16 @@ export const UnifiedTransactionForm = ({
                                                     <FormControl>
                                                         <AccountSelect
                                                             value={field.value}
-                                                            onChange={field.onChange}
+                                                            onChange={
+                                                                field.onChange
+                                                            }
                                                             disabled={isPending}
                                                             placeholder="Debit account..."
                                                             excludeReadOnly
-                                                            allowedTypes={["debit", "neutral"]}
+                                                            allowedTypes={[
+                                                                'debit',
+                                                                'neutral',
+                                                            ]}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -352,7 +401,9 @@ export const UnifiedTransactionForm = ({
                                             )}
                                         />
                                         {/* Show amount field for each debit when: debits are split, OR credits are split (need individual amounts) */}
-                                        {(isSplitDebit || (isSplitCredit && !isSplitDebit)) && (
+                                        {(isSplitDebit ||
+                                            (isSplitCredit &&
+                                                !isSplitDebit)) && (
                                             <FormField
                                                 control={form.control}
                                                 name={`debitEntries.${index}.amount`}
@@ -360,15 +411,23 @@ export const UnifiedTransactionForm = ({
                                                     <FormItem>
                                                         <FormControl>
                                                             {/* When credits are split but debit is single, show read-only synced amount */}
-                                                            {isSplitCredit && !isSplitDebit ? (
+                                                            {isSplitCredit &&
+                                                            !isSplitDebit ? (
                                                                 <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
-                                                                    {creditTotal.toFixed(2)}
+                                                                    {creditTotal.toFixed(
+                                                                        2,
+                                                                    )}
                                                                 </div>
                                                             ) : (
                                                                 <AmountInput
                                                                     {...field}
-                                                                    value={field.value || ""}
-                                                                    disabled={isPending}
+                                                                    value={
+                                                                        field.value ||
+                                                                        ''
+                                                                    }
+                                                                    disabled={
+                                                                        isPending
+                                                                    }
                                                                     placeholder="0.00"
                                                                     hideSign
                                                                 />
@@ -408,32 +467,51 @@ export const UnifiedTransactionForm = ({
                 </div>
 
                 {/* Summary Section */}
-                <div className={cn(
-                    "rounded-lg border p-4 space-y-2",
-                    isBalanced ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950" : "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950"
-                )}>
+                <div
+                    className={cn(
+                        'rounded-lg border p-4 space-y-2',
+                        isBalanced
+                            ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950'
+                            : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950',
+                    )}
+                >
                     <div className="flex justify-between text-sm">
                         <span className="font-medium">Summary</span>
                         {isBalanced ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">✓ Balanced</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                                ✓ Balanced
+                            </span>
                         ) : (
-                            <span className="text-red-600 dark:text-red-400 font-medium">⚠ Unbalanced</span>
+                            <span className="text-red-600 dark:text-red-400 font-medium">
+                                ⚠ Unbalanced
+                            </span>
                         )}
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-sm">
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Total Credits:</span>
-                            <span className="font-mono font-medium">{creditTotal.toFixed(2)}</span>
+                            <span className="text-muted-foreground">
+                                Total Credits:
+                            </span>
+                            <span className="font-mono font-medium">
+                                {creditTotal.toFixed(2)}
+                            </span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Total Debits:</span>
-                            <span className="font-mono font-medium">{debitTotal.toFixed(2)}</span>
+                            <span className="text-muted-foreground">
+                                Total Debits:
+                            </span>
+                            <span className="font-mono font-medium">
+                                {debitTotal.toFixed(2)}
+                            </span>
                         </div>
                     </div>
                     {!isBalanced && (
                         <div className="text-xs text-red-600 dark:text-red-400">
-                            Difference: {Math.abs(creditTotal - debitTotal).toFixed(2)}
-                            {creditTotal > debitTotal ? " (Credits exceed Debits)" : " (Debits exceed Credits)"}
+                            Difference:{' '}
+                            {Math.abs(creditTotal - debitTotal).toFixed(2)}
+                            {creditTotal > debitTotal
+                                ? ' (Credits exceed Debits)'
+                                : ' (Debits exceed Credits)'}
                         </div>
                     )}
                 </div>
@@ -474,7 +552,7 @@ export const UnifiedTransactionForm = ({
                                 <FormControl>
                                     <Textarea
                                         {...field}
-                                        value={field.value || ""}
+                                        value={field.value || ''}
                                         disabled={isPending}
                                         placeholder="Optional notes..."
                                     />
@@ -491,7 +569,7 @@ export const UnifiedTransactionForm = ({
                         disabled={isPending || !isBalanced}
                         type="submit"
                     >
-                        {id ? "Save changes" : "Create transaction"}
+                        {id ? 'Save changes' : 'Create transaction'}
                     </Button>
 
                     {!!id && onDelete && (

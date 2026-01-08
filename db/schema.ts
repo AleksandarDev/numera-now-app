@@ -68,9 +68,33 @@ export const customers = pgTable("customers", {
 
 export const customersRelations = relations(customers, ({ many }) => ({
     transactions: many(transactions),
+    ibans: many(customerIbans),
 }));
 
 export const insertCustomerSchema = createInsertSchema(customers);
+
+// Customer IBANs table - stores multiple IBANs per customer for matching during import
+export const customerIbans = pgTable("customer_ibans", {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id").notNull().references(() => customers.id, {
+        onDelete: "cascade",
+    }),
+    iban: text("iban").notNull(),
+    bankName: text("bank_name"), // Optional bank name for this IBAN
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+}, (table) => [
+    index('customer_ibans_customerid_idx').on(table.customerId),
+    index('customer_ibans_iban_idx').on(table.iban),
+]);
+
+export const customerIbansRelations = relations(customerIbans, ({ one }) => ({
+    customer: one(customers, {
+        fields: [customerIbans.customerId],
+        references: [customers.id],
+    }),
+}));
+
+export const insertCustomerIbanSchema = createInsertSchema(customerIbans);
 
 export const settings = pgTable("settings", {
     userId: text("user_id").primaryKey(),

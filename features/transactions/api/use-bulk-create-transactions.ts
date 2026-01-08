@@ -19,6 +19,11 @@ export const useBulkCreateTransactions = () => {
       const response = await client.api.transactions["bulk-create"]["$post"]({
         json,
       });
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = "error" in errorData ? errorData.error : "Failed to create transaction(s).";
+        throw new Error(errorMessage);
+      }
       return await response.json();
     },
     onSuccess: () => {
@@ -26,8 +31,8 @@ export const useBulkCreateTransactions = () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
     },
-    onError: () => {
-      toast.error("Failed to create transaction(s).");
+    onError: (error) => {
+      toast.error(error.message || "Failed to create transaction(s).");
     },
   });
 

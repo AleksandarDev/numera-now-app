@@ -148,6 +148,13 @@
       "when": 1767817101455,
       "tag": "0020_brief_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1767829221639,
+      "tag": "0021_light_ironclad",
+      "breakpoints": true
     }
   ]
 }

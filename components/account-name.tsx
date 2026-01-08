@@ -5,7 +5,7 @@ export function AccountName({ account, accountCode }: { account: string, account
     return (
         <Stack>
             <Typography level="body2" className="line-clamp-1" title={account}>{account}</Typography>
-            <Typography level="body3" mono className="leading-none">{accountCode}</Typography>
+            <Typography level="body3" mono className="text-foreground opacity-60 leading-none">{accountCode}</Typography>
         </Stack>
     );
 }

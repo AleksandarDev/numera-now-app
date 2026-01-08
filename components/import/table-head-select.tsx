@@ -39,16 +39,11 @@ export const TableHeadSelect = ({
       <SelectContent>
         <SelectItem value="skip">Skip</SelectItem>
         {options.map((option, index) => {
-          const disabled =
-            Object.values(selectedColumns).includes(option) &&
-            selectedColumns[`column_${columnIndex}`] !== option;
-
+          // Allow multiple columns to map to the same property
           return (
             <SelectItem
               key={index}
               value={option}
-              disabled={disabled}
-              // TODO: Replace sign signalco string helper
               className="capitalize"
             >
               {option}
