@@ -25,6 +25,7 @@ export type AccountSelectProps = {
     excludeReadOnly?: boolean;
     allowedTypes?: Array<'credit' | 'debit' | 'neutral'>;
     suggestedAccountIds?: string[];
+    onOpenChange?: (open: boolean) => void;
 };
 
 export const AccountSelect = ({
@@ -38,9 +39,20 @@ export const AccountSelect = ({
     excludeReadOnly = false,
     allowedTypes,
     suggestedAccountIds,
+    onOpenChange,
 }: AccountSelectProps) => {
     const [open, setOpen] = useState(false);
     const [accountsFilter, setAccountsFilter] = useState('');
+
+    const suggestedIdOrder = useMemo(
+        () =>
+            new Map(
+                (suggestedAccountIds ?? [])
+                    .filter(Boolean)
+                    .map((accountId, index) => [accountId, index]),
+            ),
+        [suggestedAccountIds],
+    );
 
     // TODO: Don't load all accounts if filter is not open, load only the selected one
     const { data: accounts, isLoading: isLoadingAccounts } = useGetAccounts({
@@ -67,11 +79,6 @@ export const AccountSelect = ({
             });
         }
 
-        const suggestedIdOrder = new Map(
-            (suggestedAccountIds ?? [])
-                .filter(Boolean)
-                .map((accountId, index) => [accountId, index]),
-        );
         if (suggestedIdOrder.size > 0) {
             const suggested = result
                 .filter((account) => suggestedIdOrder.has(account.id))
@@ -140,6 +147,11 @@ export const AccountSelect = ({
             ? accounts.find((account) => account.id === value)
             : null;
 
+    const handleOpenChange = (nextOpen: boolean) => {
+        setOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+    };
+
     const shouldRefocus = useRef(false);
     return (
         <Select
@@ -147,7 +159,7 @@ export const AccountSelect = ({
             onValueChange={onChange}
             disabled={isLoadingAccounts || disabled}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
         >
             <SelectTrigger className={cn('text-left', className)}>
                 {selectedAccount ? (
@@ -198,6 +210,7 @@ export const AccountSelect = ({
                     {rowVirtualizer.getVirtualItems().map((virtualItem) => {
                         if (!filteredAccounts) return null;
                         const account = filteredAccounts[virtualItem.index];
+                        const isSuggested = suggestedIdOrder.has(account.id);
                         return (
                             <SelectItem
                                 key={virtualItem.key}
@@ -208,10 +221,19 @@ export const AccountSelect = ({
                                     transform: `translateY(${virtualItem.start}px)`,
                                 }}
                             >
-                                <AccountName
-                                    account={account.name}
-                                    accountCode={account.code}
-                                />
+                                <div className="flex items-center justify-between w-full gap-2">
+                                    <div className="min-w-0">
+                                        <AccountName
+                                            account={account.name}
+                                            accountCode={account.code}
+                                        />
+                                    </div>
+                                    {isSuggested && (
+                                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                            Suggested
+                                        </span>
+                                    )}
+                                </div>
                             </SelectItem>
                         );
                     })}

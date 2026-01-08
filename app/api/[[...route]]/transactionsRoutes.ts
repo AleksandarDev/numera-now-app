@@ -6,9 +6,11 @@ import { endOfDay, parse, subDays } from 'date-fns';
 import {
     aliasedTable,
     and,
+    asc,
     desc,
     eq,
     gte,
+    ilike,
     inArray,
     isNotNull,
     isNull,
@@ -588,6 +590,109 @@ const app = new Hono()
                     debit: debitSuggestions,
                 },
             });
+        },
+    )
+    .get(
+        '/suggested-customers',
+        zValidator(
+            'query',
+            z.object({
+                query: z.string().min(1),
+            }),
+        ),
+        clerkMiddleware(),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { query } = ctx.req.valid('query');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const suggestionLimit = 5;
+            const normalizedQuery = query.trim().toLowerCase();
+            const escapedQuery = normalizedQuery.replace(/[%_]/g, '\\$&');
+
+            const suggestions = await db
+                .select({ customerId: customers.id })
+                .from(customers)
+                .where(
+                    and(
+                        eq(customers.userId, auth.userId),
+                        ilike(customers.name, `%${escapedQuery}%`),
+                    ),
+                )
+                .orderBy(
+                    sql<number>`position(${normalizedQuery} in lower(${customers.name}))`,
+                    sql<number>`length(${customers.name})`,
+                    asc(customers.name),
+                )
+                .limit(suggestionLimit);
+
+            return ctx.json({ data: suggestions });
+        },
+    )
+    .get(
+        '/suggested-categories',
+        zValidator(
+            'query',
+            z.object({
+                customerId: z.string().min(1),
+            }),
+        ),
+        clerkMiddleware(),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { customerId } = ctx.req.valid('query');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const [customer] = await db
+                .select({ id: customers.id })
+                .from(customers)
+                .where(
+                    and(
+                        eq(customers.id, customerId),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
+
+            if (!customer) {
+                return ctx.json({ error: 'Not found.' }, 404);
+            }
+
+            const suggestionLimit = 5;
+
+            const categoryUsage = await db
+                .select({
+                    categoryId: transactions.categoryId,
+                    usageCount: sql<number>`count(*)`.as('usageCount'),
+                    lastUsed: sql<Date>`max(${transactions.date})`.as(
+                        'lastUsed',
+                    ),
+                })
+                .from(transactions)
+                .leftJoin(
+                    categories,
+                    eq(transactions.categoryId, categories.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.payeeCustomerId, customerId),
+                        eq(categories.userId, auth.userId),
+                        isNotNull(transactions.categoryId),
+                    ),
+                )
+                .groupBy(transactions.categoryId)
+                .orderBy(
+                    desc(sql`count(*)`),
+                    desc(sql`max(${transactions.date})`),
+                )
+                .limit(suggestionLimit);
+
+            return ctx.json({ data: categoryUsage });
         },
     )
     .get(
