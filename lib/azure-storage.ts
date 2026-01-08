@@ -179,7 +179,7 @@ export function generateUploadUrl(
             {
                 containerName,
                 blobName: storagePath,
-                permissions: BlobSASPermissions.parse('racwd'), // Read, Add, Create, Write, Delete
+                permissions: BlobSASPermissions.parse('cw'), // Create, Write
                 expiresOn: expiryDate,
             },
             sharedKeyCredential,

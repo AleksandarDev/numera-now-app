@@ -1,11 +1,49 @@
-import { and, count, eq } from 'drizzle-orm';
+import { aliasedTable, and, count, eq, isNull, or } from 'drizzle-orm';
 import { db } from '@/db/drizzle';
-import { documents, settings, transactions } from '@/db/schema';
+import { accounts, documents, settings, transactions } from '@/db/schema';
 
 export type ReconciliationCondition =
     | 'hasReceipt'
     | 'isReviewed'
     | 'isApproved';
+
+const hasTransactionAccess = async (
+    transactionId: string,
+    userId: string,
+): Promise<boolean> => {
+    const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+    const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+    const [transaction] = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(
+            creditAccounts,
+            eq(transactions.creditAccountId, creditAccounts.id),
+        )
+        .leftJoin(
+            debitAccounts,
+            eq(transactions.debitAccountId, debitAccounts.id),
+        )
+        .where(
+            and(
+                eq(transactions.id, transactionId),
+                or(
+                    eq(accounts.userId, userId),
+                    eq(creditAccounts.userId, userId),
+                    eq(debitAccounts.userId, userId),
+                    and(
+                        isNull(transactions.accountId),
+                        isNull(transactions.creditAccountId),
+                        isNull(transactions.debitAccountId),
+                        eq(transactions.statusChangedBy, userId),
+                    ),
+                ),
+            ),
+        );
+
+    return Boolean(transaction);
+};
 
 /**
  * Check if a transaction meets the reconciliation conditions
@@ -29,13 +67,8 @@ export async function isTransactionReconciled(
     // If no conditions are defined, transaction is considered reconcilable
     if (conditions.length === 0) return true;
 
-    // Get transaction
-    const [transaction] = await db
-        .select()
-        .from(transactions)
-        .where(eq(transactions.id, transactionId));
-
-    if (!transaction) return false;
+    const canAccess = await hasTransactionAccess(transactionId, userId);
+    if (!canAccess) return false;
 
     // Check each condition
     for (const condition of conditions) {
@@ -136,12 +169,9 @@ export async function getReconciliationStatus(
         };
     }
 
-    const [transaction] = await db
-        .select()
-        .from(transactions)
-        .where(eq(transactions.id, transactionId));
+    const canAccess = await hasTransactionAccess(transactionId, userId);
 
-    if (!transaction) {
+    if (!canAccess) {
         return {
             isReconciled: false,
             conditions: [],

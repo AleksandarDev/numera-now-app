@@ -16,7 +16,7 @@ import {
     sql,
 } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { z } from 'zod';
+import { type ZodIssue, z } from 'zod';
 import { db } from '@/db/drizzle';
 import {
     accounts,
@@ -28,6 +28,27 @@ import {
     transactionStatusHistory,
     transactions,
 } from '@/db/schema';
+
+const isProduction = process.env.NODE_ENV === 'production';
+const logDebug = (...args: unknown[]) => {
+    if (!isProduction) {
+        console.log(...args);
+    }
+};
+
+const logValidationIssues = (issues: ZodIssue[]) => {
+    if (isProduction) {
+        console.error('[PATCH /transactions/:id] Validation failed.', {
+            issueCount: issues.length,
+        });
+        return;
+    }
+
+    console.error(
+        '[PATCH /transactions/:id] Validation failed:',
+        JSON.stringify(issues, null, 2),
+    );
+};
 
 // Helper function to record status change
 const recordStatusChange = async (
@@ -501,6 +522,7 @@ const app = new Hono()
                 values.creditAccountId,
                 values.debitAccountId,
             ].filter(Boolean) as string[];
+            const uniqueAccountIds = [...new Set(accountIds)];
             const accountMap = new Map<
                 string,
                 {
@@ -510,7 +532,7 @@ const app = new Hono()
                     accountType: string;
                 }
             >();
-            if (accountIds.length > 0) {
+            if (uniqueAccountIds.length > 0) {
                 const accountsToCheck = await db
                     .select({
                         id: accounts.id,
@@ -521,10 +543,25 @@ const app = new Hono()
                     .from(accounts)
                     .where(
                         and(
-                            inArray(accounts.id, accountIds),
+                            inArray(accounts.id, uniqueAccountIds),
                             eq(accounts.userId, auth.userId),
                         ),
                     );
+
+                if (accountsToCheck.length !== uniqueAccountIds.length) {
+                    const foundIds = new Set(
+                        accountsToCheck.map((account) => account.id),
+                    );
+                    const missingIds = uniqueAccountIds.filter(
+                        (accountId) => !foundIds.has(accountId),
+                    );
+                    return ctx.json(
+                        {
+                            error: `Account(s) not found or not owned by user: ${missingIds.join(', ')}`,
+                        },
+                        400,
+                    );
+                }
 
                 for (const acc of accountsToCheck) {
                     accountMap.set(acc.id, acc);
@@ -584,8 +621,6 @@ const app = new Hono()
                     }
                 }
             }
-
-            // TODO: Fix users being able to create transactions with other users' accounts
 
             // Open accounts and their parents if they are closed
             if (values.accountId) {
@@ -696,6 +731,7 @@ const app = new Hono()
                     v.debitAccountId,
                 ])
                 .filter(Boolean) as string[];
+            const uniqueAccountIds = [...new Set(allAccountIds)];
             const accountMap = new Map<
                 string,
                 {
@@ -705,7 +741,7 @@ const app = new Hono()
                     accountType: string;
                 }
             >();
-            if (allAccountIds.length > 0) {
+            if (uniqueAccountIds.length > 0) {
                 const accountsToCheck = await db
                     .select({
                         id: accounts.id,
@@ -716,10 +752,25 @@ const app = new Hono()
                     .from(accounts)
                     .where(
                         and(
-                            inArray(accounts.id, allAccountIds),
+                            inArray(accounts.id, uniqueAccountIds),
                             eq(accounts.userId, auth.userId),
                         ),
                     );
+
+                if (accountsToCheck.length !== uniqueAccountIds.length) {
+                    const foundIds = new Set(
+                        accountsToCheck.map((account) => account.id),
+                    );
+                    const missingIds = uniqueAccountIds.filter(
+                        (accountId) => !foundIds.has(accountId),
+                    );
+                    return ctx.json(
+                        {
+                            error: `Account(s) not found or not owned by user: ${missingIds.join(', ')}`,
+                        },
+                        400,
+                    );
+                }
 
                 for (const acc of accountsToCheck) {
                     accountMap.set(acc.id, acc);
@@ -785,8 +836,6 @@ const app = new Hono()
                     }
                 }
             }
-
-            // TODO: Fix users being able to create transactions with other users' accounts
 
             // Open accounts and their parents for all transactions (batched for efficiency)
             await openAccountsAndParentsBatch(allAccountIds, auth.userId);
@@ -894,10 +943,7 @@ const app = new Hono()
                     const path = issue.path.join('.');
                     return path ? `${path}: ${issue.message}` : issue.message;
                 });
-                console.error(
-                    '[PATCH /transactions/:id] Validation failed:',
-                    JSON.stringify(result.error.issues, null, 2),
-                );
+                logValidationIssues(result.error.issues);
                 return ctx.json(
                     {
                         error: errors.join('; '),
@@ -912,7 +958,7 @@ const app = new Hono()
             const { id } = ctx.req.valid('param');
             const values = ctx.req.valid('json');
 
-            console.log('[PATCH /transactions/:id] Request:', { id, values });
+            logDebug('[PATCH /transactions/:id] Request:', { id, values });
 
             if (!id) {
                 console.error('[PATCH /transactions/:id] Missing id');
@@ -927,6 +973,8 @@ const app = new Hono()
             }
 
             // Get the existing transaction to check its status
+            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
             const [existingTransaction] = await db
                 .select({
                     status: transactions.status,
@@ -936,7 +984,31 @@ const app = new Hono()
                     payeeCustomerId: transactions.payeeCustomerId,
                 })
                 .from(transactions)
-                .where(eq(transactions.id, id));
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    creditAccounts,
+                    eq(transactions.creditAccountId, creditAccounts.id),
+                )
+                .leftJoin(
+                    debitAccounts,
+                    eq(transactions.debitAccountId, debitAccounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        or(
+                            eq(accounts.userId, auth.userId),
+                            eq(creditAccounts.userId, auth.userId),
+                            eq(debitAccounts.userId, auth.userId),
+                            and(
+                                isNull(transactions.accountId),
+                                isNull(transactions.creditAccountId),
+                                isNull(transactions.debitAccountId),
+                                eq(transactions.statusChangedBy, auth.userId),
+                            ),
+                        ),
+                    ),
+                );
 
             if (!existingTransaction) {
                 return ctx.json({ error: 'Transaction not found.' }, 404);
@@ -988,7 +1060,7 @@ const app = new Hono()
                 .where(eq(settings.userId, auth.userId));
 
             const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
-            console.log(
+            logDebug(
                 '[PATCH /transactions/:id] Double-entry mode:',
                 doubleEntryMode,
             );
@@ -1093,8 +1165,6 @@ const app = new Hono()
                 }
             }
 
-            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
-            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
             const transactionsToUpdate = db.$with('transactions_to_update').as(
                 db
                     .select({ id: transactions.id })
@@ -1129,7 +1199,7 @@ const app = new Hono()
                     ),
             );
 
-            console.log('[PATCH /transactions/:id] Updating transaction...');
+            logDebug('[PATCH /transactions/:id] Updating transaction...');
 
             // Use the status from our earlier check instead of querying again
             const oldTransaction = { status: existingTransaction.status };
@@ -1213,14 +1283,14 @@ const app = new Hono()
                     values.status,
                     auth.userId,
                 );
-                console.log('[PATCH /transactions/:id] Status changed:', {
+                logDebug('[PATCH /transactions/:id] Status changed:', {
                     id,
                     from: oldTransaction.status,
                     to: values.status,
                 });
             }
 
-            console.log('[PATCH /transactions/:id] Success:', {
+            logDebug('[PATCH /transactions/:id] Success:', {
                 id,
                 status: data.status,
             });
