@@ -13,6 +13,7 @@ import {
     SelectItem,
     SelectTrigger,
 } from '@/components/ui/select';
+import { useGetCustomer } from '@/features/customers/api/use-get-customer';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
 import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
@@ -23,7 +24,7 @@ export type CustomerSelectProps = {
     className?: string;
     placeholder?: string;
     disabled?: boolean;
-    onCreate?: (name: string) => Promise<string | undefined> | void;
+    onCreate?: (name: string) => Promise<string | undefined>;
     suggestionQuery?: string;
     /** Notes text used for suggesting customers based on transaction history */
     suggestionNotes?: string;
@@ -45,6 +46,31 @@ export const CustomerSelect = ({
     const { onOpen: onOpenNewCustomer } = useNewCustomer();
     const { data: customers, isLoading: isLoadingCustomers } =
         useGetCustomers();
+
+    const selectedCustomerFromList = useMemo(() => {
+        if (!value || !customers) return null;
+        return customers.find((customer) => customer.id === value) ?? null;
+    }, [customers, value]);
+    const shouldFetchSelectedCustomer =
+        !!value && (!customers || !selectedCustomerFromList);
+    const selectedCustomerQuery = useGetCustomer(value, {
+        enabled: shouldFetchSelectedCustomer,
+    });
+    const selectedCustomer =
+        selectedCustomerFromList ?? selectedCustomerQuery.data ?? null;
+
+    const normalizedSelectedCustomer = useMemo(() => {
+        if (!selectedCustomer) return null;
+        return {
+            ...selectedCustomer,
+            transactionCount:
+                (
+                    selectedCustomer as {
+                        transactionCount?: number;
+                    }
+                ).transactionCount ?? 0,
+        };
+    }, [selectedCustomer]);
 
     const resolvedSuggestionQuery = useMemo(() => {
         const trimmedFilter = customerFilter.trim();
@@ -91,13 +117,33 @@ export const CustomerSelect = ({
 
     const filteredCustomers = useMemo(() => {
         let result =
-            customers?.filter((customer) => {
-                const filter = customerFilter.toLowerCase();
-                return (
-                    customer.name.toLowerCase().includes(filter) ||
-                    customer.pin?.toLowerCase().includes(filter)
-                );
-            }) ?? [];
+            customers
+                ?.filter((customer) => {
+                    const filter = customerFilter.toLowerCase();
+                    return (
+                        customer.name.toLowerCase().includes(filter) ||
+                        customer.pin?.toLowerCase().includes(filter)
+                    );
+                })
+                .map((customer) => ({
+                    ...customer,
+                    transactionCount:
+                        (
+                            customer as {
+                                transactionCount?: number;
+                            }
+                        ).transactionCount ?? 0,
+                })) ?? [];
+
+        if (
+            normalizedSelectedCustomer &&
+            customerFilter.trim().length === 0 &&
+            !result.some(
+                (customer) => customer.id === normalizedSelectedCustomer.id,
+            )
+        ) {
+            result = [normalizedSelectedCustomer, ...result];
+        }
 
         if (suggestedIdOrder.size > 0) {
             const suggested = result
@@ -114,7 +160,12 @@ export const CustomerSelect = ({
         }
 
         return result;
-    }, [customers, customerFilter, suggestedIdOrder]);
+    }, [
+        customers,
+        customerFilter,
+        normalizedSelectedCustomer,
+        suggestedIdOrder,
+    ]);
 
     // Virtualization
     const parentRef = useRef<HTMLDivElement>(null);
@@ -123,10 +174,6 @@ export const CustomerSelect = ({
         getScrollElement: () => parentRef.current,
         estimateSize: () => 35,
     });
-
-    const selectedCustomer = customers?.find(
-        (customer) => customer.id === value,
-    );
 
     const handleCreate = async (name: string) => {
         if (onCreate) {
@@ -144,12 +191,22 @@ export const CustomerSelect = ({
         onOpenNewCustomer();
     };
 
+    const handleValueChange = (newValue?: string) => {
+        // If Select is trying to clear the value but we have a valid value set,
+        // and the dropdown is not open, ignore it (this happens when value is set
+        // but the customer data hasn't loaded yet)
+        if (!newValue && value && !open) {
+            return;
+        }
+        onChange(newValue);
+    };
+
     return (
         <Select
             open={open}
             onOpenChange={setOpen}
-            value={value ?? ''}
-            onValueChange={onChange}
+            value={value || ''}
+            onValueChange={handleValueChange}
             disabled={disabled}
         >
             <SelectTrigger className={clsx('h-9 pl-3 pr-2', className)}>
@@ -177,7 +234,9 @@ export const CustomerSelect = ({
             </SelectTrigger>
             <SelectContent
                 className="p-0 min-w-[320px]"
-                style={{ width: 'max(var(--radix-select-trigger-width), 320px)' }}
+                style={{
+                    width: 'max(var(--radix-select-trigger-width), 320px)',
+                }}
             >
                 <div className="p-2 border-b">
                     <Input

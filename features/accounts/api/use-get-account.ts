@@ -2,9 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import { client } from '@/lib/hono';
 
-export const useGetAccount = (id?: string) => {
+type GetAccountOptions = {
+    enabled?: boolean;
+};
+
+export const useGetAccount = (id?: string, options?: GetAccountOptions) => {
     const query = useQuery({
-        enabled: !!id,
+        enabled: !!id && (options?.enabled ?? true),
         queryKey: ['account', { id }],
         queryFn: async () => {
             const response = await client.api.accounts[':id'].$get({

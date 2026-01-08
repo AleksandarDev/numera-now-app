@@ -29,6 +29,7 @@ const app = new Hono()
                 data: {
                     userId: auth.userId,
                     doubleEntryMode: false,
+                    autoDraftToPending: false,
                     reconciliationConditions: [],
                     minRequiredDocuments: 0,
                     requiredDocumentTypeIds: [],
@@ -55,6 +56,7 @@ const app = new Hono()
             'json',
             z.object({
                 doubleEntryMode: z.boolean().optional(),
+                autoDraftToPending: z.boolean().optional(),
                 reconciliationConditions:
                     reconciliationConditionsSchema.optional(),
                 minRequiredDocuments: z.number().int().min(0).optional(),
@@ -71,6 +73,7 @@ const app = new Hono()
 
             const updateValues: {
                 doubleEntryMode?: boolean;
+                autoDraftToPending?: boolean;
                 reconciliationConditions?: string;
                 minRequiredDocuments?: number;
                 requiredDocumentTypeIds?: string;
@@ -78,6 +81,10 @@ const app = new Hono()
 
             if (values.doubleEntryMode !== undefined) {
                 updateValues.doubleEntryMode = values.doubleEntryMode;
+            }
+
+            if (values.autoDraftToPending !== undefined) {
+                updateValues.autoDraftToPending = values.autoDraftToPending;
             }
 
             if (values.reconciliationConditions !== undefined) {
@@ -115,6 +122,7 @@ const app = new Hono()
                     .values({
                         userId: auth.userId,
                         doubleEntryMode: values.doubleEntryMode || false,
+                        autoDraftToPending: values.autoDraftToPending || false,
                         reconciliationConditions:
                             values.reconciliationConditions !== undefined
                                 ? JSON.stringify(

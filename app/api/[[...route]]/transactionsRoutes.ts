@@ -681,7 +681,10 @@ const app = new Hono()
                     // Limit to first 5 meaningful words
                     const escapedWord = word.replace(/[%_]/g, '\\$&');
                     const wordMatches = await db
-                        .select({ customerId: customers.id, name: customers.name })
+                        .select({
+                            customerId: customers.id,
+                            name: customers.name,
+                        })
                         .from(customers)
                         .where(
                             and(
@@ -923,6 +926,8 @@ const app = new Hono()
                 .where(eq(settings.userId, auth.userId));
 
             const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+            const autoDraftToPending =
+                userSettings?.autoDraftToPending ?? false;
 
             // Validate double-entry mode requirements (skip for draft transactions)
             if (doubleEntryMode && values.status !== 'draft') {
@@ -1074,7 +1079,18 @@ const app = new Hono()
             }
 
             const transactionId = createId();
-            const status = values.status || 'draft';
+            let status = values.status || 'draft';
+
+            if (autoDraftToPending && status === 'draft') {
+                const hasPayee = !!values.payee || !!values.payeeCustomerId;
+                const hasRequiredAccounts =
+                    !doubleEntryMode ||
+                    (!!values.creditAccountId && !!values.debitAccountId);
+
+                if (hasPayee && hasRequiredAccounts) {
+                    status = 'pending';
+                }
+            }
 
             // Convert empty strings to null for foreign key fields
             const cleanedValues = {
@@ -1419,6 +1435,7 @@ const app = new Hono()
                     debitAccountId: transactions.debitAccountId,
                     amount: transactions.amount,
                     payeeCustomerId: transactions.payeeCustomerId,
+                    payee: transactions.payee,
                 })
                 .from(transactions)
                 .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -1497,6 +1514,8 @@ const app = new Hono()
                 .where(eq(settings.userId, auth.userId));
 
             const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+            const autoDraftToPending =
+                userSettings?.autoDraftToPending ?? false;
             logDebug(
                 '[PATCH /transactions/:id] Double-entry mode:',
                 doubleEntryMode,
@@ -1673,6 +1692,36 @@ const app = new Hono()
                 ...cleanedValues,
             };
 
+            if (autoDraftToPending && existingTransaction.status === 'draft') {
+                const effectivePayeeCustomerId =
+                    values.payeeCustomerId !== undefined
+                        ? values.payeeCustomerId
+                        : existingTransaction.payeeCustomerId;
+                const effectivePayee =
+                    values.payee !== undefined
+                        ? values.payee
+                        : existingTransaction.payee;
+                const effectiveCreditAccountId =
+                    values.creditAccountId !== undefined
+                        ? values.creditAccountId
+                        : existingTransaction.creditAccountId;
+                const effectiveDebitAccountId =
+                    values.debitAccountId !== undefined
+                        ? values.debitAccountId
+                        : existingTransaction.debitAccountId;
+
+                const hasPayee = !!effectivePayee || !!effectivePayeeCustomerId;
+                const hasRequiredAccounts =
+                    !doubleEntryMode ||
+                    (!!effectiveCreditAccountId && !!effectiveDebitAccountId);
+
+                if (hasPayee && hasRequiredAccounts) {
+                    updateData.status = 'pending';
+                    updateData.statusChangedAt = new UTCDate();
+                    updateData.statusChangedBy = auth.userId;
+                }
+            }
+
             // Track status changes
             if (
                 values.status &&
@@ -1709,21 +1758,26 @@ const app = new Hono()
             }
 
             // Record status change in history if status changed
-            if (
-                values.status &&
-                oldTransaction &&
-                values.status !== oldTransaction.status
-            ) {
+            if (oldTransaction && data.status !== oldTransaction.status) {
+                const isAutomaticDraftToPending =
+                    autoDraftToPending &&
+                    oldTransaction.status === 'draft' &&
+                    data.status === 'pending';
+
                 await recordStatusChange(
                     id,
                     oldTransaction.status,
-                    values.status,
+                    data.status,
                     auth.userId,
+                    isAutomaticDraftToPending
+                        ? 'Automatic status change'
+                        : undefined,
                 );
                 logDebug('[PATCH /transactions/:id] Status changed:', {
                     id,
                     from: oldTransaction.status,
-                    to: values.status,
+                    to: data.status,
+                    automatic: isAutomaticDraftToPending,
                 });
             }
 

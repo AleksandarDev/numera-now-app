@@ -28,6 +28,11 @@ export const QuickAssignSuggestions = ({
         return null;
     }
 
+    const handleSelect = (id: string) => {
+        if (disabled) return;
+        onSelect(id);
+    };
+
     return (
         <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
             {isLoading ? (
@@ -48,11 +53,21 @@ export const QuickAssignSuggestions = ({
                             size="sm"
                             className="h-6 px-2 text-xs truncate max-w-24 justify-start cursor-pointer"
                             disabled={disabled}
-                            onMouseDown={(e) => {
-                                // Use mousedown so the selection applies even if the UI unmounts
-                                // or focus changes prevent the click event from firing.
-                                e.preventDefault();
-                                onSelect(suggestion.id);
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                handleSelect(suggestion.id);
+                            }}
+                            onKeyDown={(event) => {
+                                if (
+                                    event.key !== 'Enter' &&
+                                    event.key !== ' '
+                                ) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                event.stopPropagation();
+                                handleSelect(suggestion.id);
                             }}
                         >
                             {suggestion.label}

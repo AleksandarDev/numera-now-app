@@ -46,6 +46,7 @@ interface StatusProgressionProps {
     currentStatus: TransactionStatus;
     onAdvance: (nextStatus: TransactionStatus) => Promise<void>;
     disabled?: boolean;
+    autoDraftToPendingEnabled?: boolean;
     canReconcile?: boolean;
     reconciliationBlockers?: string[];
     // Document validation props
@@ -59,6 +60,7 @@ export function StatusProgression({
     currentStatus,
     onAdvance,
     disabled = false,
+    autoDraftToPendingEnabled = false,
     canReconcile = true,
     reconciliationBlockers = [],
     hasAllRequiredDocuments = true,
@@ -103,8 +105,20 @@ export function StatusProgression({
     const documentBlocker = getDocumentBlocker();
     const isDocumentBlocked = documentBlocker !== null;
 
+    const isAutoDraftToPendingBlocked =
+        autoDraftToPendingEnabled &&
+        currentStatus === 'draft' &&
+        nextStatus === 'pending';
+
     const handleAdvance = async () => {
-        if (!nextStatus || isAdvancing || disabled || isDocumentBlocked) return;
+        if (
+            !nextStatus ||
+            isAdvancing ||
+            disabled ||
+            isDocumentBlocked ||
+            isAutoDraftToPendingBlocked
+        )
+            return;
 
         // Check if trying to advance to reconciled but conditions aren't met
         if (nextStatus === 'reconciled' && !canReconcile) {
@@ -201,7 +215,7 @@ export function StatusProgression({
                                 {STATUS_INFO[currentStatus].description}
                             </p>
                         </div>
-                        {nextStatus && (
+                        {nextStatus && !isAutoDraftToPendingBlocked && (
                             <Button
                                 onClick={handleAdvance}
                                 disabled={
@@ -223,6 +237,13 @@ export function StatusProgression({
                             </Button>
                         )}
                     </div>
+                    {isAutoDraftToPendingBlocked && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            Automatic status is enabled: Draft &gt; Pending.
+                            Save the transaction once required fields are
+                            filled.
+                        </p>
+                    )}
                 </div>
 
                 {/* Document Blockers */}

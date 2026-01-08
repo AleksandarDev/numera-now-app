@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "auto_draft_to_pending" boolean DEFAULT false NOT NULL;

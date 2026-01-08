@@ -130,6 +130,9 @@ export const settings = pgTable(
     {
         userId: text('user_id').primaryKey(),
         doubleEntryMode: boolean('double_entry_mode').notNull().default(false),
+        autoDraftToPending: boolean('auto_draft_to_pending')
+            .notNull()
+            .default(false),
         // Reconciliation conditions - JSON array of conditions
         // e.g., ["hasReceipt", "isReviewed", "isApproved"]
         reconciliationConditions: text('reconciliation_conditions')

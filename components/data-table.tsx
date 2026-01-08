@@ -116,7 +116,8 @@ export function DataTable<TData, TValue>({
             tableHeaderRef.current.getBoundingClientRect().height;
         const paginationHeight =
             paginationRef.current?.getBoundingClientRect().height ?? 0;
-        const availableHeight = window.innerHeight - tableTop - paginationHeight;
+        const availableHeight =
+            window.innerHeight - tableTop - paginationHeight;
         const nextPageSize = Math.max(
             1,
             Math.floor((availableHeight - headerHeight) / rowHeight),
@@ -273,9 +274,11 @@ export function DataTable<TData, TValue>({
                                             'cursor-pointer',
                                     )}
                                     onClick={(event) => {
-                                        if (shouldIgnoreRowClick(
-                                            event.target as HTMLElement | null,
-                                        )) {
+                                        if (
+                                            shouldIgnoreRowClick(
+                                                event.target as HTMLElement | null,
+                                            )
+                                        ) {
                                             return;
                                         }
                                         if (onDelete) {
