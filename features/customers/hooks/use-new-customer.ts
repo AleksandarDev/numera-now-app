@@ -1,13 +1,16 @@
-import { create } from 'zustand';
+'use client';
 
-type NewCustomerState = {
-    isOpen: boolean;
-    onOpen: () => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+export const useNewCustomer = () => {
+    const [newCustomerParam, setNewCustomerParam] = useQueryState(
+        'newCustomer',
+        parseAsString,
+    );
+
+    return {
+        isOpen: newCustomerParam === '1',
+        onOpen: () => setNewCustomerParam('1'),
+        onClose: () => setNewCustomerParam(null),
+    };
 };
-
-export const useNewCustomer = create<NewCustomerState>((set) => ({
-    isOpen: false,
-    onOpen: () => set({ isOpen: true }),
-    onClose: () => set({ isOpen: false }),
-}));

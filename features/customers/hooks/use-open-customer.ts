@@ -1,15 +1,17 @@
-import { create } from 'zustand';
+'use client';
 
-type OpenCustomerState = {
-    id?: string;
-    isOpen: boolean;
-    onOpen: (id: string) => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+export const useOpenCustomer = () => {
+    const [customerSheetId, setCustomerSheetId] = useQueryState(
+        'customerSheetId',
+        parseAsString,
+    );
+
+    return {
+        id: customerSheetId ?? undefined,
+        isOpen: Boolean(customerSheetId),
+        onOpen: (id: string) => setCustomerSheetId(id),
+        onClose: () => setCustomerSheetId(null),
+    };
 };
-
-export const useOpenCustomer = create<OpenCustomerState>((set) => ({
-    id: undefined,
-    isOpen: false,
-    onOpen: (id: string) => set({ isOpen: true, id }),
-    onClose: () => set({ isOpen: false, id: undefined }),
-}));

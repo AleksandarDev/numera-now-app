@@ -152,17 +152,17 @@ export const CustomerSelect = ({
                                     }}
                                 >
                                     <div className="flex items-center justify-between w-full">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="font-medium truncate">
                                                 {customer.name}
                                             </span>
                                             {customer.pin && (
-                                                <span className="text-xs text-muted-foreground">
+                                                <span className="text-xs text-muted-foreground whitespace-nowrap">
                                                     ({customer.pin})
                                                 </span>
                                             )}
                                             {!customer.isComplete && (
-                                                <span className="text-xs text-orange-600 font-medium">
+                                                <span className="text-xs text-orange-600 font-medium whitespace-nowrap">
                                                     (Incomplete)
                                                 </span>
                                             )}

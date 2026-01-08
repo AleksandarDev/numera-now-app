@@ -46,11 +46,7 @@ export const NewTransactionSheet = () => {
     const isLoading = categoryQuery.isLoading;
 
     const onSubmit = (values: UnifiedTransactionFormValues) => {
-        createMutation.mutate(values, {
-            onSuccess: () => {
-                onClose();
-            },
-        });
+        createMutation.mutate(values);
     };
 
     return (

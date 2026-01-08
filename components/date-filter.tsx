@@ -13,9 +13,8 @@ import {
     subDays,
 } from 'date-fns';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import qs from 'query-string';
-import { useState } from 'react';
+import { parseAsString, useQueryStates } from 'nuqs';
+import { useEffect, useMemo, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -27,40 +26,33 @@ import {
 import { formatDateRange } from '@/lib/utils';
 
 export const DateFilter = () => {
-    const pathname = usePathname();
-    const router = useRouter();
-    const searchParams = useSearchParams();
+    const [{ from, to }, setQueryParams] = useQueryStates({
+        from: parseAsString,
+        to: parseAsString,
+    });
 
-    const accountId = searchParams.get('accountId');
-    const from = searchParams.get('from') || '';
-    const to = searchParams.get('to') || '';
+    const defaultTo = useMemo(() => new Date(), []);
+    const defaultFrom = useMemo(() => subDays(defaultTo, 30), [defaultTo]);
 
-    const defaultTo = new Date();
-    const defaultFrom = subDays(defaultTo, 30);
-
-    const paramState = {
-        from: from ? new Date(from) : defaultFrom,
-        to: to ? new Date(to) : defaultTo,
-    };
+    const paramState = useMemo(
+        () => ({
+            from: from ? new Date(from) : defaultFrom,
+            to: to ? new Date(to) : defaultTo,
+        }),
+        [from, to, defaultFrom, defaultTo],
+    );
 
     const [date, setDate] = useState<DateRange | undefined>(paramState);
 
+    useEffect(() => {
+        setDate(paramState);
+    }, [paramState]);
+
     const pushToUrl = (dateRange: DateRange | undefined) => {
-        const query = {
-            from: format(dateRange?.from || defaultFrom, 'yyyy-MM-dd'),
-            to: format(dateRange?.to || defaultTo, 'yyyy-MM-dd'),
-            accountId,
-        };
-
-        const url = qs.stringifyUrl(
-            {
-                url: pathname,
-                query,
-            },
-            { skipEmptyString: true, skipNull: true },
-        );
-
-        router.push(url);
+        void setQueryParams({
+            from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
+            to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : null,
+        });
     };
 
     const onReset = () => {

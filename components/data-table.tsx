@@ -8,11 +8,13 @@ import {
     getFilteredRowModel,
     getPaginationRowModel,
     getSortedRowModel,
+    type PaginationState,
     type Row,
     type SortingState,
     useReactTable,
 } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, Trash } from 'lucide-react';
+import { parseAsInteger, useQueryState } from 'nuqs';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +59,36 @@ export function DataTable<TData, TValue>({
     const [columnFilters, setColumnFilters] =
         React.useState<ColumnFiltersState>([]);
     const [rowSelection, setRowSelection] = React.useState({});
+    const [pageParam, setPageParam] = useQueryState(
+        'page',
+        parseAsInteger.withDefault(1),
+    );
+    const [pageSizeParam, setPageSizeParam] = useQueryState(
+        'pageSize',
+        parseAsInteger.withDefault(10),
+    );
+
+    const pagination = React.useMemo<PaginationState>(
+        () => ({
+            pageIndex: Math.max(0, pageParam - 1),
+            pageSize: Math.max(1, pageSizeParam),
+        }),
+        [pageParam, pageSizeParam],
+    );
+
+    const handlePaginationChange = React.useCallback(
+        (
+            updater:
+                | PaginationState
+                | ((prev: PaginationState) => PaginationState),
+        ) => {
+            const next =
+                typeof updater === 'function' ? updater(pagination) : updater;
+            void setPageParam(next.pageIndex + 1);
+            void setPageSizeParam(next.pageSize);
+        },
+        [pagination, setPageParam, setPageSizeParam],
+    );
 
     const table = useReactTable({
         data,
@@ -68,10 +100,12 @@ export function DataTable<TData, TValue>({
         onColumnFiltersChange: setColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
         onRowSelectionChange: setRowSelection,
+        onPaginationChange: handlePaginationChange,
         state: {
             sorting,
             columnFilters,
             rowSelection,
+            pagination,
         },
     });
 

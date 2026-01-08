@@ -1,21 +1,39 @@
-import { create } from 'zustand';
+'use client';
 
-type OpenTransactionState = {
-    id?: string;
-    isOpen: boolean;
-    initialTab?: 'details' | 'documents' | 'history';
-    onOpen: (
-        id: string,
-        initialTab?: 'details' | 'documents' | 'history',
-    ) => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+type TransactionTab = 'details' | 'documents' | 'history';
+
+const isTransactionTab = (value: string | null): value is TransactionTab =>
+    value === 'details' || value === 'documents' || value === 'history';
+
+export const useOpenTransaction = () => {
+    const [transactionId, setTransactionId] = useQueryState(
+        'transactionId',
+        parseAsString,
+    );
+    const [transactionTab, setTransactionTab] = useQueryState(
+        'transactionTab',
+        parseAsString,
+    );
+
+    const initialTab = isTransactionTab(transactionTab)
+        ? transactionTab
+        : undefined;
+
+    return {
+        id: transactionId ?? undefined,
+        isOpen: Boolean(transactionId),
+        initialTab,
+        tab: initialTab,
+        setTab: (tab?: TransactionTab) => setTransactionTab(tab ?? null),
+        onOpen: (id: string, tab?: TransactionTab) => {
+            void setTransactionId(id);
+            void setTransactionTab(tab ?? 'details');
+        },
+        onClose: () => {
+            void setTransactionId(null);
+            void setTransactionTab(null);
+        },
+    };
 };
-
-export const useOpenTransaction = create<OpenTransactionState>((set) => ({
-    id: undefined,
-    isOpen: false,
-    initialTab: undefined,
-    onOpen: (id: string, initialTab?: 'details' | 'documents' | 'history') =>
-        set({ isOpen: true, id, initialTab: initialTab ?? 'details' }),
-    onClose: () => set({ isOpen: false, id: undefined, initialTab: undefined }),
-}));

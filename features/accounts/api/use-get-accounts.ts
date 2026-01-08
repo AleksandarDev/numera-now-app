@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
+import { parseAsString, useQueryState } from 'nuqs';
 import { client } from '@/lib/hono';
 
 type GetAccountsOptions = {
@@ -11,8 +11,7 @@ type GetAccountsOptions = {
 };
 
 export const useGetAccounts = (options?: GetAccountsOptions) => {
-    const searchParams = useSearchParams();
-    const paramsAccountId = searchParams.get('accountId') ?? undefined;
+    const [paramsAccountId] = useQueryState('accountId', parseAsString);
     const { page, pageSize, accountId, search, showClosed } = options || {};
     const resolvedAccountId =
         typeof accountId === 'undefined' ? paramsAccountId : accountId;

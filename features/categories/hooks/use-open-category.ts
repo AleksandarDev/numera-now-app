@@ -1,15 +1,17 @@
-import { create } from 'zustand';
+'use client';
 
-type OpenCategoryState = {
-    id?: string;
-    isOpen: boolean;
-    onOpen: (id: string) => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+export const useOpenCategory = () => {
+    const [categorySheetId, setCategorySheetId] = useQueryState(
+        'categorySheetId',
+        parseAsString,
+    );
+
+    return {
+        id: categorySheetId ?? undefined,
+        isOpen: Boolean(categorySheetId),
+        onOpen: (id: string) => setCategorySheetId(id),
+        onClose: () => setCategorySheetId(null),
+    };
 };
-
-export const useOpenCategory = create<OpenCategoryState>((set) => ({
-    id: undefined,
-    isOpen: false,
-    onOpen: (id: string) => set({ isOpen: true, id }),
-    onClose: () => set({ isOpen: false, id: undefined }),
-}));

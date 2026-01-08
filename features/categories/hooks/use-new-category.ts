@@ -1,13 +1,16 @@
-import { create } from 'zustand';
+'use client';
 
-type NewCategoryState = {
-    isOpen: boolean;
-    onOpen: () => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+export const useNewCategory = () => {
+    const [newCategoryParam, setNewCategoryParam] = useQueryState(
+        'newCategory',
+        parseAsString,
+    );
+
+    return {
+        isOpen: newCategoryParam === '1',
+        onOpen: () => setNewCategoryParam('1'),
+        onClose: () => setNewCategoryParam(null),
+    };
 };
-
-export const useNewCategory = create<NewCategoryState>((set) => ({
-    isOpen: false,
-    onOpen: () => set({ isOpen: true }),
-    onClose: () => set({ isOpen: false }),
-}));
