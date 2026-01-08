@@ -1,27 +1,27 @@
-import { z } from "zod";
-import { Trash } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { insertAccountSchema } from "@/db/schema";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Trash } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Form,
     FormControl,
     FormField,
     FormItem,
     FormLabel,
-    FormMessage
-} from "@/components/ui/form";
-import { SheetFooter } from "@/components/ui/sheet";
+    FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { SheetFooter } from '@/components/ui/sheet';
+import { insertAccountSchema } from '@/db/schema';
 
 const formSchema = insertAccountSchema.pick({
     name: true,
@@ -51,11 +51,11 @@ export const AccountForm = ({
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: "",
-            code: "",
+            name: '',
+            code: '',
             isOpen: true,
             isReadOnly: false,
-            accountType: "neutral",
+            accountType: 'neutral',
             ...defaultValues,
         },
     });
@@ -69,19 +69,19 @@ export const AccountForm = ({
 
     const handleDelete = () => {
         onDelete?.();
-    }
+    };
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)}
-                className="space-y-4 pt-4 pb-6">
+            <form
+                onSubmit={form.handleSubmit(handleSubmit)}
+                className="space-y-4 pt-4 pb-6"
+            >
                 <FormField
                     name="name"
                     control={form.control}
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>
-                                Name
-                            </FormLabel>
+                            <FormLabel>Name</FormLabel>
                             <FormControl>
                                 <Input
                                     disabled={disabled}
@@ -98,15 +98,13 @@ export const AccountForm = ({
                     control={form.control}
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>
-                                Code
-                            </FormLabel>
+                            <FormLabel>Code</FormLabel>
                             <FormControl>
                                 <Input
                                     disabled={disabled}
                                     placeholder="e.g. 0001, CASH, VISA"
                                     {...field}
-                                    value={field.value || ""}
+                                    value={field.value || ''}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -118,9 +116,7 @@ export const AccountForm = ({
                     control={form.control}
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>
-                                Account type
-                            </FormLabel>
+                            <FormLabel>Account type</FormLabel>
                             <FormControl>
                                 <Select
                                     disabled={disabled}
@@ -131,9 +127,15 @@ export const AccountForm = ({
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="neutral">Neutral (can credit or debit)</SelectItem>
-                                        <SelectItem value="debit">Debit only</SelectItem>
-                                        <SelectItem value="credit">Credit only</SelectItem>
+                                        <SelectItem value="neutral">
+                                            Neutral (can credit or debit)
+                                        </SelectItem>
+                                        <SelectItem value="debit">
+                                            Debit only
+                                        </SelectItem>
+                                        <SelectItem value="credit">
+                                            Credit only
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormControl>
@@ -179,20 +181,22 @@ export const AccountForm = ({
                 />
                 <SheetFooter>
                     <Button className="w-full" disabled={disabled}>
-                        {id ? "Save changes" : "Create Account"}
+                        {id ? 'Save changes' : 'Create Account'}
                     </Button>
-                    {!!id && <Button
-                        type="button"
-                        disabled={disabled}
-                        onClick={handleDelete}
-                        className="w-full"
-                        variant="outline"
-                    >
-                        <Trash className="size-4 mr-2" />
-                        Delete account
-                    </Button>}
+                    {!!id && (
+                        <Button
+                            type="button"
+                            disabled={disabled}
+                            onClick={handleDelete}
+                            className="w-full"
+                            variant="outline"
+                        >
+                            <Trash className="size-4 mr-2" />
+                            Delete account
+                        </Button>
+                    )}
                 </SheetFooter>
             </form>
         </Form>
-    )
+    );
 };

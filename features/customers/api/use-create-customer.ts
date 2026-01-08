@@ -1,13 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
-import { toast } from "sonner";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { InferRequestType, InferResponseType } from 'hono';
+import { toast } from 'sonner';
 
-import { client } from "@/lib/hono";
+import { client } from '@/lib/hono';
 
 type ResponseType = InferResponseType<typeof client.api.customers.$post>;
-type RequestType = InferRequestType<
-    typeof client.api.customers.$post
->["json"];
+type RequestType = InferRequestType<typeof client.api.customers.$post>['json'];
 
 export const useCreateCustomer = () => {
     const queryClient = useQueryClient();
@@ -16,16 +14,16 @@ export const useCreateCustomer = () => {
         mutationFn: async (json) => {
             const response = await client.api.customers.$post({ json });
             if (!response.ok) {
-                throw new Error("Failed to create customer.");
+                throw new Error('Failed to create customer.');
             }
             return await response.json();
         },
         onSuccess: () => {
-            toast.success("Customer created.");
-            queryClient.invalidateQueries({ queryKey: ["customers"] });
+            toast.success('Customer created.');
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
         },
         onError: () => {
-            toast.error("Failed to create customer.");
+            toast.error('Failed to create customer.');
         },
     });
 

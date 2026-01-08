@@ -1,21 +1,20 @@
-"use client";
+'use client';
 
-import { useMemo, useRef, useState } from "react";
-import { Plus } from "lucide-react";
-
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import clsx from 'clsx';
+import { Plus } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useGetCustomers } from "@/features/customers/api/use-get-customers";
-import { useNewCustomer } from "@/features/customers/hooks/use-new-customer";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import clsx from "clsx";
-import { Typography } from "@signalco/ui-primitives/Typography";
+} from '@/components/ui/select';
+import { useGetCustomers } from '@/features/customers/api/use-get-customers';
+import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
 
 export type CustomerSelectProps = {
     value?: string;
@@ -30,21 +29,28 @@ export const CustomerSelect = ({
     value,
     onChange,
     className,
-    placeholder = "Select customer...",
+    placeholder = 'Select customer...',
     disabled,
-    onCreate
+    onCreate,
 }: CustomerSelectProps) => {
     const [open, setOpen] = useState(false);
-    const [customerFilter, setCustomerFilter] = useState("");
+    const [customerFilter, setCustomerFilter] = useState('');
 
     const { onOpen: onOpenNewCustomer } = useNewCustomer();
-    const { data: customers, isLoading: isLoadingCustomers } = useGetCustomers();
+    const { data: customers, isLoading: isLoadingCustomers } =
+        useGetCustomers();
 
-    const filteredCustomers = useMemo(() => customers?.filter((customer) => {
-        const filter = customerFilter.toLowerCase();
-        return customer.name.toLowerCase().includes(filter) ||
-            customer.pin?.toLowerCase().includes(filter);
-    }), [customers, customerFilter]);
+    const filteredCustomers = useMemo(
+        () =>
+            customers?.filter((customer) => {
+                const filter = customerFilter.toLowerCase();
+                return (
+                    customer.name.toLowerCase().includes(filter) ||
+                    customer.pin?.toLowerCase().includes(filter)
+                );
+            }),
+        [customers, customerFilter],
+    );
 
     // Virtualization
     const parentRef = useRef<HTMLDivElement>(null);
@@ -54,31 +60,45 @@ export const CustomerSelect = ({
         estimateSize: () => 35,
     });
 
-    const selectedCustomer = customers?.find(customer => customer.id === value);
+    const selectedCustomer = customers?.find(
+        (customer) => customer.id === value,
+    );
 
     return (
         <Select
             open={open}
             onOpenChange={setOpen}
-            value={value ?? ""}
+            value={value ?? ''}
             onValueChange={onChange}
             disabled={disabled}
         >
-            <SelectTrigger className={clsx("h-9 pl-3 pr-2", className)}>
+            <SelectTrigger className={clsx('h-9 pl-3 pr-2', className)}>
                 <div className="flex items-center justify-between w-full">
-                    <span className={clsx("truncate", !selectedCustomer && "text-muted-foreground")}>
+                    <span
+                        className={clsx(
+                            'truncate',
+                            !selectedCustomer && 'text-muted-foreground',
+                        )}
+                    >
                         {selectedCustomer ? (
                             <div className="flex items-center gap-2">
                                 <span>{selectedCustomer.name}</span>
                                 {!selectedCustomer.isComplete && (
-                                    <span className="text-xs text-orange-600 font-medium">(Incomplete)</span>
+                                    <span className="text-xs text-orange-600 font-medium">
+                                        (Incomplete)
+                                    </span>
                                 )}
                             </div>
-                        ) : placeholder}
+                        ) : (
+                            placeholder
+                        )}
                     </span>
                 </div>
             </SelectTrigger>
-            <SelectContent className="p-0" style={{ width: 'var(--radix-select-trigger-width)' }}>
+            <SelectContent
+                className="p-0"
+                style={{ width: 'var(--radix-select-trigger-width)' }}
+            >
                 <div className="p-2 border-b">
                     <Input
                         placeholder="Search customers..."
@@ -90,7 +110,9 @@ export const CustomerSelect = ({
                 <div className="p-2 border-b">
                     <Button
                         onClick={() => {
-                            onCreate ? onCreate(customerFilter) : onOpenNewCustomer();
+                            onCreate
+                                ? onCreate(customerFilter)
+                                : onOpenNewCustomer();
                             setOpen(false);
                         }}
                         variant="ghost"
@@ -100,10 +122,7 @@ export const CustomerSelect = ({
                         Create new customer
                     </Button>
                 </div>
-                <div
-                    ref={parentRef}
-                    className="h-[200px] overflow-auto"
-                >
+                <div ref={parentRef} className="h-[200px] overflow-auto">
                     <div
                         style={{
                             height: `${rowVirtualizer.getTotalSize()}px`,
@@ -119,12 +138,10 @@ export const CustomerSelect = ({
                                 <SelectItem
                                     key={customer.id}
                                     value={customer.id}
-                                    className={clsx(
-                                        "cursor-pointer",
-                                        {
-                                            "data-[state=checked]:bg-accent": value === customer.id,
-                                        }
-                                    )}
+                                    className={clsx('cursor-pointer', {
+                                        'data-[state=checked]:bg-accent':
+                                            value === customer.id,
+                                    })}
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -136,12 +153,18 @@ export const CustomerSelect = ({
                                 >
                                     <div className="flex items-center justify-between w-full">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">{customer.name}</span>
+                                            <span className="font-medium">
+                                                {customer.name}
+                                            </span>
                                             {customer.pin && (
-                                                <span className="text-xs text-muted-foreground">({customer.pin})</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    ({customer.pin})
+                                                </span>
                                             )}
                                             {!customer.isComplete && (
-                                                <span className="text-xs text-orange-600 font-medium">(Incomplete)</span>
+                                                <span className="text-xs text-orange-600 font-medium">
+                                                    (Incomplete)
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -152,33 +175,45 @@ export const CustomerSelect = ({
                 </div>
                 {isLoadingCustomers && (
                     <div className="p-4 text-center">
-                        <Typography level="body3" className="text-muted-foreground">
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
                             Loading customers...
                         </Typography>
                     </div>
                 )}
-                {!isLoadingCustomers && (!filteredCustomers || filteredCustomers.length === 0) && (
-                    <div className="p-4 text-center">
-                        <Typography level="body3" className="text-muted-foreground">
-                            No customers found
-                        </Typography>
-                    </div>
-                )}
-                {customerFilter && !isLoadingCustomers && filteredCustomers && filteredCustomers.length === 0 && (
-                    <div className="p-2">
-                        <Button
-                            onClick={() => {
-                                onCreate ? onCreate(customerFilter) : onOpenNewCustomer();
-                                setOpen(false);
-                            }}
-                            variant="ghost"
-                            className="w-full justify-start h-8"
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create "{customerFilter}"
-                        </Button>
-                    </div>
-                )}
+                {!isLoadingCustomers &&
+                    (!filteredCustomers || filteredCustomers.length === 0) && (
+                        <div className="p-4 text-center">
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                No customers found
+                            </Typography>
+                        </div>
+                    )}
+                {customerFilter &&
+                    !isLoadingCustomers &&
+                    filteredCustomers &&
+                    filteredCustomers.length === 0 && (
+                        <div className="p-2">
+                            <Button
+                                onClick={() => {
+                                    onCreate
+                                        ? onCreate(customerFilter)
+                                        : onOpenNewCustomer();
+                                    setOpen(false);
+                                }}
+                                variant="ghost"
+                                className="w-full justify-start h-8"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create "{customerFilter}"
+                            </Button>
+                        </div>
+                    )}
             </SelectContent>
         </Select>
     );

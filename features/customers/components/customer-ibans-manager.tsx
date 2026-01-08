@@ -1,13 +1,13 @@
-import { Loader2, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useGetCustomerIbans } from "@/features/customers/api/use-get-customer-ibans";
-import { useCreateCustomerIban } from "@/features/customers/api/use-create-customer-iban";
-import { useDeleteCustomerIban } from "@/features/customers/api/use-delete-customer-iban";
-import { useConfirm } from "@/hooks/use-confirm";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useCreateCustomerIban } from '@/features/customers/api/use-create-customer-iban';
+import { useDeleteCustomerIban } from '@/features/customers/api/use-delete-customer-iban';
+import { useGetCustomerIbans } from '@/features/customers/api/use-get-customer-ibans';
+import { useConfirm } from '@/hooks/use-confirm';
 
 type Props = {
     customerId: string;
@@ -15,21 +15,21 @@ type Props = {
 };
 
 export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
-    const [newIban, setNewIban] = useState("");
-    const [newBankName, setNewBankName] = useState("");
+    const [newIban, setNewIban] = useState('');
+    const [newBankName, setNewBankName] = useState('');
 
     const ibansQuery = useGetCustomerIbans(customerId);
     const createMutation = useCreateCustomerIban(customerId);
     const deleteMutation = useDeleteCustomerIban(customerId);
 
     const [ConfirmDialog, confirm] = useConfirm(
-        "Delete IBAN?",
-        "Are you sure you want to delete this IBAN?"
+        'Delete IBAN?',
+        'Are you sure you want to delete this IBAN?',
     );
 
     const handleAdd = () => {
         if (!newIban.trim()) return;
-        
+
         createMutation.mutate(
             {
                 iban: newIban.trim(),
@@ -37,10 +37,10 @@ export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
             },
             {
                 onSuccess: () => {
-                    setNewIban("");
-                    setNewBankName("");
+                    setNewIban('');
+                    setNewBankName('');
                 },
-            }
+            },
         );
     };
 
@@ -58,8 +58,10 @@ export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
             <ConfirmDialog />
             <div className="space-y-4 pt-4">
                 <div>
-                    <h3 className="text-sm font-medium mb-3">Bank Accounts (IBANs)</h3>
-                    
+                    <h3 className="text-sm font-medium mb-3">
+                        Bank Accounts (IBANs)
+                    </h3>
+
                     {ibansQuery.isLoading ? (
                         <div className="flex items-center justify-center py-4">
                             <Loader2 className="size-4 text-muted-foreground animate-spin" />
@@ -77,7 +79,9 @@ export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
                                     className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                                 >
                                     <div>
-                                        <p className="text-sm font-mono">{iban.iban}</p>
+                                        <p className="text-sm font-mono">
+                                            {iban.iban}
+                                        </p>
                                         {iban.bankName && (
                                             <p className="text-xs text-muted-foreground">
                                                 {iban.bankName}
@@ -100,7 +104,9 @@ export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Add new IBAN</Label>
+                    <Label className="text-xs text-muted-foreground">
+                        Add new IBAN
+                    </Label>
                     <div className="flex gap-2">
                         <div className="flex-1 space-y-2">
                             <Input

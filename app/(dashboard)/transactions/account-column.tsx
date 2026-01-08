@@ -132,9 +132,7 @@ export const AccountColumn = ({
                             message="Missing credit account. Both credit and debit accounts are required for proper double-entry accounting."
                             severity="warning"
                         />
-                        <Typography level="body2">
-                            No credit account
-                        </Typography>
+                        <Typography level="body2">No credit account</Typography>
                     </Row>
                 )}
                 <ChevronRight className="size-4 min-w-4 text-muted-foreground" />
@@ -170,9 +168,7 @@ export const AccountColumn = ({
                             message="Missing debit account. Both credit and debit accounts are required for proper double-entry accounting."
                             severity="warning"
                         />
-                        <Typography level="body2">
-                            No debit account
-                        </Typography>
+                        <Typography level="body2">No debit account</Typography>
                     </Row>
                 )}
             </div>

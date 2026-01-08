@@ -1,17 +1,24 @@
-"use client";
+'use client';
 
-import { Loader2, ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Suspense } from "react";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
+import { Button } from '@/components/ui/button';
+import { useCreateCategory } from '@/features/categories/api/use-create-category';
+import { useGetCategories } from '@/features/categories/api/use-get-categories';
+import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
+import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { useCreateCategory } from "@/features/categories/api/use-create-category";
-import { useGetCategories } from "@/features/categories/api/use-get-categories";
-import { useCreateCustomer } from "@/features/customers/api/use-create-customer";
-import { useCreateUnifiedTransaction } from "@/features/transactions/api/use-create-unified-transaction";
-
-import { UnifiedTransactionForm, UnifiedTransactionFormValues } from "@/features/transactions/components/unified-transaction-form";
+import {
+    UnifiedTransactionForm,
+    type UnifiedTransactionFormValues,
+} from '@/features/transactions/components/unified-transaction-form';
 
 function NewTransactionContent() {
     const router = useRouter();
@@ -26,8 +33,10 @@ function NewTransactionContent() {
 
     const customerMutation = useCreateCustomer();
 
-    const onCreateCategory = (name: string) => categoryMutation.mutate({ name });
-    const onCreateCustomer = (name: string) => customerMutation.mutate({ name });
+    const onCreateCategory = (name: string) =>
+        categoryMutation.mutate({ name });
+    const onCreateCustomer = (name: string) =>
+        customerMutation.mutate({ name });
 
     const isPending =
         createMutation.isPending ||
@@ -38,7 +47,7 @@ function NewTransactionContent() {
     const onSubmit = (values: UnifiedTransactionFormValues) => {
         createMutation.mutate(values, {
             onSuccess: () => {
-                router.push("/transactions");
+                router.push('/transactions');
             },
         });
     };
@@ -82,15 +91,17 @@ function NewTransactionContent() {
 
 export default function NewTransactionPage() {
     return (
-        <Suspense fallback={
-            <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
-                <Card>
-                    <CardContent className="flex h-[500px] w-full items-center justify-center">
-                        <Loader2 className="size-6 animate-spin text-slate-300" />
-                    </CardContent>
-                </Card>
-            </div>
-        }>
+        <Suspense
+            fallback={
+                <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
+                    <Card>
+                        <CardContent className="flex h-[500px] w-full items-center justify-center">
+                            <Loader2 className="size-6 animate-spin text-slate-300" />
+                        </CardContent>
+                    </Card>
+                </div>
+            }
+        >
             <NewTransactionContent />
         </Suspense>
     );

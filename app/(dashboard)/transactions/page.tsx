@@ -18,7 +18,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { transactions as transactionSchema } from '@/db/schema';
 import { useSelectImportAccounts } from '@/features/accounts/hooks/use-select-import-accounts';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 import { lookupCustomerByIban } from '@/features/customers/api/use-lookup-customer-by-iban';
@@ -115,9 +114,9 @@ function TransactionsImportView({
             if (euroMatch) {
                 const [, day, month, year] = euroMatch;
                 return new Date(
-                    parseInt(year),
-                    parseInt(month) - 1,
-                    parseInt(day),
+                    parseInt(year, 10),
+                    parseInt(month, 10) - 1,
+                    parseInt(day, 10),
                 );
             }
             // Try YYYY-MM-DD format
@@ -125,9 +124,9 @@ function TransactionsImportView({
             if (isoMatch) {
                 const [, year, month, day] = isoMatch;
                 return new Date(
-                    parseInt(year),
-                    parseInt(month) - 1,
-                    parseInt(day),
+                    parseInt(year, 10),
+                    parseInt(month, 10) - 1,
+                    parseInt(day, 10),
                 );
             }
             // Try MM/DD/YYYY format
@@ -135,14 +134,14 @@ function TransactionsImportView({
             if (usMatch) {
                 const [, month, day, year] = usMatch;
                 return new Date(
-                    parseInt(year),
-                    parseInt(month) - 1,
-                    parseInt(day),
+                    parseInt(year, 10),
+                    parseInt(month, 10) - 1,
+                    parseInt(day, 10),
                 );
             }
             // Fallback to Date constructor
             const parsed = new Date(trimmed);
-            return isNaN(parsed.getTime()) ? new Date() : parsed;
+            return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
         };
 
         // Collect unique IBANs from import data for batch lookup
@@ -349,7 +348,10 @@ export default function TransactionsPage() {
                             onClick={() => newTransaction.onOpen()}
                             className="w-full lg:w-auto"
                         >
-                            <Plus className="size-4" /><span className="hidden sm:inline sm:ml-2">Add new</span>
+                            <Plus className="size-4" />
+                            <span className="hidden sm:inline sm:ml-2">
+                                Add new
+                            </span>
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

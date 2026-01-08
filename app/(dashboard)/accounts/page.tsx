@@ -18,9 +18,16 @@ import {
     MoreHorizontal,
     Plus,
 } from 'lucide-react';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    Suspense,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { toast } from 'sonner';
-import { ImportButton } from '@/components/import-button';
+import { type CSVResult, ImportButton } from '@/components/import-button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -67,8 +74,7 @@ function AccountsDataTable() {
     const getAccountChildren = (parentCode: string) => {
         return allAccounts.filter(
             (account) =>
-                account.code &&
-                account.code.startsWith(parentCode) &&
+                account.code?.startsWith(parentCode) &&
                 account.code.length === parentCode.length + 1,
         );
     };
@@ -80,19 +86,22 @@ function AccountsDataTable() {
     };
 
     // Helper function to check if account should be visible
-    const isAccountVisible = (account: { code?: string | null }) => {
-        const code = account.code;
-        if (!code || code.length <= 1) return true; // Root level accounts are always visible
+    const isAccountVisible = useCallback(
+        (account: { code?: string | null }) => {
+            const code = account.code;
+            if (!code || code.length <= 1) return true; // Root level accounts are always visible
 
-        // Check if all parent accounts are expanded
-        for (let i = 1; i < code.length; i++) {
-            const parentCode = code.substring(0, i);
-            if (!expandedAccounts.has(parentCode)) {
-                return false;
+            // Check if all parent accounts are expanded
+            for (let i = 1; i < code.length; i++) {
+                const parentCode = code.substring(0, i);
+                if (!expandedAccounts.has(parentCode)) {
+                    return false;
+                }
             }
-        }
-        return true;
-    };
+            return true;
+        },
+        [expandedAccounts],
+    );
 
     // Filter and sort accounts, then apply visibility rules
     const visibleAccounts = useMemo(() => {
@@ -101,7 +110,7 @@ function AccountsDataTable() {
             const codeB = b.code || '';
             return codeA.localeCompare(codeB);
         });
-    }, [allAccounts, expandedAccounts]);
+    }, [allAccounts, isAccountVisible]);
 
     // Toggle expand/collapse for an account
     const toggleExpand = (code: string) => {
@@ -378,21 +387,13 @@ function AccountsDataTable() {
 
 export default function AccountsPage() {
     const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
-    const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
+    const [importResults, setImportResults] = useState<CSVResult>(
+        INITIAL_IMPORT_RESULTS,
+    );
     const newAccount = useNewAccount();
     const createAccounts = useBulkCreateAccounts();
 
-    // Listen for import events from empty state
-    useEffect(() => {
-        const handleImport = (event: any) => {
-            onImport(event.detail);
-        };
-        window.addEventListener('accounts-import', handleImport);
-        return () =>
-            window.removeEventListener('accounts-import', handleImport);
-    }, []);
-
-    const onImport = (results: typeof INITIAL_IMPORT_RESULTS) => {
+    const onImport = useCallback((results: CSVResult) => {
         if (!results || !results.data || results.data.length === 0) {
             toast.error(
                 'No data found in the CSV file. Please check the file format.',
@@ -402,17 +403,34 @@ export default function AccountsPage() {
 
         setImportResults(results);
         setVariant(VARIANTS.IMPORT);
-    };
+    }, []);
+
+    // Listen for import events from empty state
+    useEffect(() => {
+        const handleImport = (event: CustomEvent<CSVResult>) => {
+            onImport(event.detail);
+        };
+        window.addEventListener(
+            'accounts-import',
+            handleImport as EventListener,
+        );
+        return () =>
+            window.removeEventListener(
+                'accounts-import',
+                handleImport as EventListener,
+            );
+    }, [onImport]);
 
     const onCancelImport = () => {
         setImportResults(INITIAL_IMPORT_RESULTS);
         setVariant(VARIANTS.LIST);
     };
 
-    const onSubmitImport = async (
-        values: (typeof accountsSchema.$inferInsert)[],
-    ) => {
-        createAccounts.mutate(values, {
+    const onSubmitImport = async (values: Record<string, string | null>[]) => {
+        // Transform the imported records to match the accounts schema
+        const accountsData =
+            values as unknown as (typeof accountsSchema.$inferInsert)[];
+        createAccounts.mutate(accountsData, {
             onSuccess: () => {
                 onCancelImport();
             },
@@ -421,16 +439,14 @@ export default function AccountsPage() {
 
     if (variant === VARIANTS.IMPORT) {
         return (
-            <>
-                <ImportCard
-                    header="Accounts Import"
-                    requiredOptions={['name', 'code']}
-                    options={['name', 'code']}
-                    data={importResults.data}
-                    onCancel={onCancelImport}
-                    onSubmit={onSubmitImport}
-                />
-            </>
+            <ImportCard
+                header="Accounts Import"
+                requiredOptions={['name', 'code']}
+                options={['name', 'code']}
+                data={importResults.data}
+                onCancel={onCancelImport}
+                onSubmit={onSubmitImport}
+            />
         );
     }
 

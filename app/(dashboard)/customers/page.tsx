@@ -1,14 +1,19 @@
-"use client";
+'use client';
 
-import { Plus } from "lucide-react";
-import { columns } from "./columns";
-import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Plus } from 'lucide-react';
+import { DataTable } from '@/components/data-table';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 
-import { useNewCustomer } from "@/features/customers/hooks/use-new-customer";
-import { useGetCustomers } from "@/features/customers/api/use-get-customers";
+import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
+import { columns } from './columns';
 
 const CustomersPage = () => {
     const newCustomer = useNewCustomer();
@@ -49,7 +54,7 @@ const CustomersPage = () => {
                         filterKey="name"
                         columns={columns}
                         data={customers}
-                        onDelete={() => { }}
+                        onDelete={() => {}}
                         disabled={isDisabled}
                     />
                 </CardContent>

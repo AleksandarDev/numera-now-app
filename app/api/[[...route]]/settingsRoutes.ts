@@ -101,7 +101,7 @@ const app = new Hono()
                 .from(settings)
                 .where(eq(settings.userId, auth.userId));
 
-            let data;
+            let data: typeof existingSettings;
 
             if (existingSettings) {
                 [data] = await db

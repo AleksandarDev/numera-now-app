@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from 'zod';
 
 import {
     Sheet,
@@ -6,11 +6,11 @@ import {
     SheetDescription,
     SheetHeader,
     SheetTitle,
-} from "@/components/ui/sheet";
-import { insertCustomerSchema } from "@/db/schema";
-import { useCreateCustomer } from "@/features/customers/api/use-create-customer";
-import { CustomerForm } from "@/features/customers/components/customer-form";
-import { useNewCustomer } from "@/features/customers/hooks/use-new-customer";
+} from '@/components/ui/sheet';
+import { insertCustomerSchema } from '@/db/schema';
+import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
+import { CustomerForm } from '@/features/customers/components/customer-form';
+import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
 
 const formSchema = insertCustomerSchema.omit({
     userId: true,
@@ -49,12 +49,12 @@ export const NewCustomerSheet = () => {
                         onSubmit={onSubmit}
                         disabled={createMutation.isPending}
                         defaultValues={{
-                            name: "",
-                            pin: "",
-                            vatNumber: "",
-                            address: "",
-                            contactEmail: "",
-                            contactTelephone: "",
+                            name: '',
+                            pin: '',
+                            vatNumber: '',
+                            address: '',
+                            contactEmail: '',
+                            contactTelephone: '',
                         }}
                     />
                 </div>

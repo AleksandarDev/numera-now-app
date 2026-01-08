@@ -1,6 +1,6 @@
-import { readdirSync, readFileSync, statSync } from 'fs';
-import { join, relative, extname, basename } from 'path';
-import { fileURLToPath } from 'url';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { basename, extname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 interface ComponentInfo {
     path: string;
@@ -9,13 +9,27 @@ interface ComponentInfo {
 }
 
 const COMPONENT_EXTENSIONS = ['.tsx', '.jsx'];
-const EXCLUDE_DIRS = ['node_modules', '.next', 'dist', 'build', '.git', 'drizzle'];
-const EXCLUDE_FILES = ['layout.tsx', 'page.tsx', 'loading.tsx', 'error.tsx', 'not-found.tsx', 'globals.css'];
+const EXCLUDE_DIRS = [
+    'node_modules',
+    '.next',
+    'dist',
+    'build',
+    '.git',
+    'drizzle',
+];
+const EXCLUDE_FILES = [
+    'layout.tsx',
+    'page.tsx',
+    'loading.tsx',
+    'error.tsx',
+    'not-found.tsx',
+    'globals.css',
+];
 
 function getAllFiles(dir: string, fileList: string[] = []): string[] {
     const files = readdirSync(dir);
 
-    files.forEach(file => {
+    files.forEach((file) => {
         const filePath = join(dir, file);
         const stat = statSync(filePath);
 
@@ -48,7 +62,7 @@ function getNameCandidates(filePath: string): string[] {
     const parts = fileName.split(/[-_]/).filter(Boolean);
 
     const pascal = parts
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join('');
 
     const camel = pascal.charAt(0).toLowerCase() + pascal.slice(1);
@@ -56,9 +70,16 @@ function getNameCandidates(filePath: string): string[] {
     return Array.from(new Set([pascal, camel, fileName]));
 }
 
-function isComponentUsed(componentPath: string, nameCandidates: string[], allFiles: string[]): boolean {
-    const componentFileName = basename(componentPath);
-    const componentFileNameNoExt = basename(componentPath, extname(componentPath));
+function isComponentUsed(
+    componentPath: string,
+    nameCandidates: string[],
+    allFiles: string[],
+): boolean {
+    const _componentFileName = basename(componentPath);
+    const componentFileNameNoExt = basename(
+        componentPath,
+        extname(componentPath),
+    );
 
     for (const file of allFiles) {
         // Skip the component file itself
@@ -75,7 +96,9 @@ function isComponentUsed(componentPath: string, nameCandidates: string[], allFil
         try {
             const content = readFileSync(file, 'utf-8');
 
-            const pathOnlyPattern = new RegExp(`(?:import|export)\\s+[^;]*['"][^'"]*${componentFileNameNoExt}['"]`);
+            const pathOnlyPattern = new RegExp(
+                `(?:import|export)\\s+[^;]*['"][^'"]*${componentFileNameNoExt}['"]`,
+            );
 
             if (pathOnlyPattern.test(content)) {
                 return true;
@@ -83,9 +106,15 @@ function isComponentUsed(componentPath: string, nameCandidates: string[], allFil
 
             for (const candidate of nameCandidates) {
                 const importPatterns = [
-                    new RegExp(`import\\s*{[^}]*\\b${candidate}\\b[^}]*}\\s*from\\s*['"][^'"]*${componentFileNameNoExt}['"]`),
-                    new RegExp(`import\\s+${candidate}\\s+from\\s*['"][^'"]*${componentFileNameNoExt}['"]`),
-                    new RegExp(`export\\s*{[^}]*\\b${candidate}\\b[^}]*}\\s*from\\s*['"][^'"]*${componentFileNameNoExt}['"]`),
+                    new RegExp(
+                        `import\\s*{[^}]*\\b${candidate}\\b[^}]*}\\s*from\\s*['"][^'"]*${componentFileNameNoExt}['"]`,
+                    ),
+                    new RegExp(
+                        `import\\s+${candidate}\\s+from\\s*['"][^'"]*${componentFileNameNoExt}['"]`,
+                    ),
+                    new RegExp(
+                        `export\\s*{[^}]*\\b${candidate}\\b[^}]*}\\s*from\\s*['"][^'"]*${componentFileNameNoExt}['"]`,
+                    ),
                 ];
 
                 for (const pattern of importPatterns) {
@@ -134,11 +163,15 @@ function main() {
     }
 
     if (unusedComponents.length === 0) {
-        console.log('✅ No unused components found! All components are being used.');
+        console.log(
+            '✅ No unused components found! All components are being used.',
+        );
     } else {
-        console.log(`⚠️  Found ${unusedComponents.length} potentially unused component(s):\n`);
+        console.log(
+            `⚠️  Found ${unusedComponents.length} potentially unused component(s):\n`,
+        );
 
-        unusedComponents.forEach(component => {
+        unusedComponents.forEach((component) => {
             console.log(`  - ${component.path}`);
         });
 
@@ -150,7 +183,9 @@ function main() {
         console.log('\n   Please verify before deleting!');
     }
 
-    console.log(`\n📊 Summary: ${usedComponents.length} used, ${unusedComponents.length} potentially unused`);
+    console.log(
+        `\n📊 Summary: ${usedComponents.length} used, ${unusedComponents.length} potentially unused`,
+    );
 }
 
 main();

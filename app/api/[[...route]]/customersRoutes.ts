@@ -1,15 +1,29 @@
-import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
-import { zValidator } from "@hono/zod-validator";
-import { createId } from "@paralleldrive/cuid2";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { Hono } from "hono";
-import { z } from "zod";
+import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
+import { zValidator } from '@hono/zod-validator';
+import { createId } from '@paralleldrive/cuid2';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { z } from 'zod';
 
-import { db } from "@/db/drizzle";
-import { customers, customerIbans, insertCustomerSchema, insertCustomerIbanSchema, transactions } from "@/db/schema";
+import { db } from '@/db/drizzle';
+import {
+    customerIbans,
+    customers,
+    insertCustomerSchema,
+    transactions,
+} from '@/db/schema';
 
 // Helper function to check if customer data is complete
-const isCustomerComplete = (customer: any): boolean => {
+type CustomerData = {
+    name?: string | null;
+    pin?: string | null;
+    vatNumber?: string | null;
+    address?: string | null;
+    contactEmail?: string | null;
+    contactTelephone?: string | null;
+};
+
+const isCustomerComplete = (customer: CustomerData): boolean => {
     return !!(
         customer.name &&
         (customer.pin || customer.vatNumber) &&
@@ -20,46 +34,42 @@ const isCustomerComplete = (customer: any): boolean => {
 };
 
 const app = new Hono()
-    .get(
-        "/incomplete-count",
-        clerkMiddleware(),
-        async (ctx) => {
-            const auth = getAuth(ctx);
+    .get('/incomplete-count', clerkMiddleware(), async (ctx) => {
+        const auth = getAuth(ctx);
 
-            if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
-            }
-
-            const [result] = await db
-                .select({
-                    count: sql<number>`count(*)`.as("count"),
-                })
-                .from(customers)
-                .where(
-                    and(
-                        eq(customers.userId, auth.userId),
-                        eq(customers.isComplete, false)
-                    )
-                );
-
-            return ctx.json({ count: Number(result?.count || 0) });
+        if (!auth?.userId) {
+            return ctx.json({ error: 'Unauthorized.' }, 401);
         }
-    )
+
+        const [result] = await db
+            .select({
+                count: sql<number>`count(*)`.as('count'),
+            })
+            .from(customers)
+            .where(
+                and(
+                    eq(customers.userId, auth.userId),
+                    eq(customers.isComplete, false),
+                ),
+            );
+
+        return ctx.json({ count: Number(result?.count || 0) });
+    })
     .get(
-        "/",
+        '/',
         zValidator(
-            "query",
+            'query',
             z.object({
                 search: z.string().optional(),
-            })
+            }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { search } = ctx.req.valid("query");
+            const { search } = ctx.req.valid('query');
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             const data = await db
@@ -72,86 +82,101 @@ const app = new Hono()
                     contactEmail: customers.contactEmail,
                     contactTelephone: customers.contactTelephone,
                     isComplete: customers.isComplete,
-                    transactionCount: sql<number>`count(${transactions.id})`.as("transaction_count"),
+                    transactionCount: sql<number>`count(${transactions.id})`.as(
+                        'transaction_count',
+                    ),
                 })
                 .from(customers)
-                .leftJoin(transactions, eq(customers.id, transactions.payeeCustomerId))
+                .leftJoin(
+                    transactions,
+                    eq(customers.id, transactions.payeeCustomerId),
+                )
                 .where(
                     search
                         ? and(
-                            eq(customers.userId, auth.userId),
-                            or(
-                                ilike(customers.name, `%${search}%`),
-                                sql`${customers.pin} ILIKE ${`%${search}%`}`
-                            )
-                        )
-                        : eq(customers.userId, auth.userId)
+                              eq(customers.userId, auth.userId),
+                              or(
+                                  ilike(customers.name, `%${search}%`),
+                                  sql`${customers.pin} ILIKE ${`%${search}%`}`,
+                              ),
+                          )
+                        : eq(customers.userId, auth.userId),
                 )
                 .groupBy(customers.id)
                 .orderBy(desc(customers.name));
 
             return ctx.json({ data });
-        }
+        },
     )
     .get(
-        "/:id",
+        '/:id',
         zValidator(
-            "param",
+            'param',
             z.object({
                 id: z.string().optional(),
-            })
+            }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { id } = ctx.req.valid("param");
+            const { id } = ctx.req.valid('param');
 
             if (!id) {
-                return ctx.json({ error: "Missing id." }, 400);
+                return ctx.json({ error: 'Missing id.' }, 400);
             }
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             const [data] = await db
                 .select()
                 .from(customers)
-                .where(and(eq(customers.id, id), eq(customers.userId, auth.userId)));
+                .where(
+                    and(
+                        eq(customers.id, id),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
 
             if (!data) {
-                return ctx.json({ error: "Not found." }, 404);
+                return ctx.json({ error: 'Not found.' }, 404);
             }
 
             return ctx.json({ data });
-        }
+        },
     )
     // Get IBANs for a customer
     .get(
-        "/:id/ibans",
+        '/:id/ibans',
         zValidator(
-            "param",
+            'param',
             z.object({
                 id: z.string(),
-            })
+            }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { id } = ctx.req.valid("param");
+            const { id } = ctx.req.valid('param');
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             // Verify customer belongs to user
             const [customer] = await db
                 .select()
                 .from(customers)
-                .where(and(eq(customers.id, id), eq(customers.userId, auth.userId)));
+                .where(
+                    and(
+                        eq(customers.id, id),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
 
             if (!customer) {
-                return ctx.json({ error: "Customer not found." }, 404);
+                return ctx.json({ error: 'Customer not found.' }, 404);
             }
 
             const data = await db
@@ -161,42 +186,47 @@ const app = new Hono()
                 .orderBy(desc(customerIbans.createdAt));
 
             return ctx.json({ data });
-        }
+        },
     )
     // Add IBAN to customer
     .post(
-        "/:id/ibans",
+        '/:id/ibans',
         zValidator(
-            "param",
+            'param',
             z.object({
                 id: z.string(),
-            })
+            }),
         ),
         zValidator(
-            "json",
+            'json',
             z.object({
                 iban: z.string().min(1),
                 bankName: z.string().optional(),
-            })
+            }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { id } = ctx.req.valid("param");
-            const values = ctx.req.valid("json");
+            const { id } = ctx.req.valid('param');
+            const values = ctx.req.valid('json');
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             // Verify customer belongs to user
             const [customer] = await db
                 .select()
                 .from(customers)
-                .where(and(eq(customers.id, id), eq(customers.userId, auth.userId)));
+                .where(
+                    and(
+                        eq(customers.id, id),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
 
             if (!customer) {
-                return ctx.json({ error: "Customer not found." }, 404);
+                return ctx.json({ error: 'Customer not found.' }, 404);
             }
 
             const [data] = await db
@@ -204,78 +234,85 @@ const app = new Hono()
                 .values({
                     id: createId(),
                     customerId: id,
-                    iban: values.iban.toUpperCase().replace(/\s/g, ""), // Normalize IBAN
+                    iban: values.iban.toUpperCase().replace(/\s/g, ''), // Normalize IBAN
                     bankName: values.bankName || null,
                 })
                 .returning();
 
             return ctx.json({ data });
-        }
+        },
     )
     // Delete IBAN
     .delete(
-        "/:id/ibans/:ibanId",
+        '/:id/ibans/:ibanId',
         zValidator(
-            "param",
+            'param',
             z.object({
                 id: z.string(),
                 ibanId: z.string(),
-            })
+            }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { id, ibanId } = ctx.req.valid("param");
+            const { id, ibanId } = ctx.req.valid('param');
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             // Verify customer belongs to user
             const [customer] = await db
                 .select()
                 .from(customers)
-                .where(and(eq(customers.id, id), eq(customers.userId, auth.userId)));
+                .where(
+                    and(
+                        eq(customers.id, id),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
 
             if (!customer) {
-                return ctx.json({ error: "Customer not found." }, 404);
+                return ctx.json({ error: 'Customer not found.' }, 404);
             }
 
             const [data] = await db
                 .delete(customerIbans)
-                .where(and(
-                    eq(customerIbans.id, ibanId),
-                    eq(customerIbans.customerId, id)
-                ))
+                .where(
+                    and(
+                        eq(customerIbans.id, ibanId),
+                        eq(customerIbans.customerId, id),
+                    ),
+                )
                 .returning();
 
             if (!data) {
-                return ctx.json({ error: "IBAN not found." }, 404);
+                return ctx.json({ error: 'IBAN not found.' }, 404);
             }
 
             return ctx.json({ data });
-        }
+        },
     )
     // Lookup customer by IBAN (for import matching)
     .get(
-        "/lookup/iban",
+        '/lookup/iban',
         zValidator(
-            "query",
+            'query',
             z.object({
                 iban: z.string(),
-            })
+            }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { iban } = ctx.req.valid("query");
+            const { iban } = ctx.req.valid('query');
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             // Normalize IBAN for lookup
-            const normalizedIban = iban.toUpperCase().replace(/\s/g, "");
+            const normalizedIban = iban.toUpperCase().replace(/\s/g, '');
 
             const [ibanRecord] = await db
                 .select({
@@ -285,36 +322,41 @@ const app = new Hono()
                     bankName: customerIbans.bankName,
                 })
                 .from(customerIbans)
-                .innerJoin(customers, eq(customerIbans.customerId, customers.id))
-                .where(and(
-                    eq(customerIbans.iban, normalizedIban),
-                    eq(customers.userId, auth.userId)
-                ));
+                .innerJoin(
+                    customers,
+                    eq(customerIbans.customerId, customers.id),
+                )
+                .where(
+                    and(
+                        eq(customerIbans.iban, normalizedIban),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
 
             if (!ibanRecord) {
                 return ctx.json({ data: null });
             }
 
             return ctx.json({ data: ibanRecord });
-        }
+        },
     )
     .post(
-        "/",
+        '/',
         clerkMiddleware(),
         zValidator(
-            "json",
+            'json',
             insertCustomerSchema.omit({
                 id: true,
                 userId: true,
                 isComplete: true,
-            })
+            }),
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const values = ctx.req.valid("json");
+            const values = ctx.req.valid('json');
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             const isComplete = isCustomerComplete(values);
@@ -330,36 +372,36 @@ const app = new Hono()
                 .returning();
 
             return ctx.json({ data });
-        }
+        },
     )
     .patch(
-        "/:id",
+        '/:id',
         clerkMiddleware(),
         zValidator(
-            "param",
+            'param',
             z.object({
                 id: z.string().optional(),
-            })
+            }),
         ),
         zValidator(
-            "json",
+            'json',
             insertCustomerSchema.omit({
                 id: true,
                 userId: true,
                 isComplete: true,
-            })
+            }),
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { id } = ctx.req.valid("param");
-            const values = ctx.req.valid("json");
+            const { id } = ctx.req.valid('param');
+            const values = ctx.req.valid('json');
 
             if (!id) {
-                return ctx.json({ error: "Missing id." }, 400);
+                return ctx.json({ error: 'Missing id.' }, 400);
             }
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             const isComplete = isCustomerComplete(values);
@@ -368,37 +410,42 @@ const app = new Hono()
                 .update(customers)
                 .set({
                     isComplete,
-                    ...values
+                    ...values,
                 })
-                .where(and(eq(customers.id, id), eq(customers.userId, auth.userId)))
+                .where(
+                    and(
+                        eq(customers.id, id),
+                        eq(customers.userId, auth.userId),
+                    ),
+                )
                 .returning();
 
             if (!data) {
-                return ctx.json({ error: "Not found." }, 404);
+                return ctx.json({ error: 'Not found.' }, 404);
             }
 
             return ctx.json({ data });
-        }
+        },
     )
     .delete(
-        "/:id",
+        '/:id',
         clerkMiddleware(),
         zValidator(
-            "param",
+            'param',
             z.object({
                 id: z.string().optional(),
-            })
+            }),
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { id } = ctx.req.valid("param");
+            const { id } = ctx.req.valid('param');
 
             if (!id) {
-                return ctx.json({ error: "Missing id." }, 400);
+                return ctx.json({ error: 'Missing id.' }, 400);
             }
 
             if (!auth?.userId) {
-                return ctx.json({ error: "Unauthorized." }, 401);
+                return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             // Check if customer has linked transactions
@@ -409,22 +456,30 @@ const app = new Hono()
                 .limit(1);
 
             if (linkedTransaction) {
-                return ctx.json({
-                    error: "Cannot delete customer with linked transactions. Please reassign or delete the transactions first."
-                }, 400);
+                return ctx.json(
+                    {
+                        error: 'Cannot delete customer with linked transactions. Please reassign or delete the transactions first.',
+                    },
+                    400,
+                );
             }
 
             const [data] = await db
                 .delete(customers)
-                .where(and(eq(customers.id, id), eq(customers.userId, auth.userId)))
+                .where(
+                    and(
+                        eq(customers.id, id),
+                        eq(customers.userId, auth.userId),
+                    ),
+                )
                 .returning();
 
             if (!data) {
-                return ctx.json({ error: "Not found." }, 404);
+                return ctx.json({ error: 'Not found.' }, 404);
             }
 
             return ctx.json({ data });
-        }
+        },
     );
 
 export default app;

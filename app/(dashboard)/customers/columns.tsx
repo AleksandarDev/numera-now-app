@@ -1,29 +1,31 @@
-"use client";
+'use client';
 
-import { InferResponseType } from "hono";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
-
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import type { ColumnDef } from '@tanstack/react-table';
+import type { InferResponseType } from 'hono';
+import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { client } from "@/lib/hono";
-import { useOpenCustomer } from "@/features/customers/hooks/use-open-customer";
-import { useDeleteCustomer } from "@/features/customers/api/use-delete-customer";
-import { useConfirm } from "@/hooks/use-confirm";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/dropdown-menu';
+import { useDeleteCustomer } from '@/features/customers/api/use-delete-customer';
+import { useOpenCustomer } from '@/features/customers/hooks/use-open-customer';
+import { useConfirm } from '@/hooks/use-confirm';
+import type { client } from '@/lib/hono';
 
-export type ResponseType = InferResponseType<typeof client.api.customers.$get, 200>["data"][0];
+export type ResponseType = InferResponseType<
+    typeof client.api.customers.$get,
+    200
+>['data'][0];
 
 const ActionsCell = ({ row }: { row: { original: ResponseType } }) => {
     const [ConfirmDialog, confirm] = useConfirm(
-        "Are you sure?",
-        "You are about to delete this customer."
+        'Are you sure?',
+        'You are about to delete this customer.',
     );
 
     const deleteMutation = useDeleteCustomer(row.original.id);
@@ -67,11 +69,13 @@ const ActionsCell = ({ row }: { row: { original: ResponseType } }) => {
 
 export const columns: ColumnDef<ResponseType>[] = [
     {
-        id: "select",
+        id: 'select',
         header: ({ table }) => (
             <Checkbox
                 checked={table.getIsAllPageRowsSelected()}
-                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                onCheckedChange={(value) =>
+                    table.toggleAllPageRowsSelected(!!value)
+                }
                 aria-label="Select all"
             />
         ),
@@ -86,12 +90,14 @@ export const columns: ColumnDef<ResponseType>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "name",
+        accessorKey: 'name',
         header: ({ column }) => {
             return (
                 <Button
                     variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    onClick={() =>
+                        column.toggleSorting(column.getIsSorted() === 'asc')
+                    }
                 >
                     Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -101,7 +107,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         cell: ({ row }) => {
             return (
                 <div className="flex items-center gap-2">
-                    <span>{row.getValue("name")}</span>
+                    <span>{row.getValue('name')}</span>
                     {!row.original.isComplete && (
                         <Badge variant="secondary" className="text-xs">
                             Incomplete
@@ -112,44 +118,46 @@ export const columns: ColumnDef<ResponseType>[] = [
         },
     },
     {
-        accessorKey: "pin",
-        header: "PIN",
+        accessorKey: 'pin',
+        header: 'PIN',
         cell: ({ row }) => {
-            const pin = row.getValue("pin") as string;
-            return <div>{pin || "-"}</div>;
+            const pin = row.getValue('pin') as string;
+            return <div>{pin || '-'}</div>;
         },
     },
     {
-        accessorKey: "vatNumber",
-        header: "VAT Number",
+        accessorKey: 'vatNumber',
+        header: 'VAT Number',
         cell: ({ row }) => {
-            const vatNumber = row.getValue("vatNumber") as string;
-            return <div>{vatNumber || "-"}</div>;
+            const vatNumber = row.getValue('vatNumber') as string;
+            return <div>{vatNumber || '-'}</div>;
         },
     },
     {
-        accessorKey: "contactEmail",
-        header: "Email",
+        accessorKey: 'contactEmail',
+        header: 'Email',
         cell: ({ row }) => {
-            const email = row.getValue("contactEmail") as string;
-            return <div>{email || "-"}</div>;
+            const email = row.getValue('contactEmail') as string;
+            return <div>{email || '-'}</div>;
         },
     },
     {
-        accessorKey: "contactTelephone",
-        header: "Phone",
+        accessorKey: 'contactTelephone',
+        header: 'Phone',
         cell: ({ row }) => {
-            const phone = row.getValue("contactTelephone") as string;
-            return <div>{phone || "-"}</div>;
+            const phone = row.getValue('contactTelephone') as string;
+            return <div>{phone || '-'}</div>;
         },
     },
     {
-        accessorKey: "transactionCount",
+        accessorKey: 'transactionCount',
         header: ({ column }) => {
             return (
                 <Button
                     variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    onClick={() =>
+                        column.toggleSorting(column.getIsSorted() === 'asc')
+                    }
                 >
                     Transactions
                     <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -157,12 +165,12 @@ export const columns: ColumnDef<ResponseType>[] = [
             );
         },
         cell: ({ row }) => {
-            const count = row.getValue("transactionCount") as number;
+            const count = row.getValue('transactionCount') as number;
             return <div>{count}</div>;
         },
     },
     {
-        id: "actions",
+        id: 'actions',
         cell: ActionsCell,
     },
 ];

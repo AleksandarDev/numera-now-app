@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { Menu } from "lucide-react";
-import { useMedia } from "react-use";
-import { usePathname, useSearchParams } from "next/navigation";
-import { NavButton } from "./nav-button";
-import { useState } from "react";
-import { Button } from "./ui/button";
+import { Row } from '@signalco/ui-primitives/Row';
+import { Menu } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useMedia } from 'react-use';
 import {
     Sheet,
     SheetContent,
@@ -13,34 +13,34 @@ import {
     SheetHeader,
     SheetTitle,
     SheetTrigger,
-} from "@/components/ui/sheet";
-import Link from "next/link";
-import { Row } from "@signalco/ui-primitives/Row";
-import { useGetIncompleteCustomersCount } from "@/features/customers/api/use-get-incomplete-count";
-import { Badge } from "./ui/badge";
+} from '@/components/ui/sheet';
+import { useGetIncompleteCustomersCount } from '@/features/customers/api/use-get-incomplete-count';
+import { NavButton } from './nav-button';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 
 const routes = [
     {
-        href: "/",
-        label: "Overview",
+        href: '/',
+        label: 'Overview',
     },
     {
-        href: "/transactions",
-        label: "Transactions",
+        href: '/transactions',
+        label: 'Transactions',
     },
     {
-        href: "/customers",
-        label: "Customers",
+        href: '/customers',
+        label: 'Customers',
     },
     {
-        href: "/accounts",
-        label: "Accounts",
+        href: '/accounts',
+        label: 'Accounts',
     },
-]
+];
 
 const settingsRoute = {
-    href: "/settings",
-    label: "Settings",
+    href: '/settings',
+    label: 'Settings',
 };
 
 const mobileRoutes = [routes[0], routes[1]]; // Only show Overview and Transactions on mobile
@@ -49,7 +49,7 @@ export const Navigation = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     const pathname = usePathname();
-    const isMobile = useMedia("(max-width: 1024px)", false);
+    const isMobile = useMedia('(max-width: 1024px)', false);
     const searchParams = useSearchParams();
 
     const { data: incompleteCount } = useGetIncompleteCustomersCount();
@@ -70,8 +70,12 @@ export const Navigation = () => {
                     </SheetTrigger>
                     <SheetContent side="left" className="px-2">
                         <SheetHeader>
-                            <SheetTitle className="hidden">Navigation</SheetTitle>
-                            <SheetDescription className="hidden">Quickly navigate to different sections</SheetDescription>
+                            <SheetTitle className="hidden">
+                                Navigation
+                            </SheetTitle>
+                            <SheetDescription className="hidden">
+                                Quickly navigate to different sections
+                            </SheetDescription>
                         </SheetHeader>
                         <nav className="flex flex-col gap-y-2 pt-6">
                             {routes.map((route) => (
@@ -79,23 +83,32 @@ export const Navigation = () => {
                                     key={route.href}
                                     href={{
                                         pathname: route.href,
-                                        query: searchParams.toString()
+                                        query: searchParams.toString(),
                                     }}
                                     prefetch
                                 >
                                     <Button
-                                        variant={route.href === pathname ? "secondary" : "ghost"}
+                                        variant={
+                                            route.href === pathname
+                                                ? 'secondary'
+                                                : 'ghost'
+                                        }
                                         key={route.href}
                                         onClick={() => setIsOpen(false)}
                                         className="w-full justify-start"
                                     >
                                         <span className="flex items-center gap-2">
                                             {route.label}
-                                            {route.href === "/customers" && incompleteCount !== undefined && incompleteCount > 0 && (
-                                                <Badge variant="destructive" className="ml-1 h-5 min-w-5 flex items-center justify-center px-1.5">
-                                                    {incompleteCount}
-                                                </Badge>
-                                            )}
+                                            {route.href === '/customers' &&
+                                                incompleteCount !== undefined &&
+                                                incompleteCount > 0 && (
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="ml-1 h-5 min-w-5 flex items-center justify-center px-1.5"
+                                                    >
+                                                        {incompleteCount}
+                                                    </Badge>
+                                                )}
                                         </span>
                                     </Button>
                                 </Link>
@@ -110,12 +123,16 @@ export const Navigation = () => {
                         query={searchParams.toString()}
                         label={route.label}
                         isActive={pathname === route.href}
-                        badge={route.href === "/customers" ? incompleteCount : undefined}
+                        badge={
+                            route.href === '/customers'
+                                ? incompleteCount
+                                : undefined
+                        }
                     />
                 ))}
             </Row>
         );
-    };
+    }
 
     return (
         <nav className="hidden lg:flex items-center gap-x-2 overflow-x-auto">
@@ -126,12 +143,16 @@ export const Navigation = () => {
                     query={searchParams.toString()}
                     label={route.label}
                     isActive={pathname === route.href}
-                    badge={route.href === "/customers" ? incompleteCount : undefined}
+                    badge={
+                        route.href === '/customers'
+                            ? incompleteCount
+                            : undefined
+                    }
                 />
             ))}
         </nav>
-    )
-}
+    );
+};
 
 export const SettingsNav = () => {
     const pathname = usePathname();
@@ -146,5 +167,5 @@ export const SettingsNav = () => {
                 isActive={pathname === settingsRoute.href}
             />
         </div>
-    )
-}
+    );
+};
