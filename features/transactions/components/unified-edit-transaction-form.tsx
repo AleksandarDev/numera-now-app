@@ -132,9 +132,12 @@ export const UnifiedEditTransactionForm = ({
         [suggestedAccountsQuery.data?.debit],
     );
 
-    const suggestedCategoriesQuery = useGetSuggestedCategories(payeeCustomerId, {
-        enabled: isCategoryMenuOpen,
-    });
+    const suggestedCategoriesQuery = useGetSuggestedCategories(
+        payeeCustomerId,
+        {
+            enabled: isCategoryMenuOpen,
+        },
+    );
     const suggestedCategoryIds = useMemo(
         () =>
             suggestedCategoriesQuery.data?.map(

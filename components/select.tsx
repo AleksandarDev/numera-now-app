@@ -31,9 +31,7 @@ export const Select = ({
     onMenuOpen,
     onMenuClose,
 }: SelectProps) => {
-    const onSelect = (
-        option: SingleValue<SelectOption>,
-    ) => {
+    const onSelect = (option: SingleValue<SelectOption>) => {
         onChange(option?.value);
     };
 

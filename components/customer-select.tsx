@@ -76,35 +76,32 @@ export const CustomerSelect = ({
         [suggestedCustomerIds],
     );
 
-    const filteredCustomers = useMemo(
-        () => {
-            let result =
-                customers?.filter((customer) => {
-                    const filter = customerFilter.toLowerCase();
-                    return (
-                        customer.name.toLowerCase().includes(filter) ||
-                        customer.pin?.toLowerCase().includes(filter)
-                    );
-                }) ?? [];
-
-            if (suggestedIdOrder.size > 0) {
-                const suggested = result
-                    .filter((customer) => suggestedIdOrder.has(customer.id))
-                    .sort(
-                        (a, b) =>
-                            (suggestedIdOrder.get(a.id) ?? 0) -
-                            (suggestedIdOrder.get(b.id) ?? 0),
-                    );
-                const remaining = result.filter(
-                    (customer) => !suggestedIdOrder.has(customer.id),
+    const filteredCustomers = useMemo(() => {
+        let result =
+            customers?.filter((customer) => {
+                const filter = customerFilter.toLowerCase();
+                return (
+                    customer.name.toLowerCase().includes(filter) ||
+                    customer.pin?.toLowerCase().includes(filter)
                 );
-                result = [...suggested, ...remaining];
-            }
+            }) ?? [];
 
-            return result;
-        },
-        [customers, customerFilter, suggestedIdOrder],
-    );
+        if (suggestedIdOrder.size > 0) {
+            const suggested = result
+                .filter((customer) => suggestedIdOrder.has(customer.id))
+                .sort(
+                    (a, b) =>
+                        (suggestedIdOrder.get(a.id) ?? 0) -
+                        (suggestedIdOrder.get(b.id) ?? 0),
+                );
+            const remaining = result.filter(
+                (customer) => !suggestedIdOrder.has(customer.id),
+            );
+            result = [...suggested, ...remaining];
+        }
+
+        return result;
+    }, [customers, customerFilter, suggestedIdOrder]);
 
     // Virtualization
     const parentRef = useRef<HTMLDivElement>(null);

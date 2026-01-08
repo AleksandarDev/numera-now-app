@@ -115,7 +115,9 @@ export const AccountSelect = ({
         selectAll,
         excludeReadOnly,
         allowedTypes,
-        suggestedAccountIds,
+        suggestedIdOrder.get,
+        suggestedIdOrder.has,
+        suggestedIdOrder.size,
     ]);
     const filteredAccounts = useMemo(
         () =>

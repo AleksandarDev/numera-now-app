@@ -19,8 +19,8 @@ import {
 } from '@/components/ui/form';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
-import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-suggested-categories';
 import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
+import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-suggested-categories';
 import { cn } from '@/lib/utils';
 
 // Schema for individual credit/debit entries
@@ -161,9 +161,12 @@ export const UnifiedTransactionForm = ({
         [suggestedAccountsQuery.data?.debit],
     );
 
-    const suggestedCategoriesQuery = useGetSuggestedCategories(payeeCustomerId, {
-        enabled: isCategoryMenuOpen,
-    });
+    const suggestedCategoriesQuery = useGetSuggestedCategories(
+        payeeCustomerId,
+        {
+            enabled: isCategoryMenuOpen,
+        },
+    );
     const suggestedCategoryIds = useMemo(
         () =>
             suggestedCategoriesQuery.data?.map(
