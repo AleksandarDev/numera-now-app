@@ -24,6 +24,7 @@ export type AccountSelectProps = {
     showClosed?: boolean;
     excludeReadOnly?: boolean;
     allowedTypes?: Array<'credit' | 'debit' | 'neutral'>;
+    suggestedAccountIds?: string[];
 };
 
 export const AccountSelect = ({
@@ -36,6 +37,7 @@ export const AccountSelect = ({
     showClosed = false,
     excludeReadOnly = false,
     allowedTypes,
+    suggestedAccountIds,
 }: AccountSelectProps) => {
     const [open, setOpen] = useState(false);
     const [accountsFilter, setAccountsFilter] = useState('');
@@ -65,6 +67,25 @@ export const AccountSelect = ({
             });
         }
 
+        const suggestedIdOrder = new Map(
+            (suggestedAccountIds ?? [])
+                .filter(Boolean)
+                .map((accountId, index) => [accountId, index]),
+        );
+        if (suggestedIdOrder.size > 0) {
+            const suggested = result
+                .filter((account) => suggestedIdOrder.has(account.id))
+                .sort(
+                    (a, b) =>
+                        (suggestedIdOrder.get(a.id) ?? 0) -
+                        (suggestedIdOrder.get(b.id) ?? 0),
+                );
+            const remaining = result.filter(
+                (account) => !suggestedIdOrder.has(account.id),
+            );
+            result = [...suggested, ...remaining];
+        }
+
         // Add "all" option if needed
         if (selectAll) {
             result = [
@@ -82,7 +103,13 @@ export const AccountSelect = ({
         }
 
         return result;
-    }, [accounts, selectAll, excludeReadOnly, allowedTypes]);
+    }, [
+        accounts,
+        selectAll,
+        excludeReadOnly,
+        allowedTypes,
+        suggestedAccountIds,
+    ]);
     const filteredAccounts = useMemo(
         () =>
             resolvedAccounts?.filter((account) => {
