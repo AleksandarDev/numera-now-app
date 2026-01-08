@@ -1,15 +1,17 @@
-import { create } from 'zustand';
+'use client';
 
-type OpenAccountState = {
-    id?: string;
-    isOpen: boolean;
-    onOpen: (id: string) => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+export const useOpenAccount = () => {
+    const [accountSheetId, setAccountSheetId] = useQueryState(
+        'accountSheetId',
+        parseAsString,
+    );
+
+    return {
+        id: accountSheetId ?? undefined,
+        isOpen: Boolean(accountSheetId),
+        onOpen: (id: string) => setAccountSheetId(id),
+        onClose: () => setAccountSheetId(null),
+    };
 };
-
-export const useOpenAccount = create<OpenAccountState>((set) => ({
-    id: undefined,
-    isOpen: false,
-    onOpen: (id: string) => set({ isOpen: true, id }),
-    onClose: () => set({ isOpen: false, id: undefined }),
-}));

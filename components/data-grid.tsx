@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { parseAsString, useQueryStates } from 'nuqs';
 import {
     FaBalanceScale,
     FaBalanceScaleLeft,
@@ -15,11 +15,15 @@ import { DataCard, DataCardLoading } from './data-card';
 
 export const DataGrid = () => {
     const { data, isLoading } = useGetSummary();
-    const searchParams = useSearchParams();
-    const to = searchParams.get('to') || undefined;
-    const from = searchParams.get('from') || undefined;
+    const [{ from, to }] = useQueryStates({
+        from: parseAsString,
+        to: parseAsString,
+    });
 
-    const dateRangeLabel = formatDateRange({ to, from });
+    const dateRangeLabel = formatDateRange({
+        to: to ?? undefined,
+        from: from ?? undefined,
+    });
 
     if (isLoading)
         return (

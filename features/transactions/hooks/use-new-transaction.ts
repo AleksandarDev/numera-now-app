@@ -1,3 +1,6 @@
+'use client';
+
+import { parseAsString, useQueryState } from 'nuqs';
 import { create } from 'zustand';
 
 type TransactionDefaultValues = {
@@ -20,16 +23,33 @@ type TransactionDefaultValues = {
 };
 
 type NewTransactionState = {
-    isOpen: boolean;
     defaultValues?: TransactionDefaultValues;
-    onOpen: (defaultValues?: TransactionDefaultValues) => void;
-    onClose: () => void;
+    setDefaultValues: (defaultValues?: TransactionDefaultValues) => void;
 };
 
-export const useNewTransaction = create<NewTransactionState>((set) => ({
-    isOpen: false,
+const useNewTransactionStore = create<NewTransactionState>((set) => ({
     defaultValues: undefined,
-    onOpen: (defaultValues?: TransactionDefaultValues) =>
-        set({ isOpen: true, defaultValues }),
-    onClose: () => set({ isOpen: false, defaultValues: undefined }),
+    setDefaultValues: (defaultValues?: TransactionDefaultValues) =>
+        set({ defaultValues }),
 }));
+
+export const useNewTransaction = () => {
+    const [newTransactionParam, setNewTransactionParam] = useQueryState(
+        'newTransaction',
+        parseAsString,
+    );
+    const { defaultValues, setDefaultValues } = useNewTransactionStore();
+
+    return {
+        isOpen: newTransactionParam === '1',
+        defaultValues,
+        onOpen: (values?: TransactionDefaultValues) => {
+            setDefaultValues(values);
+            void setNewTransactionParam('1');
+        },
+        onClose: () => {
+            setDefaultValues(undefined);
+            void setNewTransactionParam(null);
+        },
+    };
+};

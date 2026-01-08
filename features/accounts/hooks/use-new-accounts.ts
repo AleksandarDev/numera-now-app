@@ -1,13 +1,16 @@
-import { create } from 'zustand';
+'use client';
 
-type NewAccountState = {
-    isOpen: boolean;
-    onOpen: () => void;
-    onClose: () => void;
+import { parseAsString, useQueryState } from 'nuqs';
+
+export const useNewAccount = () => {
+    const [newAccountParam, setNewAccountParam] = useQueryState(
+        'newAccount',
+        parseAsString,
+    );
+
+    return {
+        isOpen: newAccountParam === '1',
+        onOpen: () => setNewAccountParam('1'),
+        onClose: () => setNewAccountParam(null),
+    };
 };
-
-export const useNewAccount = create<NewAccountState>((set) => ({
-    isOpen: false,
-    onOpen: () => set({ isOpen: true }),
-    onClose: () => set({ isOpen: false }),
-}));

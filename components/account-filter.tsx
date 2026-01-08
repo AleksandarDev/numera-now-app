@@ -1,32 +1,16 @@
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import qs from 'query-string';
+import { parseAsString, useQueryState } from 'nuqs';
 import { AccountSelect } from './account-select';
 
 export const AccountFilter = () => {
-    const pathname = usePathname();
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
-    const accountId = searchParams.get('accountId') || 'all';
+    const [accountId, setAccountId] = useQueryState(
+        'accountId',
+        parseAsString.withDefault('all'),
+    );
 
     const onChange = (newValue: string) => {
-        const query = {
-            accountId: newValue,
-        };
-
-        if (newValue === 'all') query.accountId = '';
-
-        const url = qs.stringifyUrl(
-            {
-                url: pathname,
-                query,
-            },
-            { skipNull: true, skipEmptyString: true },
-        );
-
-        router.push(url);
+        void setAccountId(newValue === 'all' ? null : newValue);
     };
 
     return (

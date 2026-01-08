@@ -39,7 +39,8 @@ const formSchema = insertTransactionSchema.omit({ id: true });
 type FormValues = z.infer<typeof formSchema>;
 
 export const EditTransactionSheet = () => {
-    const { isOpen, onClose, id, initialTab } = useOpenTransaction();
+    const { isOpen, onClose, id, initialTab, tab, setTab } =
+        useOpenTransaction();
 
     const [ConfirmDialog, confirm] = useConfirm(
         'Are you sure?',
@@ -97,11 +98,7 @@ export const EditTransactionSheet = () => {
             status: values.status || currentStatus,
         };
 
-        editMutation.mutate(formValues, {
-            onSuccess: () => {
-                onClose();
-            },
-        });
+        editMutation.mutate(formValues);
     };
 
     const onAdvanceStatus = async (
@@ -209,18 +206,20 @@ export const EditTransactionSheet = () => {
 
     type TabValue = 'details' | 'documents' | 'history';
     const [activeTab, setActiveTab] = useState<TabValue>(
-        initialTab || 'details',
+        tab || initialTab || 'details',
     );
 
     // Reset tab when sheet opens with a new initial tab
     React.useEffect(() => {
-        if (isOpen && initialTab) {
-            setActiveTab(initialTab);
+        if (isOpen && (tab || initialTab)) {
+            setActiveTab((tab || initialTab) as TabValue);
         }
-    }, [isOpen, initialTab]);
+    }, [isOpen, initialTab, tab]);
 
     const handleTabChange = (value: string) => {
-        setActiveTab(value as TabValue);
+        const nextTab = value as TabValue;
+        setActiveTab(nextTab);
+        setTab(nextTab);
     };
 
     return (

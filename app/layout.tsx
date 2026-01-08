@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import type { Metadata } from 'next';
 import Head from 'next/head';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { type PropsWithChildren, Suspense } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { siteConfig } from '@/config';
@@ -23,10 +24,12 @@ export default function RootLayout({ children }: PropsWithChildren) {
                 <body className={inter.className}>
                     <QueryProvider>
                         <Suspense>
-                            <SheetProvider />
+                            <NuqsAdapter>
+                                <SheetProvider />
+                                <Toaster />
+                                {children}
+                            </NuqsAdapter>
                         </Suspense>
-                        <Toaster />
-                        {children}
                     </QueryProvider>
                 </body>
             </html>
