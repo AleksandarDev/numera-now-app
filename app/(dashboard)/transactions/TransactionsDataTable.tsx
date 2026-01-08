@@ -18,11 +18,13 @@ export function TransactionsDataTable({
     const transactionsQuery = useGetTransactions();
     const bulkDeleteMutation = useBulkDeleteTransactions();
     const transactions = transactionsQuery.data || [];
-    const isLoading = transactionsQuery.isLoading;
+    // Use isLoading only for initial load (no cached data)
+    // isFetching is true during background refetch but we keep showing cached data
+    const isInitialLoading = transactionsQuery.isLoading;
     const isDeleting = bulkDeleteMutation.isPending;
 
     const getRowClassName = (transaction: ResponseType) => {
-        if (isLoading) return '';
+        if (isInitialLoading) return '';
         if (transaction.status === 'draft') {
             return 'bg-gray-50 hover:bg-gray-100 opacity-60 italic';
         }
@@ -47,7 +49,7 @@ export function TransactionsDataTable({
             filterKey="payeeCustomerName"
             filterPlaceholder="Filter transactions..."
             columns={
-                transactionsQuery.isLoading
+                isInitialLoading
                     ? tableColumns.map((column) => ({
                           ...column,
                           cell: () => (
@@ -56,10 +58,8 @@ export function TransactionsDataTable({
                       }))
                     : tableColumns
             }
-            data={
-                transactionsQuery.isLoading ? Array(5).fill({}) : transactions
-            }
-            disabled={isLoading || isDeleting}
+            data={isInitialLoading ? Array(5).fill({}) : transactions}
+            disabled={isInitialLoading || isDeleting}
             loading={isDeleting}
             onDelete={bulkDeleteMode ? handleBulkDelete : undefined}
             getRowClassName={getRowClassName}
