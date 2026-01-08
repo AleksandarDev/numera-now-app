@@ -1,18 +1,56 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { and, eq } from 'drizzle-orm';
+import { aliasedTable, and, eq, isNull, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
-import { documents, documentTypes, transactions } from '@/db/schema';
+import { accounts, documents, documentTypes, transactions } from '@/db/schema';
 import {
-    deleteDocument,
     generateDownloadUrl,
     generateUploadUrl,
     verifyStoragePathOwnership,
 } from '@/lib/azure-storage';
+
+const getAuthorizedTransaction = async (
+    transactionId: string,
+    userId: string,
+) => {
+    const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+    const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+
+    const [transaction] = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(
+            creditAccounts,
+            eq(transactions.creditAccountId, creditAccounts.id),
+        )
+        .leftJoin(
+            debitAccounts,
+            eq(transactions.debitAccountId, debitAccounts.id),
+        )
+        .where(
+            and(
+                eq(transactions.id, transactionId),
+                or(
+                    eq(accounts.userId, userId),
+                    eq(creditAccounts.userId, userId),
+                    eq(debitAccounts.userId, userId),
+                    and(
+                        isNull(transactions.accountId),
+                        isNull(transactions.creditAccountId),
+                        isNull(transactions.debitAccountId),
+                        eq(transactions.statusChangedBy, userId),
+                    ),
+                ),
+            ),
+        );
+
+    return transaction;
+};
 
 const app = new Hono()
     // Get all documents for a transaction
@@ -25,10 +63,10 @@ const app = new Hono()
         }
 
         // Verify transaction belongs to user
-        const [transaction] = await db
-            .select({ accountId: transactions.accountId })
-            .from(transactions)
-            .where(eq(transactions.id, transactionId));
+        const transaction = await getAuthorizedTransaction(
+            transactionId,
+            auth.userId,
+        );
 
         if (!transaction) {
             return ctx.json({ error: 'Transaction not found.' }, 404);
@@ -103,10 +141,10 @@ const app = new Hono()
             }
 
             // Verify transaction belongs to user
-            const [transaction] = await db
-                .select({ accountId: transactions.accountId })
-                .from(transactions)
-                .where(eq(transactions.id, transactionId));
+            const transaction = await getAuthorizedTransaction(
+                transactionId,
+                auth.userId,
+            );
 
             if (!transaction) {
                 return ctx.json({ error: 'Transaction not found.' }, 404);
@@ -167,10 +205,10 @@ const app = new Hono()
             }
 
             // Verify transaction belongs to user
-            const [transaction] = await db
-                .select({ accountId: transactions.accountId })
-                .from(transactions)
-                .where(eq(transactions.id, transactionId));
+            const transaction = await getAuthorizedTransaction(
+                transactionId,
+                auth.userId,
+            );
 
             if (!transaction) {
                 return ctx.json({ error: 'Transaction not found.' }, 404);
@@ -243,10 +281,10 @@ const app = new Hono()
             }
 
             // Verify ownership through transaction
-            const [transaction] = await db
-                .select()
-                .from(transactions)
-                .where(eq(transactions.id, doc.transactionId));
+            const transaction = await getAuthorizedTransaction(
+                doc.transactionId,
+                auth.userId,
+            );
 
             if (!transaction) {
                 return ctx.json({ error: 'Unauthorized.' }, 403);
@@ -298,10 +336,10 @@ const app = new Hono()
                 }
 
                 // Verify ownership through transaction
-                const [transaction] = await db
-                    .select()
-                    .from(transactions)
-                    .where(eq(transactions.id, doc.transactionId));
+                const transaction = await getAuthorizedTransaction(
+                    doc.transactionId,
+                    auth.userId,
+                );
 
                 if (!transaction) {
                     return ctx.json({ error: 'Unauthorized.' }, 403);
@@ -367,23 +405,20 @@ const app = new Hono()
             }
 
             // Verify ownership through transaction
-            const [transaction] = await db
-                .select()
-                .from(transactions)
-                .where(eq(transactions.id, doc.transactionId));
+            const transaction = await getAuthorizedTransaction(
+                doc.transactionId,
+                auth.userId,
+            );
 
             if (!transaction) {
                 return ctx.json({ error: 'Unauthorized.' }, 403);
             }
 
-            // Soft delete the document
+            // Soft delete the document (retain blob to avoid inconsistency)
             await db
                 .update(documents)
                 .set({ isDeleted: true })
                 .where(eq(documents.id, id));
-
-            // Actually delete from Azure Storage
-            await deleteDocument(doc.storagePath);
 
             return ctx.json({ data: { id } });
         } catch (error) {

@@ -33,6 +33,20 @@ const isCustomerComplete = (customer: CustomerData): boolean => {
     );
 };
 
+const escapeLikePattern = (value: string): string =>
+    value.replace(/[\\%_]/g, '\\\\$&');
+
+const enforceMinDelay = async (
+    startTimeMs: number,
+    minDelayMs: number,
+): Promise<void> => {
+    const elapsedMs = Date.now() - startTimeMs;
+    const remainingMs = minDelayMs - elapsedMs;
+    if (remainingMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remainingMs));
+    }
+};
+
 const app = new Hono()
     .get('/incomplete-count', clerkMiddleware(), async (ctx) => {
         const auth = getAuth(ctx);
@@ -72,6 +86,7 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
+            const escapedSearch = search ? escapeLikePattern(search) : '';
             const data = await db
                 .select({
                     id: customers.id,
@@ -96,8 +111,8 @@ const app = new Hono()
                         ? and(
                               eq(customers.userId, auth.userId),
                               or(
-                                  ilike(customers.name, `%${search}%`),
-                                  sql`${customers.pin} ILIKE ${`%${search}%`}`,
+                                  ilike(customers.name, `%${escapedSearch}%`),
+                                  sql`${customers.pin} ILIKE ${`%${escapedSearch}%`}`,
                               ),
                           )
                         : eq(customers.userId, auth.userId),
@@ -311,6 +326,7 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
+            const startTimeMs = Date.now();
             // Normalize IBAN for lookup
             const normalizedIban = iban.toUpperCase().replace(/\s/g, '');
 
@@ -334,9 +350,11 @@ const app = new Hono()
                 );
 
             if (!ibanRecord) {
+                await enforceMinDelay(startTimeMs, 150);
                 return ctx.json({ data: null });
             }
 
+            await enforceMinDelay(startTimeMs, 150);
             return ctx.json({ data: ibanRecord });
         },
     )
