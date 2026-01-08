@@ -1,6 +1,6 @@
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
-import { Select } from '@/components/select';
+import { AccountSelect } from '@/components/account-select';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,8 +11,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { useCreateAccount } from '@/features/accounts/api/use-create-account';
-import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 
 export type ImportAccountSelection = {
     inflowAccountId?: string;
@@ -23,28 +21,18 @@ export const useSelectImportAccounts = (): [
     () => ReactNode,
     () => Promise<ImportAccountSelection | undefined>,
 ] => {
-    const accountQuery = useGetAccounts();
-    const accountMutation = useCreateAccount();
-
-    const onCreateAccount = (name: string) =>
-        accountMutation.mutate({
-            name,
-        });
-
-    const accountOptions = (accountQuery.data ?? []).map((account) => ({
-        label: account.name,
-        value: account.id,
-    }));
-
     const [promise, setPromise] = useState<{
         resolve: (value: ImportAccountSelection | undefined) => void;
     } | null>(null);
 
-    const inflowAccountValue = useRef<string | undefined>(undefined);
-    const outflowAccountValue = useRef<string | undefined>(undefined);
+    const [inflowAccountValue, setInflowAccountValue] = useState<string>('');
+    const [outflowAccountValue, setOutflowAccountValue] = useState<string>('');
 
     const confirm = (): Promise<ImportAccountSelection | undefined> =>
         new Promise((resolve) => {
+            // Reset values when opening dialog
+            setInflowAccountValue('');
+            setOutflowAccountValue('');
             setPromise({ resolve });
         });
 
@@ -52,12 +40,12 @@ export const useSelectImportAccounts = (): [
 
     const handleConfirm = () => {
         // At least one account must be selected
-        if (!inflowAccountValue.current && !outflowAccountValue.current) {
+        if (!inflowAccountValue && !outflowAccountValue) {
             return;
         }
         promise?.resolve({
-            inflowAccountId: inflowAccountValue.current,
-            outflowAccountId: outflowAccountValue.current,
+            inflowAccountId: inflowAccountValue || undefined,
+            outflowAccountId: outflowAccountValue || undefined,
         });
         handleClose();
     };
@@ -84,17 +72,13 @@ export const useSelectImportAccounts = (): [
                         <Label htmlFor="inflow-account">
                             Inflow Account (for income/deposits)
                         </Label>
-                        <Select
+                        <AccountSelect
                             placeholder="Select inflow account (optional)"
-                            options={accountOptions}
-                            onCreate={onCreateAccount}
-                            onChange={(value) => {
-                                inflowAccountValue.current = value;
-                            }}
-                            disabled={
-                                accountQuery.isLoading ||
-                                accountMutation.isPending
-                            }
+                            value={inflowAccountValue}
+                            onChange={setInflowAccountValue}
+                            showClosed={false}
+                            excludeReadOnly={true}
+                            allowedTypes={['credit', 'debit', 'neutral']}
                         />
                     </div>
 
@@ -102,17 +86,13 @@ export const useSelectImportAccounts = (): [
                         <Label htmlFor="outflow-account">
                             Outflow Account (for expenses/withdrawals)
                         </Label>
-                        <Select
+                        <AccountSelect
                             placeholder="Select outflow account (optional)"
-                            options={accountOptions}
-                            onCreate={onCreateAccount}
-                            onChange={(value) => {
-                                outflowAccountValue.current = value;
-                            }}
-                            disabled={
-                                accountQuery.isLoading ||
-                                accountMutation.isPending
-                            }
+                            value={outflowAccountValue}
+                            onChange={setOutflowAccountValue}
+                            showClosed={false}
+                            excludeReadOnly={true}
+                            allowedTypes={['credit', 'debit', 'neutral']}
                         />
                     </div>
                 </div>
