@@ -10,6 +10,7 @@ import {
     eq,
     gte,
     inArray,
+    isNotNull,
     isNull,
     lte,
     or,
@@ -388,6 +389,205 @@ const app = new Hono()
             });
 
             return ctx.json({ data: dataWithDocs });
+        },
+    )
+    .get(
+        '/suggested-accounts',
+        zValidator(
+            'query',
+            z.object({
+                customerId: z.string().min(1),
+            }),
+        ),
+        clerkMiddleware(),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { customerId } = ctx.req.valid('query');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const [customer] = await db
+                .select({ id: customers.id })
+                .from(customers)
+                .where(
+                    and(
+                        eq(customers.id, customerId),
+                        eq(customers.userId, auth.userId),
+                    ),
+                );
+
+            if (!customer) {
+                return ctx.json({ error: 'Not found.' }, 404);
+            }
+
+            const suggestionLimit = 5;
+
+            const creditUsage = await db
+                .select({
+                    accountId: transactions.creditAccountId,
+                    usageCount: sql<number>`count(*)`.as('usageCount'),
+                    lastUsed: sql<Date>`max(${transactions.date})`.as(
+                        'lastUsed',
+                    ),
+                })
+                .from(transactions)
+                .leftJoin(
+                    customers,
+                    eq(transactions.payeeCustomerId, customers.id),
+                )
+                .leftJoin(
+                    accounts,
+                    eq(transactions.creditAccountId, accounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.payeeCustomerId, customerId),
+                        eq(customers.userId, auth.userId),
+                        eq(accounts.userId, auth.userId),
+                        isNotNull(transactions.creditAccountId),
+                    ),
+                )
+                .groupBy(transactions.creditAccountId)
+                .orderBy(
+                    desc(sql`count(*)`),
+                    desc(sql`max(${transactions.date})`),
+                )
+                .limit(suggestionLimit);
+
+            const debitUsage = await db
+                .select({
+                    accountId: transactions.debitAccountId,
+                    usageCount: sql<number>`count(*)`.as('usageCount'),
+                    lastUsed: sql<Date>`max(${transactions.date})`.as(
+                        'lastUsed',
+                    ),
+                })
+                .from(transactions)
+                .leftJoin(
+                    customers,
+                    eq(transactions.payeeCustomerId, customers.id),
+                )
+                .leftJoin(
+                    accounts,
+                    eq(transactions.debitAccountId, accounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.payeeCustomerId, customerId),
+                        eq(customers.userId, auth.userId),
+                        eq(accounts.userId, auth.userId),
+                        isNotNull(transactions.debitAccountId),
+                    ),
+                )
+                .groupBy(transactions.debitAccountId)
+                .orderBy(
+                    desc(sql`count(*)`),
+                    desc(sql`max(${transactions.date})`),
+                )
+                .limit(suggestionLimit);
+
+            const singleAccountUsage = await db
+                .select({
+                    accountId: transactions.accountId,
+                    usageCount: sql<number>`count(*)`.as('usageCount'),
+                    lastUsed: sql<Date>`max(${transactions.date})`.as(
+                        'lastUsed',
+                    ),
+                })
+                .from(transactions)
+                .leftJoin(
+                    customers,
+                    eq(transactions.payeeCustomerId, customers.id),
+                )
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .where(
+                    and(
+                        eq(transactions.payeeCustomerId, customerId),
+                        eq(customers.userId, auth.userId),
+                        eq(accounts.userId, auth.userId),
+                        isNotNull(transactions.accountId),
+                    ),
+                )
+                .groupBy(transactions.accountId)
+                .orderBy(
+                    desc(sql`count(*)`),
+                    desc(sql`max(${transactions.date})`),
+                )
+                .limit(suggestionLimit);
+
+            const mergeUsage = (
+                primary: {
+                    accountId: string | null;
+                    usageCount: number;
+                    lastUsed: Date | null;
+                }[],
+                fallback: {
+                    accountId: string | null;
+                    usageCount: number;
+                    lastUsed: Date | null;
+                }[],
+            ) => {
+                const merged = new Map<
+                    string,
+                    {
+                        accountId: string;
+                        usageCount: number;
+                        lastUsed: Date | null;
+                    }
+                >();
+
+                const addUsage = (usageList: typeof primary) => {
+                    for (const usage of usageList) {
+                        if (!usage.accountId) continue;
+                        const existing = merged.get(usage.accountId);
+                        if (!existing) {
+                            merged.set(usage.accountId, {
+                                accountId: usage.accountId,
+                                usageCount: usage.usageCount,
+                                lastUsed: usage.lastUsed,
+                            });
+                            continue;
+                        }
+                        existing.usageCount += usage.usageCount;
+                        if (
+                            usage.lastUsed &&
+                            (!existing.lastUsed ||
+                                usage.lastUsed > existing.lastUsed)
+                        ) {
+                            existing.lastUsed = usage.lastUsed;
+                        }
+                    }
+                };
+
+                addUsage(primary);
+                addUsage(fallback);
+
+                return [...merged.values()]
+                    .sort((a, b) => {
+                        if (a.usageCount !== b.usageCount) {
+                            return b.usageCount - a.usageCount;
+                        }
+                        const aTime = a.lastUsed?.getTime() ?? 0;
+                        const bTime = b.lastUsed?.getTime() ?? 0;
+                        return bTime - aTime;
+                    })
+                    .slice(0, suggestionLimit);
+            };
+
+            const creditSuggestions = mergeUsage(
+                creditUsage,
+                singleAccountUsage,
+            );
+            const debitSuggestions = mergeUsage(debitUsage, singleAccountUsage);
+
+            return ctx.json({
+                data: {
+                    credit: creditSuggestions,
+                    debit: debitSuggestions,
+                },
+            });
         },
     )
     .get(

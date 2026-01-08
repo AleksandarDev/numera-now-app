@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronRight, Lock, Trash } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { AccountSelect } from '@/components/account-select';
 import { AmountInput } from '@/components/amount-input';
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/form';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
 
 // Base form schema - accounts are optional, validation depends on status
 const baseFormSchema = z.object({
@@ -102,6 +104,27 @@ export const UnifiedEditTransactionForm = ({
             ...defaultValues,
         },
     });
+
+    const payeeCustomerId = useWatch({
+        control: form.control,
+        name: 'payeeCustomerId',
+    });
+
+    const suggestedAccountsQuery = useGetSuggestedAccounts(payeeCustomerId);
+    const suggestedCreditAccountIds = useMemo(
+        () =>
+            suggestedAccountsQuery.data?.credit.map(
+                (suggestion) => suggestion.accountId,
+            ) ?? [],
+        [suggestedAccountsQuery.data?.credit],
+    );
+    const suggestedDebitAccountIds = useMemo(
+        () =>
+            suggestedAccountsQuery.data?.debit.map(
+                (suggestion) => suggestion.accountId,
+            ) ?? [],
+        [suggestedAccountsQuery.data?.debit],
+    );
 
     const handleSubmit = (values: UnifiedEditTransactionFormValues) => {
         onSubmit(values);
@@ -217,6 +240,9 @@ export const UnifiedEditTransactionForm = ({
                                         placeholder="Credit account..."
                                         excludeReadOnly
                                         allowedTypes={['credit', 'neutral']}
+                                        suggestedAccountIds={
+                                            suggestedCreditAccountIds
+                                        }
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -262,6 +288,9 @@ export const UnifiedEditTransactionForm = ({
                                         placeholder="Debit account..."
                                         excludeReadOnly
                                         allowedTypes={['debit', 'neutral']}
+                                        suggestedAccountIds={
+                                            suggestedDebitAccountIds
+                                        }
                                     />
                                 </FormControl>
                                 <FormMessage />

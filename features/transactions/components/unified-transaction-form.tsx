@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
 import { cn } from '@/lib/utils';
 
 // Schema for individual credit/debit entries
@@ -133,6 +134,26 @@ export const UnifiedTransactionForm = ({
         control: form.control,
         name: 'debitEntries',
     });
+    const payeeCustomerId = useWatch({
+        control: form.control,
+        name: 'payeeCustomerId',
+    });
+
+    const suggestedAccountsQuery = useGetSuggestedAccounts(payeeCustomerId);
+    const suggestedCreditAccountIds = useMemo(
+        () =>
+            suggestedAccountsQuery.data?.credit.map(
+                (suggestion) => suggestion.accountId,
+            ) ?? [],
+        [suggestedAccountsQuery.data?.credit],
+    );
+    const suggestedDebitAccountIds = useMemo(
+        () =>
+            suggestedAccountsQuery.data?.debit.map(
+                (suggestion) => suggestion.accountId,
+            ) ?? [],
+        [suggestedAccountsQuery.data?.debit],
+    );
 
     const creditTotal = useMemo(
         () =>
@@ -259,6 +280,9 @@ export const UnifiedTransactionForm = ({
                                                                 'credit',
                                                                 'neutral',
                                                             ]}
+                                                            suggestedAccountIds={
+                                                                suggestedCreditAccountIds
+                                                            }
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -394,6 +418,9 @@ export const UnifiedTransactionForm = ({
                                                                 'debit',
                                                                 'neutral',
                                                             ]}
+                                                            suggestedAccountIds={
+                                                                suggestedDebitAccountIds
+                                                            }
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
