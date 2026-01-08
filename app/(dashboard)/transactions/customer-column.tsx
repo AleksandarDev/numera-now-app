@@ -16,13 +16,17 @@ export const CustomerColumn = ({
     const hasPayee = !!payee;
     const hasCustomer = !!customerName;
 
-     // Has customer - all good
+    // Has customer - all good
     if (hasCustomer) {
-      return (
-          <Typography level="body2" className="line-clamp-1" title={customerName}>
-              {customerName}
-          </Typography>
-      );
+        return (
+            <Typography
+                level="body2"
+                className="line-clamp-1"
+                title={customerName}
+            >
+                {customerName}
+            </Typography>
+        );
     }
 
     // No payee and no customer

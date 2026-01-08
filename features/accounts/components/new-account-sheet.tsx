@@ -1,16 +1,15 @@
-import { useNewAccount } from "@/features/accounts/hooks/use-new-accounts";
-import { AccountForm } from "@/features/accounts/components/account-form";
-import { insertAccountSchema } from "@/db/schema";
-import { z } from "zod";
-import { useCreateAccount } from "@/features/accounts/api/use-create-account";
-
+import type { z } from 'zod';
 import {
     Sheet,
     SheetContent,
     SheetDescription,
     SheetHeader,
     SheetTitle,
-} from "@/components/ui/sheet";
+} from '@/components/ui/sheet';
+import { insertAccountSchema } from '@/db/schema';
+import { useCreateAccount } from '@/features/accounts/api/use-create-account';
+import { AccountForm } from '@/features/accounts/components/account-form';
+import { useNewAccount } from '@/features/accounts/hooks/use-new-accounts';
 
 const formSchema = insertAccountSchema.pick({
     name: true,
@@ -40,9 +39,7 @@ export const NewAccountSheet = () => {
             <SheetContent className="flex flex-col h-full p-0">
                 <div className="px-6 pt-6">
                     <SheetHeader>
-                        <SheetTitle>
-                            New Account
-                        </SheetTitle>
+                        <SheetTitle>New Account</SheetTitle>
                         <SheetDescription>
                             Create a new account to track your transactions.
                         </SheetDescription>
@@ -53,11 +50,11 @@ export const NewAccountSheet = () => {
                         onSubmit={onSubmit}
                         disabled={mutation.isPending}
                         defaultValues={{
-                            name: "",
-                            code: "",
+                            name: '',
+                            code: '',
                             isOpen: true,
                             isReadOnly: false,
-                            accountType: "neutral",
+                            accountType: 'neutral',
                         }}
                     />
                 </div>

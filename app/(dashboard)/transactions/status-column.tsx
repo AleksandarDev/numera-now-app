@@ -1,30 +1,34 @@
-"use client";
+'use client';
 
-import { ArrowRight, AlertCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { AlertCircle, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useAdvanceStatus, getNextStatus, canAdvanceStatus } from "@/features/transactions/api/use-advance-status";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+} from '@/components/ui/tooltip';
+import {
+    canAdvanceStatus,
+    getNextStatus,
+    useAdvanceStatus,
+} from '@/features/transactions/api/use-advance-status';
+import { cn } from '@/lib/utils';
 
-type TransactionStatus = "draft" | "pending" | "completed" | "reconciled";
+type TransactionStatus = 'draft' | 'pending' | 'completed' | 'reconciled';
 
 const STATUS_LABELS: Record<TransactionStatus, string> = {
-    draft: "Draft",
-    pending: "Pending",
-    completed: "Completed",
-    reconciled: "Reconciled",
+    draft: 'Draft',
+    pending: 'Pending',
+    completed: 'Completed',
+    reconciled: 'Reconciled',
 };
 
 type StatusColumnProps = {
@@ -50,9 +54,9 @@ type StatusColumnProps = {
     minRequiredDocuments?: number;
 };
 
-export const StatusColumn = ({ 
-    transactionId, 
-    status, 
+export const StatusColumn = ({
+    transactionId,
+    status,
     transaction,
     hasAllRequiredDocuments = true,
     requiredDocumentTypes = 0,
@@ -61,25 +65,28 @@ export const StatusColumn = ({
 }: StatusColumnProps) => {
     const advanceStatusMutation = useAdvanceStatus();
 
-    const currentStatus = (status ?? "pending") as TransactionStatus;
+    const currentStatus = (status ?? 'pending') as TransactionStatus;
     const nextStatus = getNextStatus(currentStatus);
     const canAdvance = canAdvanceStatus(currentStatus);
 
     // Check if status progression is blocked by document requirements
-    const isDocumentBlockedForReconciliation = (): { blocked: boolean; message: string } => {
+    const isDocumentBlockedForReconciliation = (): {
+        blocked: boolean;
+        message: string;
+    } => {
         // Only block when trying to progress to "reconciled"
-        if (nextStatus !== "reconciled") {
-            return { blocked: false, message: "" };
+        if (nextStatus !== 'reconciled') {
+            return { blocked: false, message: '' };
         }
 
         // No required document types - not blocked
         if (requiredDocumentTypes === 0) {
-            return { blocked: false, message: "" };
+            return { blocked: false, message: '' };
         }
 
         // Documents requirement already met
         if (hasAllRequiredDocuments) {
-            return { blocked: false, message: "" };
+            return { blocked: false, message: '' };
         }
 
         // Documents are missing - determine the appropriate message
@@ -87,13 +94,16 @@ export const StatusColumn = ({
             const missing = requiredDocumentTypes - attachedRequiredTypes;
             return {
                 blocked: true,
-                message: `Missing ${missing} required document type${missing > 1 ? "s" : ""}. Attach all required documents before reconciling.`,
+                message: `Missing ${missing} required document type${missing > 1 ? 's' : ''}. Attach all required documents before reconciling.`,
             };
         } else {
-            const needed = Math.min(minRequiredDocuments, requiredDocumentTypes);
+            const needed = Math.min(
+                minRequiredDocuments,
+                requiredDocumentTypes,
+            );
             return {
                 blocked: true,
-                message: `Need at least ${needed} of ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? "s" : ""} attached (currently ${attachedRequiredTypes}).`,
+                message: `Need at least ${needed} of ${requiredDocumentTypes} required document type${requiredDocumentTypes > 1 ? 's' : ''} attached (currently ${attachedRequiredTypes}).`,
             };
         }
     };
@@ -101,17 +111,17 @@ export const StatusColumn = ({
     const documentBlock = isDocumentBlockedForReconciliation();
 
     const statusVariants = {
-        draft: "secondary",
-        pending: "outline",
-        completed: "outline",
-        reconciled: "outline",
+        draft: 'secondary',
+        pending: 'outline',
+        completed: 'outline',
+        reconciled: 'outline',
     } as const;
 
     const statusColors = {
-        draft: "text-muted-foreground",
-        pending: "text-yellow-600",
-        completed: "text-blue-600",
-        reconciled: "text-green-600",
+        draft: 'text-muted-foreground',
+        pending: 'text-yellow-600',
+        completed: 'text-blue-600',
+        reconciled: 'text-green-600',
     } as const;
 
     const handleAdvanceStatus = () => {
@@ -127,7 +137,9 @@ export const StatusColumn = ({
             transactionId,
             currentStatus,
             transactionData: {
-                date: transaction.date ? new Date(transaction.date) : new Date(),
+                date: transaction.date
+                    ? new Date(transaction.date)
+                    : new Date(),
                 amount: transaction.amount ?? 0,
                 payee: transaction.payee,
                 payeeCustomerId: transaction.payeeCustomerId,
@@ -148,10 +160,13 @@ export const StatusColumn = ({
     if (!canAdvance || !nextStatus) {
         return (
             <Badge
-                variant={statusVariants[currentStatus] || "outline"}
-                className={`${statusColors[currentStatus] || ""}`}
+                variant={statusVariants[currentStatus] || 'outline'}
+                className={`${statusColors[currentStatus] || ''}`}
             >
-                {currentStatus ? currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1) : "Pending"}
+                {currentStatus
+                    ? currentStatus.charAt(0).toUpperCase() +
+                      currentStatus.slice(1)
+                    : 'Pending'}
             </Badge>
         );
     }
@@ -165,23 +180,30 @@ export const StatusColumn = ({
                     <TooltipTrigger asChild>
                         <DropdownMenuTrigger asChild>
                             <Badge
-                                variant={statusVariants[currentStatus] || "outline"}
+                                variant={
+                                    statusVariants[currentStatus] || 'outline'
+                                }
                                 className={cn(
-                                    statusColors[currentStatus] || "",
-                                    "cursor-pointer hover:opacity-80 transition-opacity",
-                                    documentBlock.blocked && "border-amber-300"
+                                    statusColors[currentStatus] || '',
+                                    'cursor-pointer hover:opacity-80 transition-opacity',
+                                    documentBlock.blocked && 'border-amber-300',
                                 )}
                             >
                                 {documentBlock.blocked && (
                                     <AlertCircle className="mr-1 h-3 w-3 text-amber-500" />
                                 )}
-                                {currentStatus ? currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1) : "Pending"}
+                                {currentStatus
+                                    ? currentStatus.charAt(0).toUpperCase() +
+                                      currentStatus.slice(1)
+                                    : 'Pending'}
                             </Badge>
                         </DropdownMenuTrigger>
                     </TooltipTrigger>
                     {documentBlock.blocked && (
                         <TooltipContent className="max-w-xs">
-                            <p className="text-amber-600">{documentBlock.message}</p>
+                            <p className="text-amber-600">
+                                {documentBlock.message}
+                            </p>
                         </TooltipContent>
                     )}
                 </Tooltip>
@@ -189,7 +211,9 @@ export const StatusColumn = ({
                     <DropdownMenuItem
                         disabled={isPending || documentBlock.blocked}
                         onClick={handleAdvanceStatus}
-                        className={cn(documentBlock.blocked && "text-muted-foreground")}
+                        className={cn(
+                            documentBlock.blocked && 'text-muted-foreground',
+                        )}
                     >
                         <ArrowRight className="mr-2 size-4" />
                         {documentBlock.blocked ? (

@@ -1,25 +1,30 @@
-"use client";
+'use client';
 
-import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
-import { Button } from "@/components/ui/button";
-import { Loader2, Plus } from "lucide-react";
-import { Suspense } from "react";
-import { useNewCategory } from "@/features/categories/hooks/use-new-category";
-import { useGetCategories } from "@/features/categories/api/use-get-categories";
-import { useBulkDeleteCategories } from "@/features/categories/api/use-bulk-delete-categories";
-import { DataTable } from "@/components/data-table";
-import { columns } from "../categories/columns";
-import { useGetSettings } from "@/features/settings/api/use-get-settings";
-import { useUpdateSettings } from "@/features/settings/api/use-update-settings";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Loader2, Plus } from 'lucide-react';
+import { Suspense } from 'react';
+import { DataTable } from '@/components/data-table';
+import { DocumentTypesSettingsCard } from '@/components/document-types-settings-card';
+import { ReconciliationSettingsCard } from '@/components/reconciliation-settings-card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useBulkDeleteCategories } from '@/features/categories/api/use-bulk-delete-categories';
+import { useGetCategories } from '@/features/categories/api/use-get-categories';
+import { useNewCategory } from '@/features/categories/hooks/use-new-category';
+import { useGetSettings } from '@/features/settings/api/use-get-settings';
+import { useUpdateSettings } from '@/features/settings/api/use-update-settings';
+import { columns } from '../categories/columns';
 
-import { DocumentTypesSettingsCard } from "@/components/document-types-settings-card";
-import { ReconciliationSettingsCard } from "@/components/reconciliation-settings-card";
 function DoubleEntrySettings() {
     const settingsQuery = useGetSettings();
     const updateSettings = useUpdateSettings();
-    
+
     const isLoading = settingsQuery.isLoading;
     const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
 
@@ -42,7 +47,8 @@ function DoubleEntrySettings() {
                             Double-Entry Bookkeeping
                         </Label>
                         <p className="text-xs text-muted-foreground">
-                            When enabled, all transactions must have both credit and debit accounts
+                            When enabled, all transactions must have both credit
+                            and debit accounts
                         </p>
                     </div>
                     <Switch
@@ -63,16 +69,12 @@ function CategoriesSection() {
     const categoriesQuery = useGetCategories();
     const categories = categoriesQuery.data || [];
 
-    const isDisabled =
-        categoriesQuery.isLoading ||
-        deleteCategories.isPending;
+    const isDisabled = categoriesQuery.isLoading || deleteCategories.isPending;
 
     return (
         <Card>
             <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
-                <CardTitle>
-                    Categories
-                </CardTitle>
+                <CardTitle>Categories</CardTitle>
                 <Button onClick={newCategory.onOpen} size="sm">
                     <Plus className="size-4 mr-2" />
                     Add new
@@ -97,14 +99,16 @@ function CategoriesSection() {
 export default function SettingsPage() {
     return (
         <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10 space-y-4">
-            <Suspense fallback={(
-                <div className="flex h-[500px] w-full items-center justify-center">
-                    <Loader2 className="size-6 animate-spin text-slate-300" />
-                </div>
-            )}>
+            <Suspense
+                fallback={
+                    <div className="flex h-[500px] w-full items-center justify-center">
+                        <Loader2 className="size-6 animate-spin text-slate-300" />
+                    </div>
+                }
+            >
                 <DoubleEntrySettings />
-                                <DocumentTypesSettingsCard />
-                                <ReconciliationSettingsCard />
+                <DocumentTypesSettingsCard />
+                <ReconciliationSettingsCard />
                 <CategoriesSection />
             </Suspense>
         </div>

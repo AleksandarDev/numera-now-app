@@ -1,50 +1,50 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "tables": {
-    "public.accounts": {
-      "name": "accounts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
+    "version": "7",
+    "dialect": "postgresql",
+    "tables": {
+        "public.accounts": {
+            "name": "accounts",
+            "schema": "",
+            "columns": {
+                "id": {
+                    "name": "id",
+                    "type": "text",
+                    "primaryKey": true,
+                    "notNull": true
+                },
+                "name": {
+                    "name": "name",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "user_id": {
+                    "name": "user_id",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {},
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {},
+            "policies": {},
+            "isRLSEnabled": false,
+            "checkConstraints": {}
         }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "isRLSEnabled": false,
-      "checkConstraints": {}
-    }
-  },
-  "enums": {},
-  "schemas": {},
-  "_meta": {
+    },
+    "enums": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "id": "f7f2c088-065d-4765-ade9-ba302e7738a7",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "sequences": {},
-  "policies": {},
-  "views": {},
-  "roles": {}
+    "_meta": {
+        "schemas": {},
+        "tables": {},
+        "columns": {}
+    },
+    "id": "f7f2c088-065d-4765-ade9-ba302e7738a7",
+    "prevId": "00000000-0000-0000-0000-000000000000",
+    "sequences": {},
+    "policies": {},
+    "views": {},
+    "roles": {}
 }

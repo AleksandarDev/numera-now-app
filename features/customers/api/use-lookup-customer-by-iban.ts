@@ -1,4 +1,4 @@
-import { client } from "@/lib/hono";
+import { client } from '@/lib/hono';
 
 type LookupResult = {
     customerId: string;
@@ -7,8 +7,10 @@ type LookupResult = {
     bankName: string | null;
 } | null;
 
-export const lookupCustomerByIban = async (iban: string): Promise<LookupResult> => {
-    const response = await client.api.customers["lookup"]["iban"].$get({
+export const lookupCustomerByIban = async (
+    iban: string,
+): Promise<LookupResult> => {
+    const response = await client.api.customers.lookup.iban.$get({
         query: { iban },
     });
 

@@ -14,17 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserAvatar } from '@/components/user-avatar';
 import { insertTransactionSchema } from '@/db/schema';
 import { useCreateAccount } from '@/features/accounts/api/use-create-account';
-import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 import { useCreateCategory } from '@/features/categories/api/use-create-category';
 import { useGetCategories } from '@/features/categories/api/use-get-categories';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useCanReconcile } from '@/features/transactions/api/use-can-reconcile';
 import { useDeleteTransaction } from '@/features/transactions/api/use-delete-transaction';
-import {
-    useGetDocuments,
-    useGetDocumentTypes,
-} from '@/features/transactions/api/use-documents';
+import { useGetDocuments } from '@/features/transactions/api/use-documents';
 import { useEditTransaction } from '@/features/transactions/api/use-edit-transaction';
 import { useGetSplitGroup } from '@/features/transactions/api/use-get-split-group';
 import { useGetStatusHistory } from '@/features/transactions/api/use-get-status-history';
@@ -61,7 +57,6 @@ export const EditTransactionSheet = () => {
 
     // Document validation queries
     const documentsQuery = useGetDocuments(id ?? '');
-    const documentTypesQuery = useGetDocumentTypes();
     const settingsQuery = useGetSettings();
 
     const categoryMutation = useCreateCategory();
@@ -74,7 +69,6 @@ export const EditTransactionSheet = () => {
     const accountMutation = useCreateAccount();
     const customerMutation = useCreateCustomer();
 
-    const onCreateAccount = (name: string) => accountMutation.mutate({ name });
     const onCreateCategory = (name: string) =>
         categoryMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>

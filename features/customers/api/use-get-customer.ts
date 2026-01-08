@@ -1,18 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query';
 
-import { client } from "@/lib/hono";
+import { client } from '@/lib/hono';
 
 export const useGetCustomer = (id?: string) => {
     const query = useQuery({
         enabled: !!id,
-        queryKey: ["customer", { id }],
+        queryKey: ['customer', { id }],
         queryFn: async () => {
-            const response = await client.api.customers[":id"].$get({
+            const response = await client.api.customers[':id'].$get({
                 param: { id },
             });
 
             if (!response.ok) {
-                throw new Error("Failed to fetch customer");
+                throw new Error('Failed to fetch customer');
             }
 
             const { data } = await response.json();

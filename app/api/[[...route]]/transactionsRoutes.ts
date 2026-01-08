@@ -24,7 +24,6 @@ import {
     createTransactionSchema,
     customers,
     documents,
-    documentTypes,
     settings,
     transactionStatusHistory,
     transactions,
@@ -527,7 +526,9 @@ const app = new Hono()
                         ),
                     );
 
-                accountsToCheck.forEach((acc) => accountMap.set(acc.id, acc));
+                for (const acc of accountsToCheck) {
+                    accountMap.set(acc.id, acc);
+                }
 
                 const readOnlyAccounts = accountsToCheck.filter(
                     (acc) => acc.isReadOnly,
@@ -720,7 +721,9 @@ const app = new Hono()
                         ),
                     );
 
-                accountsToCheck.forEach((acc) => accountMap.set(acc.id, acc));
+                for (const acc of accountsToCheck) {
+                    accountMap.set(acc.id, acc);
+                }
 
                 const readOnlyAccounts = accountsToCheck.filter(
                     (acc) => acc.isReadOnly,
@@ -941,7 +944,9 @@ const app = new Hono()
 
             // Prevent editing reconciled transactions entirely
             if (existingTransaction.status === 'reconciled') {
-                console.error('[PATCH /transactions/:id] Cannot edit reconciled transaction');
+                console.error(
+                    '[PATCH /transactions/:id] Cannot edit reconciled transaction',
+                );
                 return ctx.json(
                     { error: 'Reconciled transactions cannot be edited.' },
                     400,
@@ -951,15 +956,26 @@ const app = new Hono()
             // For completed transactions, prevent changes to financial fields
             if (existingTransaction.status === 'completed') {
                 const financialFieldsChanged =
-                    (values.creditAccountId !== undefined && values.creditAccountId !== existingTransaction.creditAccountId) ||
-                    (values.debitAccountId !== undefined && values.debitAccountId !== existingTransaction.debitAccountId) ||
-                    (values.amount !== undefined && values.amount !== existingTransaction.amount) ||
-                    (values.payeeCustomerId !== undefined && values.payeeCustomerId !== existingTransaction.payeeCustomerId);
+                    (values.creditAccountId !== undefined &&
+                        values.creditAccountId !==
+                            existingTransaction.creditAccountId) ||
+                    (values.debitAccountId !== undefined &&
+                        values.debitAccountId !==
+                            existingTransaction.debitAccountId) ||
+                    (values.amount !== undefined &&
+                        values.amount !== existingTransaction.amount) ||
+                    (values.payeeCustomerId !== undefined &&
+                        values.payeeCustomerId !==
+                            existingTransaction.payeeCustomerId);
 
                 if (financialFieldsChanged) {
-                    console.error('[PATCH /transactions/:id] Cannot change financial fields on completed transaction');
+                    console.error(
+                        '[PATCH /transactions/:id] Cannot change financial fields on completed transaction',
+                    );
                     return ctx.json(
-                        { error: 'Completed transactions cannot have their accounts, amount, or customer changed.' },
+                        {
+                            error: 'Completed transactions cannot have their accounts, amount, or customer changed.',
+                        },
                         400,
                     );
                 }
@@ -1027,7 +1043,9 @@ const app = new Hono()
                         ),
                     );
 
-                accountsToCheck.forEach((acc) => accountMap.set(acc.id, acc));
+                for (const acc of accountsToCheck) {
+                    accountMap.set(acc.id, acc);
+                }
 
                 const readOnlyAccounts = accountsToCheck.filter(
                     (acc) => acc.isReadOnly,
@@ -1141,7 +1159,10 @@ const app = new Hono()
                         : values.payeeCustomerId || null,
             };
 
-            const updateData: any = {
+            const updateData: typeof cleanedValues & {
+                statusChangedAt?: Date;
+                statusChangedBy?: string;
+            } = {
                 ...cleanedValues,
             };
 
@@ -1355,7 +1376,7 @@ const app = new Hono()
             try {
                 const status = await getReconciliationStatus(id, auth.userId);
                 return ctx.json({ data: status });
-            } catch (error) {
+            } catch (_error) {
                 return ctx.json(
                     { error: 'Failed to check reconciliation status.' },
                     500,
@@ -1524,9 +1545,9 @@ const app = new Hono()
                         ),
                     );
 
-                accountsToCheck.forEach((acc) =>
-                    splitAccountMap.set(acc.id, acc),
-                );
+                for (const acc of accountsToCheck) {
+                    splitAccountMap.set(acc.id, acc);
+                }
             }
 
             if (doubleEntryMode) {

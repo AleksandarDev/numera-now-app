@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/form';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 // Schema for individual credit/debit entries
 const creditEntrySchema = z.object({

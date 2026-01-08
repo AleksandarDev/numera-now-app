@@ -1,6 +1,6 @@
-import { SignUp, ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
-import { Loader2 } from "lucide-react";
-import Image from "next/image";
+import { ClerkLoaded, ClerkLoading, SignUp } from '@clerk/nextjs';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Page() {
     return (
@@ -11,7 +11,8 @@ export default function Page() {
                         Welcome Back!
                     </h1>
                     <p className="text-base text-[#7E8CA0]">
-                        Log in or Create Account to get back into your dashboard!
+                        Log in or Create Account to get back into your
+                        dashboard!
                     </p>
                     <div className="flex items-center justify-center mt-8">
                         <ClerkLoaded>

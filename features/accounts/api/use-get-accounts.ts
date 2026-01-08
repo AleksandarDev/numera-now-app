@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-
-import { client } from "@/lib/hono";
-import { useSearchParams } from "next/navigation";
+import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
+import { client } from '@/lib/hono';
 
 type GetAccountsOptions = {
     search?: string;
@@ -13,11 +12,21 @@ type GetAccountsOptions = {
 
 export const useGetAccounts = (options?: GetAccountsOptions) => {
     const searchParams = useSearchParams();
-    const paramsAccountId = searchParams.get("accountId") ?? undefined;
+    const paramsAccountId = searchParams.get('accountId') ?? undefined;
     const { page, pageSize, accountId, search, showClosed } = options || {};
-    const resolvedAccountId = typeof accountId === 'undefined' ? paramsAccountId : accountId;
+    const resolvedAccountId =
+        typeof accountId === 'undefined' ? paramsAccountId : accountId;
     const query = useQuery({
-        queryKey: ["accounts", { search, page, pageSize, accountId: resolvedAccountId, showClosed }],
+        queryKey: [
+            'accounts',
+            {
+                search,
+                page,
+                pageSize,
+                accountId: resolvedAccountId,
+                showClosed,
+            },
+        ],
         queryFn: async () => {
             const response = await client.api.accounts.$get({
                 query: {
@@ -30,12 +39,12 @@ export const useGetAccounts = (options?: GetAccountsOptions) => {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to fetch accounts");
+                throw new Error('Failed to fetch accounts');
             }
 
             const { data } = await response.json();
             return data;
-        }
+        },
     });
 
     return query;

@@ -1,5 +1,5 @@
-import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 import {
     Sheet,
@@ -7,24 +7,22 @@ import {
     SheetDescription,
     SheetHeader,
     SheetTitle,
-} from "@/components/ui/sheet";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/tabs";
-import { useCreateCategory } from "@/features/categories/api/use-create-category";
-import { useGetCategories } from "@/features/categories/api/use-get-categories";
-import { useCreateCustomer } from "@/features/customers/api/use-create-customer";
-import { useCreateUnifiedTransaction } from "@/features/transactions/api/use-create-unified-transaction";
-import { useNewTransaction } from "@/features/transactions/hooks/use-new-transaction";
+} from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCreateCategory } from '@/features/categories/api/use-create-category';
+import { useGetCategories } from '@/features/categories/api/use-get-categories';
+import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
+import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
+import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 
-import { UnifiedTransactionForm, UnifiedTransactionFormValues } from "./unified-transaction-form";
+import {
+    UnifiedTransactionForm,
+    type UnifiedTransactionFormValues,
+} from './unified-transaction-form';
 
 export const NewTransactionSheet = () => {
     const { isOpen, onClose, defaultValues } = useNewTransaction();
-    const [activeTab, setActiveTab] = useState("details");
+    const [activeTab, setActiveTab] = useState('details');
 
     const createMutation = useCreateUnifiedTransaction();
     const categoryMutation = useCreateCategory();
@@ -36,8 +34,10 @@ export const NewTransactionSheet = () => {
 
     const customerMutation = useCreateCustomer();
 
-    const onCreateCategory = (name: string) => categoryMutation.mutate({ name });
-    const onCreateCustomer = (name: string) => customerMutation.mutate({ name });
+    const onCreateCategory = (name: string) =>
+        categoryMutation.mutate({ name });
+    const onCreateCustomer = (name: string) =>
+        customerMutation.mutate({ name });
 
     const isPending =
         createMutation.isPending ||
@@ -59,7 +59,9 @@ export const NewTransactionSheet = () => {
                 <div className="px-6 pt-6">
                     <SheetHeader>
                         <SheetTitle>New Transaction</SheetTitle>
-                        <SheetDescription>Add a new transaction.</SheetDescription>
+                        <SheetDescription>
+                            Add a new transaction.
+                        </SheetDescription>
                     </SheetHeader>
                 </div>
 
@@ -68,11 +70,19 @@ export const NewTransactionSheet = () => {
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={setActiveTab}
+                        className="flex-1 flex flex-col"
+                    >
                         <div className="px-6 mb-4">
                             <TabsList className="w-full">
-                                <TabsTrigger value="details">Details</TabsTrigger>
-                                <TabsTrigger value="documents">Documents</TabsTrigger>
+                                <TabsTrigger value="details">
+                                    Details
+                                </TabsTrigger>
+                                <TabsTrigger value="documents">
+                                    Documents
+                                </TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -91,10 +101,12 @@ export const NewTransactionSheet = () => {
                             <TabsContent value="documents" className="mt-6">
                                 <div className="rounded-md border border-dashed p-8 text-center">
                                     <div className="text-sm font-medium text-muted-foreground">
-                                        Documents can be attached after creating the transaction
+                                        Documents can be attached after creating
+                                        the transaction
                                     </div>
                                     <div className="mt-2 text-xs text-muted-foreground">
-                                        Save this transaction first, then edit it to upload documents
+                                        Save this transaction first, then edit
+                                        it to upload documents
                                     </div>
                                 </div>
                             </TabsContent>

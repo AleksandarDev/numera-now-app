@@ -137,8 +137,8 @@ export const UnifiedEditTransactionForm = ({
                     <Alert>
                         <Lock className="size-4" />
                         <AlertDescription>
-                            This transaction is completed. Accounts, amount, date, and
-                            customer cannot be changed.
+                            This transaction is completed. Accounts, amount,
+                            date, and customer cannot be changed.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -236,9 +236,7 @@ export const UnifiedEditTransactionForm = ({
                                     <AmountInput
                                         {...field}
                                         value={field.value || ''}
-                                        disabled={
-                                            isFinancialFieldsLocked
-                                        }
+                                        disabled={isFinancialFieldsLocked}
                                         placeholder="0.00"
                                         hideSign
                                     />

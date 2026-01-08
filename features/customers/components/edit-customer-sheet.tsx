@@ -1,5 +1,5 @@
-import { Loader2 } from "lucide-react";
-import { z } from "zod";
+import { Loader2 } from 'lucide-react';
+import type { z } from 'zod';
 
 import {
     Sheet,
@@ -7,16 +7,16 @@ import {
     SheetDescription,
     SheetHeader,
     SheetTitle,
-} from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useConfirm } from "@/hooks/use-confirm";
-import { insertCustomerSchema } from "@/db/schema";
-import { useDeleteCustomer } from "@/features/customers/api/use-delete-customer";
-import { useEditCustomer } from "@/features/customers/api/use-edit-customer";
-import { useGetCustomer } from "@/features/customers/api/use-get-customer";
-import { CustomerForm } from "@/features/customers/components/customer-form";
-import { CustomerIbansManager } from "@/features/customers/components/customer-ibans-manager";
-import { useOpenCustomer } from "@/features/customers/hooks/use-open-customer";
+} from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { insertCustomerSchema } from '@/db/schema';
+import { useDeleteCustomer } from '@/features/customers/api/use-delete-customer';
+import { useEditCustomer } from '@/features/customers/api/use-edit-customer';
+import { useGetCustomer } from '@/features/customers/api/use-get-customer';
+import { CustomerForm } from '@/features/customers/components/customer-form';
+import { CustomerIbansManager } from '@/features/customers/components/customer-ibans-manager';
+import { useOpenCustomer } from '@/features/customers/hooks/use-open-customer';
+import { useConfirm } from '@/hooks/use-confirm';
 
 const formSchema = insertCustomerSchema.omit({
     userId: true,
@@ -30,8 +30,8 @@ export const EditCustomerSheet = () => {
     const { isOpen, onClose, id } = useOpenCustomer();
 
     const [ConfirmDialog, confirm] = useConfirm(
-        "Are you sure?",
-        "You are about to delete this customer. This action cannot be undone."
+        'Are you sure?',
+        'You are about to delete this customer. This action cannot be undone.',
     );
 
     const customerQuery = useGetCustomer(id);
@@ -64,21 +64,21 @@ export const EditCustomerSheet = () => {
 
     const defaultValues = customerQuery.data
         ? {
-            name: customerQuery.data.name,
-            pin: customerQuery.data.pin,
-            vatNumber: customerQuery.data.vatNumber,
-            address: customerQuery.data.address,
-            contactEmail: customerQuery.data.contactEmail,
-            contactTelephone: customerQuery.data.contactTelephone,
-        }
+              name: customerQuery.data.name,
+              pin: customerQuery.data.pin,
+              vatNumber: customerQuery.data.vatNumber,
+              address: customerQuery.data.address,
+              contactEmail: customerQuery.data.contactEmail,
+              contactTelephone: customerQuery.data.contactTelephone,
+          }
         : {
-            name: "",
-            pin: "",
-            vatNumber: "",
-            address: "",
-            contactEmail: "",
-            contactTelephone: "",
-        };
+              name: '',
+              pin: '',
+              vatNumber: '',
+              address: '',
+              contactEmail: '',
+              contactTelephone: '',
+          };
 
     return (
         <>
@@ -98,14 +98,30 @@ export const EditCustomerSheet = () => {
                             <Loader2 className="size-4 text-muted-foreground animate-spin" />
                         </div>
                     ) : (
-                        <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+                        <Tabs
+                            defaultValue="details"
+                            className="flex-1 flex flex-col overflow-hidden"
+                        >
                             <div className="px-6 mb-4">
                                 <TabsList className="w-full">
-                                    <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
-                                    <TabsTrigger value="ibans" className="flex-1">Bank Accounts</TabsTrigger>
+                                    <TabsTrigger
+                                        value="details"
+                                        className="flex-1"
+                                    >
+                                        Details
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="ibans"
+                                        className="flex-1"
+                                    >
+                                        Bank Accounts
+                                    </TabsTrigger>
                                 </TabsList>
                             </div>
-                            <TabsContent value="details" className="flex-1 overflow-y-auto px-6 mt-0">
+                            <TabsContent
+                                value="details"
+                                className="flex-1 overflow-y-auto px-6 mt-0"
+                            >
                                 <CustomerForm
                                     id={id}
                                     defaultValues={defaultValues}
@@ -114,7 +130,10 @@ export const EditCustomerSheet = () => {
                                     disabled={isPending}
                                 />
                             </TabsContent>
-                            <TabsContent value="ibans" className="flex-1 overflow-y-auto px-6 mt-0">
+                            <TabsContent
+                                value="ibans"
+                                className="flex-1 overflow-y-auto px-6 mt-0"
+                            >
                                 {id ? (
                                     <CustomerIbansManager
                                         customerId={id}
@@ -123,7 +142,8 @@ export const EditCustomerSheet = () => {
                                 ) : (
                                     <div className="flex items-center justify-center py-12">
                                         <p className="text-sm text-muted-foreground">
-                                            Save the customer first to manage bank accounts.
+                                            Save the customer first to manage
+                                            bank accounts.
                                         </p>
                                     </div>
                                 )}
