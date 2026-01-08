@@ -597,39 +597,171 @@ const app = new Hono()
         zValidator(
             'query',
             z.object({
-                query: z.string().min(1),
+                query: z.string().optional(),
+                notes: z.string().optional(),
             }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { query } = ctx.req.valid('query');
+            const { query, notes } = ctx.req.valid('query');
 
             if (!auth?.userId) {
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
             const suggestionLimit = 5;
-            const normalizedQuery = query.trim().toLowerCase();
-            const escapedQuery = normalizedQuery.replace(/[%_]/g, '\\$&');
+            const normalizedQuery = query?.trim().toLowerCase() ?? '';
+            const normalizedNotes = notes?.trim().toLowerCase() ?? '';
 
-            const suggestions = await db
-                .select({ customerId: customers.id })
-                .from(customers)
-                .where(
-                    and(
-                        eq(customers.userId, auth.userId),
-                        ilike(customers.name, `%${escapedQuery}%`),
-                    ),
-                )
-                .orderBy(
-                    sql<number>`position(${normalizedQuery} in lower(${customers.name}))`,
-                    sql<number>`length(${customers.name})`,
-                    asc(customers.name),
-                )
-                .limit(suggestionLimit);
+            if (!normalizedQuery && !normalizedNotes) {
+                return ctx.json({ data: [] });
+            }
 
-            return ctx.json({ data: suggestions });
+            // Track unique customer IDs and their scores
+            const customerScores = new Map<
+                string,
+                { score: number; source: string }
+            >();
+
+            // 1. Search by customer name matching query (payee text)
+            if (normalizedQuery) {
+                const escapedQuery = normalizedQuery.replace(/[%_]/g, '\\$&');
+                const nameMatches = await db
+                    .select({ customerId: customers.id })
+                    .from(customers)
+                    .where(
+                        and(
+                            eq(customers.userId, auth.userId),
+                            ilike(customers.name, `%${escapedQuery}%`),
+                        ),
+                    )
+                    .orderBy(
+                        sql<number>`position(${normalizedQuery} in lower(${customers.name}))`,
+                        sql<number>`length(${customers.name})`,
+                        asc(customers.name),
+                    )
+                    .limit(suggestionLimit);
+
+                // Name matches get highest priority (score 100-95)
+                nameMatches.forEach((match, index) => {
+                    customerScores.set(match.customerId, {
+                        score: 100 - index,
+                        source: 'name',
+                    });
+                });
+            }
+
+            // 2. Search customer names by keywords found in notes
+            // Extract words from notes (3+ characters) and search for customer names containing them
+            if (normalizedNotes) {
+                // Extract meaningful words from notes (at least 3 chars, alphanumeric)
+                const words = normalizedNotes
+                    .split(/[\s,.\-_/()]+/)
+                    .filter((word) => word.length >= 3)
+                    .filter((word) => /^[a-z0-9]+$/i.test(word))
+                    // Filter out common noise words
+                    .filter(
+                        (word) =>
+                            ![
+                                'pos',
+                                'atm',
+                                'the',
+                                'and',
+                                'for',
+                                'com',
+                                'www',
+                                'http',
+                                'https',
+                            ].includes(word),
+                    );
+
+                // Search for customers whose names contain any of these words
+                for (const word of words.slice(0, 5)) {
+                    // Limit to first 5 meaningful words
+                    const escapedWord = word.replace(/[%_]/g, '\\$&');
+                    const wordMatches = await db
+                        .select({ customerId: customers.id, name: customers.name })
+                        .from(customers)
+                        .where(
+                            and(
+                                eq(customers.userId, auth.userId),
+                                ilike(customers.name, `%${escapedWord}%`),
+                            ),
+                        )
+                        .limit(suggestionLimit);
+
+                    wordMatches.forEach((match) => {
+                        const existing = customerScores.get(match.customerId);
+                        if (existing) {
+                            // Boost score if already matched
+                            existing.score += 15;
+                        } else {
+                            // Notes word matches get score 80
+                            customerScores.set(match.customerId, {
+                                score: 80,
+                                source: 'notes-name',
+                            });
+                        }
+                    });
+                }
+            }
+
+            // 3. Search for customers from transactions with matching notes or payee text
+            const searchText = normalizedNotes || normalizedQuery;
+            if (searchText) {
+                const escapedSearch = searchText.replace(/[%_]/g, '\\$&');
+
+                // Find transactions with similar notes or payee, and get their customers
+                const notesMatches = await db
+                    .select({
+                        customerId: transactions.payeeCustomerId,
+                        usageCount: sql<number>`count(*)`.as('usageCount'),
+                    })
+                    .from(transactions)
+                    .leftJoin(
+                        customers,
+                        eq(transactions.payeeCustomerId, customers.id),
+                    )
+                    .where(
+                        and(
+                            eq(customers.userId, auth.userId),
+                            isNotNull(transactions.payeeCustomerId),
+                            or(
+                                ilike(transactions.notes, `%${escapedSearch}%`),
+                                ilike(transactions.payee, `%${escapedSearch}%`),
+                            ),
+                        ),
+                    )
+                    .groupBy(transactions.payeeCustomerId)
+                    .orderBy(desc(sql`count(*)`))
+                    .limit(suggestionLimit);
+
+                // Notes/payee matches get lower priority but boost if already matched by name
+                notesMatches.forEach((match, index) => {
+                    if (match.customerId) {
+                        const existing = customerScores.get(match.customerId);
+                        if (existing) {
+                            // Boost score if also matched by notes/payee
+                            existing.score += 10;
+                        } else {
+                            // Notes-only matches get score 50-45
+                            customerScores.set(match.customerId, {
+                                score: 50 - index,
+                                source: 'notes',
+                            });
+                        }
+                    }
+                });
+            }
+
+            // Sort by score and return top results
+            const sortedCustomers = Array.from(customerScores.entries())
+                .sort((a, b) => b[1].score - a[1].score)
+                .slice(0, suggestionLimit)
+                .map(([customerId]) => ({ customerId }));
+
+            return ctx.json({ data: sortedCustomers });
         },
     )
     .get(

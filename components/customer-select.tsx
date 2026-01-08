@@ -23,8 +23,10 @@ export type CustomerSelectProps = {
     className?: string;
     placeholder?: string;
     disabled?: boolean;
-    onCreate?: (name: string) => void;
+    onCreate?: (name: string) => Promise<string | undefined> | void;
     suggestionQuery?: string;
+    /** Notes text used for suggesting customers based on transaction history */
+    suggestionNotes?: string;
 };
 
 export const CustomerSelect = ({
@@ -35,6 +37,7 @@ export const CustomerSelect = ({
     disabled,
     onCreate,
     suggestionQuery,
+    suggestionNotes,
 }: CustomerSelectProps) => {
     const [open, setOpen] = useState(false);
     const [customerFilter, setCustomerFilter] = useState('');
@@ -51,8 +54,18 @@ export const CustomerSelect = ({
         return suggestionQuery?.trim() ?? '';
     }, [customerFilter, suggestionQuery]);
 
+    const resolvedSuggestionNotes = useMemo(() => {
+        // Don't use notes when user is filtering manually
+        const trimmedFilter = customerFilter.trim();
+        if (trimmedFilter.length > 0) {
+            return '';
+        }
+        return suggestionNotes?.trim() ?? '';
+    }, [customerFilter, suggestionNotes]);
+
     const suggestedCustomersQuery = useGetSuggestedCustomers(
         resolvedSuggestionQuery,
+        resolvedSuggestionNotes,
         {
             enabled: open,
         },
@@ -115,6 +128,22 @@ export const CustomerSelect = ({
         (customer) => customer.id === value,
     );
 
+    const handleCreate = async (name: string) => {
+        if (onCreate) {
+            try {
+                const createdId = await onCreate(name);
+                if (createdId) {
+                    onChange(createdId);
+                }
+            } catch (error) {
+                console.error('Failed to create customer from picker.', error);
+            }
+            return;
+        }
+
+        onOpenNewCustomer();
+    };
+
     return (
         <Select
             open={open}
@@ -147,8 +176,8 @@ export const CustomerSelect = ({
                 </div>
             </SelectTrigger>
             <SelectContent
-                className="p-0"
-                style={{ width: 'var(--radix-select-trigger-width)' }}
+                className="p-0 min-w-[320px]"
+                style={{ width: 'max(var(--radix-select-trigger-width), 320px)' }}
             >
                 <div className="p-2 border-b">
                     <Input
@@ -161,9 +190,7 @@ export const CustomerSelect = ({
                 <div className="p-2 border-b">
                     <Button
                         onClick={() => {
-                            onCreate
-                                ? onCreate(customerFilter)
-                                : onOpenNewCustomer();
+                            void handleCreate(customerFilter);
                             setOpen(false);
                         }}
                         variant="ghost"
@@ -260,9 +287,7 @@ export const CustomerSelect = ({
                         <div className="p-2">
                             <Button
                                 onClick={() => {
-                                    onCreate
-                                        ? onCreate(customerFilter)
-                                        : onOpenNewCustomer();
+                                    void handleCreate(customerFilter);
                                     setOpen(false);
                                 }}
                                 variant="ghost"

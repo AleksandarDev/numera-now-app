@@ -7,6 +7,10 @@ import { AccountSelect } from '@/components/account-select';
 import { AmountInput } from '@/components/amount-input';
 import { CustomerSelect } from '@/components/customer-select';
 import { DatePicker } from '@/components/date-picker';
+import {
+    type QuickAssignSuggestion,
+    QuickAssignSuggestions,
+} from '@/components/quick-assign-suggestions';
 import { Select } from '@/components/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,8 +24,11 @@ import {
 } from '@/components/ui/form';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
+import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
 import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-suggested-categories';
+import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
 
 // Base form schema - accounts are optional, validation depends on status
 const baseFormSchema = z.object({
@@ -67,7 +74,7 @@ type Props = {
     disabled?: boolean;
     categoryOptions: { label: string; value: string }[];
     onCreateCategory: (name: string) => void;
-    onCreateCustomer: (name: string) => void;
+    onCreateCustomer: (name: string) => Promise<string | undefined> | void;
     onSubmit: (values: UnifiedEditTransactionFormValues) => void;
     onDelete?: () => void;
     defaultValues?: Partial<UnifiedEditTransactionFormValues>;
@@ -111,12 +118,68 @@ export const UnifiedEditTransactionForm = ({
         name: 'payeeCustomerId',
     });
 
+    const notesValue = useWatch({
+        control: form.control,
+        name: 'notes',
+    });
+
+    const creditAccountId = useWatch({
+        control: form.control,
+        name: 'creditAccountId',
+    });
+
+    const debitAccountId = useWatch({
+        control: form.control,
+        name: 'debitAccountId',
+    });
+
+    const categoryId = useWatch({
+        control: form.control,
+        name: 'categoryId',
+    });
+
     const [isAccountSelectOpen, setIsAccountSelectOpen] = useState(false);
     const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
-    const suggestedAccountsQuery = useGetSuggestedAccounts(payeeCustomerId, {
-        enabled: isAccountSelectOpen,
-    });
+    // Fetch customers list for quick-assign display
+    const { data: customers } = useGetCustomers();
+
+    // Fetch accounts list for quick-assign display
+    const { data: accounts } = useGetAccounts({ pageSize: 9999 });
+
+    // Use either watched value or default value for notes (watched value may be empty on first render)
+    const effectiveNotes = notesValue || defaultValues?.notes || '';
+
+    // Customer suggestions - fetch when customer is not set and we have payee text or notes
+    const shouldFetchCustomerSuggestions =
+        !payeeCustomerId && (!!payeeText || !!effectiveNotes);
+    const suggestedCustomersQuery = useGetSuggestedCustomers(
+        payeeText ?? '',
+        effectiveNotes,
+        {
+            enabled: shouldFetchCustomerSuggestions,
+        },
+    );
+
+    // Account suggestions - fetch when customer is selected but accounts are not set
+    // Use defaultValues as fallback for initial render
+    const effectiveCustomerId =
+        payeeCustomerId || defaultValues?.payeeCustomerId || '';
+    const effectiveCreditAccountId =
+        creditAccountId || defaultValues?.creditAccountId || '';
+    const effectiveDebitAccountId =
+        debitAccountId || defaultValues?.debitAccountId || '';
+    const effectiveCategoryId = categoryId || defaultValues?.categoryId || '';
+
+    const shouldFetchAccountSuggestions =
+        !!effectiveCustomerId &&
+        (!effectiveCreditAccountId || !effectiveDebitAccountId);
+    const suggestedAccountsQuery = useGetSuggestedAccounts(
+        effectiveCustomerId,
+        {
+            enabled: shouldFetchAccountSuggestions || isAccountSelectOpen,
+        },
+    );
     const suggestedCreditAccountIds = useMemo(
         () =>
             suggestedAccountsQuery.data?.credit.map(
@@ -132,10 +195,13 @@ export const UnifiedEditTransactionForm = ({
         [suggestedAccountsQuery.data?.debit],
     );
 
+    // Category suggestions - fetch when customer is selected but category is not set
+    const shouldFetchCategorySuggestions =
+        !!effectiveCustomerId && !effectiveCategoryId;
     const suggestedCategoriesQuery = useGetSuggestedCategories(
-        payeeCustomerId,
+        effectiveCustomerId,
         {
-            enabled: isCategoryMenuOpen,
+            enabled: shouldFetchCategorySuggestions || isCategoryMenuOpen,
         },
     );
     const suggestedCategoryIds = useMemo(
@@ -145,6 +211,74 @@ export const UnifiedEditTransactionForm = ({
             ) ?? [],
         [suggestedCategoriesQuery.data],
     );
+
+    // Quick-assign suggestions for customer
+    const customerQuickAssignSuggestions = useMemo<
+        QuickAssignSuggestion[]
+    >(() => {
+        if (!suggestedCustomersQuery.data || effectiveCustomerId) return [];
+        return suggestedCustomersQuery.data
+            .slice(0, 3)
+            .map((suggestion) => {
+                const customer = customers?.find(
+                    (c) => c.id === suggestion.customerId,
+                );
+                return {
+                    id: suggestion.customerId,
+                    label: customer?.name ?? 'Unknown',
+                };
+            })
+            .filter((s) => s.label !== 'Unknown');
+    }, [suggestedCustomersQuery.data, customers, effectiveCustomerId]);
+
+    // Quick-assign suggestions for credit account
+    const creditAccountQuickAssignSuggestions = useMemo<
+        QuickAssignSuggestion[]
+    >(() => {
+        if (effectiveCreditAccountId || !suggestedCreditAccountIds.length)
+            return [];
+        return suggestedCreditAccountIds.slice(0, 3).map((accountId) => {
+            const account = accounts?.find((a) => a.id === accountId);
+            return {
+                id: accountId,
+                label: account
+                    ? `${account.code ? `${account.code} - ` : ''}${account.name}`
+                    : 'Unknown',
+            };
+        });
+    }, [suggestedCreditAccountIds, accounts, effectiveCreditAccountId]);
+
+    // Quick-assign suggestions for debit account
+    const debitAccountQuickAssignSuggestions = useMemo<
+        QuickAssignSuggestion[]
+    >(() => {
+        if (effectiveDebitAccountId || !suggestedDebitAccountIds.length)
+            return [];
+        return suggestedDebitAccountIds.slice(0, 3).map((accountId) => {
+            const account = accounts?.find((a) => a.id === accountId);
+            return {
+                id: accountId,
+                label: account
+                    ? `${account.code ? `${account.code} - ` : ''}${account.name}`
+                    : 'Unknown',
+            };
+        });
+    }, [suggestedDebitAccountIds, accounts, effectiveDebitAccountId]);
+
+    // Quick-assign suggestions for category
+    const categoryQuickAssignSuggestions = useMemo<
+        QuickAssignSuggestion[]
+    >(() => {
+        if (effectiveCategoryId || !suggestedCategoryIds.length) return [];
+        return suggestedCategoryIds.slice(0, 3).map((catId) => {
+            const category = categoryOptions.find((c) => c.value === catId);
+            return {
+                id: catId,
+                label: category?.label ?? 'Unknown',
+            };
+        });
+    }, [suggestedCategoryIds, categoryOptions, effectiveCategoryId]);
+
     const resolvedCategoryOptions = useMemo(() => {
         if (suggestedCategoryIds.length === 0) {
             return categoryOptions;
@@ -242,8 +376,32 @@ export const UnifiedEditTransactionForm = ({
                                         placeholder="Select customer..."
                                         onCreate={onCreateCustomer}
                                         suggestionQuery={payeeText ?? ''}
+                                        suggestionNotes={notesValue ?? ''}
                                     />
                                 </FormControl>
+                                {!field.value && (
+                                    <QuickAssignSuggestions
+                                        suggestions={
+                                            customerQuickAssignSuggestions
+                                        }
+                                        isLoading={
+                                            shouldFetchCustomerSuggestions &&
+                                            suggestedCustomersQuery.isLoading
+                                        }
+                                        onSelect={(id) =>
+                                            form.setValue(
+                                                'payeeCustomerId',
+                                                id,
+                                                {
+                                                    shouldValidate: true,
+                                                    shouldDirty: true,
+                                                    shouldTouch: true,
+                                                },
+                                            )
+                                        }
+                                        disabled={isFinancialFieldsLocked}
+                                    />
+                                )}
                                 {payeeText && !field.value && (
                                     <p className="text-xs text-amber-600 mt-1">
                                         Imported payee:{' '}
@@ -261,7 +419,7 @@ export const UnifiedEditTransactionForm = ({
                 <hr />
 
                 {/* Transaction Entry Section - Credit | Amount | Debit */}
-                <div className="grid grid-cols-[2fr_16px_minmax(min-content,1fr)_16px_2fr] items-center gap-1">
+                <div className="grid grid-cols-[2fr_16px_minmax(min-content,1fr)_16px_2fr] items-start gap-1">
                     {/* Credit Account */}
                     <FormField
                         control={form.control}
@@ -282,12 +440,35 @@ export const UnifiedEditTransactionForm = ({
                                         onOpenChange={setIsAccountSelectOpen}
                                     />
                                 </FormControl>
+                                {!field.value && effectiveCustomerId && (
+                                    <QuickAssignSuggestions
+                                        suggestions={
+                                            creditAccountQuickAssignSuggestions
+                                        }
+                                        isLoading={
+                                            shouldFetchAccountSuggestions &&
+                                            suggestedAccountsQuery.isLoading
+                                        }
+                                        onSelect={(id) =>
+                                            form.setValue(
+                                                'creditAccountId',
+                                                id,
+                                                {
+                                                    shouldValidate: true,
+                                                    shouldDirty: true,
+                                                    shouldTouch: true,
+                                                },
+                                            )
+                                        }
+                                        disabled={isFinancialFieldsLocked}
+                                    />
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
 
-                    <ChevronRight className="size-4 opacity-60" />
+                    <ChevronRight className="size-4 opacity-60 mt-2.5" />
 
                     {/* Amount Column */}
                     <FormField
@@ -309,7 +490,7 @@ export const UnifiedEditTransactionForm = ({
                         )}
                     />
 
-                    <ChevronRight className="size-4 opacity-60" />
+                    <ChevronRight className="size-4 opacity-60 mt-2.5" />
 
                     {/* Debit Account */}
                     <FormField
@@ -331,6 +512,29 @@ export const UnifiedEditTransactionForm = ({
                                         onOpenChange={setIsAccountSelectOpen}
                                     />
                                 </FormControl>
+                                {!field.value && effectiveCustomerId && (
+                                    <QuickAssignSuggestions
+                                        suggestions={
+                                            debitAccountQuickAssignSuggestions
+                                        }
+                                        isLoading={
+                                            shouldFetchAccountSuggestions &&
+                                            suggestedAccountsQuery.isLoading
+                                        }
+                                        onSelect={(id) =>
+                                            form.setValue(
+                                                'debitAccountId',
+                                                id,
+                                                {
+                                                    shouldValidate: true,
+                                                    shouldDirty: true,
+                                                    shouldTouch: true,
+                                                },
+                                            )
+                                        }
+                                        disabled={isFinancialFieldsLocked}
+                                    />
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -364,6 +568,19 @@ export const UnifiedEditTransactionForm = ({
                                         }
                                     />
                                 </FormControl>
+                                {!field.value && effectiveCustomerId && (
+                                    <QuickAssignSuggestions
+                                        suggestions={
+                                            categoryQuickAssignSuggestions
+                                        }
+                                        isLoading={
+                                            shouldFetchCategorySuggestions &&
+                                            suggestedCategoriesQuery.isLoading
+                                        }
+                                        onSelect={field.onChange}
+                                        disabled={isPending}
+                                    />
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )}

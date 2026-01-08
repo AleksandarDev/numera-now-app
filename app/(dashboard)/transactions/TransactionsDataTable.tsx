@@ -5,6 +5,7 @@ import { DataTable } from '@/components/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBulkDeleteTransactions } from '@/features/transactions/api/use-bulk-delete-transactions';
 import { useGetTransactions } from '@/features/transactions/api/use-get-transactions';
+import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { columns, type ResponseType, selectColumn } from './columns';
 import { hasValidationIssues } from './validation';
 
@@ -17,6 +18,7 @@ export function TransactionsDataTable({
 }: TransactionsDataTableProps) {
     const transactionsQuery = useGetTransactions();
     const bulkDeleteMutation = useBulkDeleteTransactions();
+    const { onOpen } = useOpenTransaction();
     const transactions = transactionsQuery.data || [];
     // Use isLoading only for initial load (no cached data)
     // isFetching is true during background refetch but we keep showing cached data
@@ -41,6 +43,10 @@ export function TransactionsDataTable({
         bulkDeleteMutation.mutate({ ids });
     };
 
+    const handleRowClick = (row: Row<ResponseType>) => {
+        onOpen(row.original.id);
+    };
+
     // Add select column when in bulk delete mode
     const tableColumns = bulkDeleteMode ? [selectColumn, ...columns] : columns;
 
@@ -48,6 +54,10 @@ export function TransactionsDataTable({
         <DataTable
             filterKey="payeeCustomerName"
             filterPlaceholder="Filter transactions..."
+            autoPageSize
+            rowHeight={48}
+            paginationKey="transactions"
+            autoResetPageIndex={false}
             columns={
                 isInitialLoading
                     ? tableColumns.map((column) => ({
@@ -62,6 +72,7 @@ export function TransactionsDataTable({
             disabled={isInitialLoading || isDeleting}
             loading={isDeleting}
             onDelete={bulkDeleteMode ? handleBulkDelete : undefined}
+            onRowClick={bulkDeleteMode ? undefined : handleRowClick}
             getRowClassName={getRowClassName}
         />
     );

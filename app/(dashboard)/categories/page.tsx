@@ -25,6 +25,7 @@ function CategoriesDataTable() {
     return (
         <DataTable
             filterKey="name"
+            paginationKey="categories"
             columns={columns}
             data={categories}
             onDelete={(row) => {
