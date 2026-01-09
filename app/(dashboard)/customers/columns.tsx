@@ -2,7 +2,12 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferResponseType } from 'hono';
-import { ArrowUpDown, Building2, MoreHorizontal, TriangleAlert } from 'lucide-react';
+import {
+    ArrowUpDown,
+    Building2,
+    MoreHorizontal,
+    TriangleAlert,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

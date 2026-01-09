@@ -5,33 +5,31 @@ import { toast } from 'sonner';
 import { client } from '@/lib/hono';
 
 type ResponseType = InferResponseType<
-    (typeof client.api.categories)[':id']['$patch']
+    (typeof client.api.tags)[':id']['$patch']
 >;
 type RequestType = InferRequestType<
-    (typeof client.api.categories)[':id']['$patch']
+    (typeof client.api.tags)[':id']['$patch']
 >['json'];
 
-export const useEditCategory = (id?: string) => {
+export const useEditTag = (id?: string) => {
     const queryClient = useQueryClient();
 
     const mutation = useMutation<ResponseType, Error, RequestType>({
         mutationFn: async (json) => {
-            const response = await client.api.categories[':id'].$patch({
-                json,
+            const response = await client.api.tags[':id'].$patch({
                 param: { id },
+                json,
             });
 
             return await response.json();
         },
         onSuccess: () => {
-            toast.success('Category updated.');
-            queryClient.invalidateQueries({ queryKey: ['category', { id }] });
-            queryClient.invalidateQueries({ queryKey: ['categories'] });
-            queryClient.invalidateQueries({ queryKey: ['transactions'] });
-            queryClient.invalidateQueries({ queryKey: ['summary'] });
+            toast.success('Tag updated.');
+            queryClient.invalidateQueries({ queryKey: ['tags'] });
+            queryClient.invalidateQueries({ queryKey: ['tag', { id }] });
         },
         onError: () => {
-            toast.error('Failed to edit category.');
+            toast.error('Failed to update tag.');
         },
     });
 

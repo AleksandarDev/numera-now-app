@@ -33,7 +33,6 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { useGetCategories } from '@/features/categories/api/use-get-categories';
 import {
     useDisconnectStripe,
     useGetStripeSettings,
@@ -41,12 +40,12 @@ import {
     useTestStripeConnection,
     useUpdateStripeSettings,
 } from '@/features/settings/api';
+import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useConfirm } from '@/hooks/use-confirm';
 
 export function StripeIntegrationCard() {
     const { data: settings, isLoading } = useGetStripeSettings();
-    const { data: categories = [], isLoading: categoriesLoading } =
-        useGetCategories();
+    const { data: tags = [], isLoading: tagsLoading } = useGetTags();
 
     const updateSettings = useUpdateStripeSettings();
     const disconnectStripe = useDisconnectStripe();
@@ -107,9 +106,9 @@ export function StripeIntegrationCard() {
         });
     };
 
-    const handleCategoryChange = (categoryId: string) => {
+    const handleTagChange = (tagId: string) => {
         updateSettings.mutate({
-            defaultCategoryId: categoryId === 'none' ? null : categoryId,
+            defaultTagId: tagId === 'none' ? null : tagId,
         });
     };
 
@@ -135,7 +134,7 @@ export function StripeIntegrationCard() {
         });
     };
 
-    if (isLoading || categoriesLoading) {
+    if (isLoading || tagsLoading) {
         return (
             <Card>
                 <CardHeader>
@@ -462,35 +461,32 @@ export function StripeIntegrationCard() {
                                     </div>
                                 </div>
 
-                                {/* Category */}
+                                {/* Tag */}
                                 <div className="space-y-2">
-                                    <Label>Default Category</Label>
+                                    <Label>Default Tag</Label>
                                     <Select
-                                        value={
-                                            settings?.defaultCategoryId ||
-                                            'none'
-                                        }
-                                        onValueChange={handleCategoryChange}
+                                        value={settings?.defaultTagId || 'none'}
+                                        onValueChange={handleTagChange}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select category..." />
+                                            <SelectValue placeholder="Select tag..." />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="none">
                                                 None
                                             </SelectItem>
-                                            {categories.map((category) => (
+                                            {tags.map((tag) => (
                                                 <SelectItem
-                                                    key={category.id}
-                                                    value={category.id}
+                                                    key={tag.id}
+                                                    value={tag.id}
                                                 >
-                                                    {category.name}
+                                                    {tag.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-muted-foreground">
-                                        Category for Stripe payment transactions
+                                        Tag for Stripe payment transactions
                                     </p>
                                 </div>
                             </div>

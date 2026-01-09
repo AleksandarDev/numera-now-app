@@ -15,12 +15,12 @@ import { StripeIntegrationCard } from '@/components/stripe-integration-card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useBulkDeleteCategories } from '@/features/categories/api/use-bulk-delete-categories';
-import { useGetCategories } from '@/features/categories/api/use-get-categories';
-import { useNewCategory } from '@/features/categories/hooks/use-new-category';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useUpdateSettings } from '@/features/settings/api/use-update-settings';
-import { columns } from '../categories/columns';
+import { useBulkDeleteTags } from '@/features/tags/api/use-bulk-delete-tags';
+import { useGetTags } from '@/features/tags/api/use-get-tags';
+import { useNewTag } from '@/features/tags/hooks/use-new-tag';
+import { tagColumns } from './tag-columns';
 
 function DoubleEntrySettings() {
     const settingsQuery = useGetSettings();
@@ -107,19 +107,19 @@ function TransactionStatusAutomationSettings() {
     );
 }
 
-function CategoriesSection() {
-    const newCategory = useNewCategory();
-    const deleteCategories = useBulkDeleteCategories();
-    const categoriesQuery = useGetCategories();
-    const categories = categoriesQuery.data || [];
+function TagsSection() {
+    const newTag = useNewTag();
+    const deleteTags = useBulkDeleteTags();
+    const tagsQuery = useGetTags();
+    const tags = tagsQuery.data || [];
 
-    const isDisabled = categoriesQuery.isLoading || deleteCategories.isPending;
+    const isDisabled = tagsQuery.isLoading || deleteTags.isPending;
 
     return (
         <Card>
             <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
-                <CardTitle>Categories</CardTitle>
-                <Button onClick={newCategory.onOpen} size="sm">
+                <CardTitle>Tags</CardTitle>
+                <Button onClick={newTag.onOpen} size="sm">
                     <Plus className="size-4 mr-2" />
                     Add new
                 </Button>
@@ -127,12 +127,12 @@ function CategoriesSection() {
             <CardContent>
                 <DataTable
                     filterKey="name"
-                    paginationKey="settingsCategories"
-                    columns={columns}
-                    data={categories}
+                    paginationKey="settingsTags"
+                    columns={tagColumns}
+                    data={tags}
                     onDelete={(row) => {
                         const ids = row.map((r) => r.original.id);
-                        deleteCategories.mutate({ ids });
+                        deleteTags.mutate({ ids });
                     }}
                     disabled={isDisabled}
                 />
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                 <StripeIntegrationCard />
                 <DocumentTypesSettingsCard />
                 <ReconciliationSettingsCard />
-                <CategoriesSection />
+                <TagsSection />
             </Suspense>
         </div>
     );

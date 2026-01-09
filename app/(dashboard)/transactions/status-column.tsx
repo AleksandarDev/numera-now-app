@@ -40,7 +40,6 @@ type StatusColumnProps = {
         amount?: number | null;
         payeeCustomerId?: string | null;
         payee?: string | null;
-        categoryId?: string | null;
         notes?: string | null;
         accountId?: string | null;
         creditAccountId?: string | null;
@@ -155,7 +154,6 @@ export const StatusColumn = ({
                 accountId: transaction.accountId,
                 creditAccountId: transaction.creditAccountId,
                 debitAccountId: transaction.debitAccountId,
-                categoryId: transaction.categoryId,
                 splitGroupId: transaction.splitGroupId,
                 splitType: transaction.splitType,
             },

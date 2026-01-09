@@ -3,13 +3,13 @@ import { type Context, Hono } from 'hono';
 import { handle } from 'hono/vercel';
 
 import accountsRoutes from './accountsRoutes';
-import categoriesRoutes from './categoriesRoutes';
 import customersRoutes from './customersRoutes';
 import documentsRoutes from './documentsRoutes';
 import documentTypesRoutes from './documentTypesRoutes';
 import settingsRoutes from './settingsRoutes';
 import stripeRoutes from './stripeRoutes';
 import summaryRoutes from './summaryRoutes';
+import tagsRoutes from './tagsRoutes';
 import transactionsRoutes from './transactionsRoutes';
 
 const app = new Hono().basePath('/api');
@@ -82,14 +82,14 @@ app.use('*', async (ctx, next) => {
 
 const routes = app
     .route('/accounts', accountsRoutes)
-    .route('/categories', categoriesRoutes)
     .route('/customers', customersRoutes)
     .route('/summary', summaryRoutes)
     .route('/transactions', transactionsRoutes)
     .route('/settings', settingsRoutes)
     .route('/documents', documentsRoutes)
     .route('/document-types', documentTypesRoutes)
-    .route('/stripe', stripeRoutes);
+    .route('/stripe', stripeRoutes)
+    .route('/tags', tagsRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);

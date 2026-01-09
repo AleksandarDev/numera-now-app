@@ -41,7 +41,6 @@ export const useAdvanceStatus = () => {
                 accountId?: string | null;
                 creditAccountId?: string | null;
                 debitAccountId?: string | null;
-                categoryId?: string | null;
                 splitGroupId?: string | null;
                 splitType?: string | 'parent' | 'child' | null;
             };
@@ -85,7 +84,6 @@ export const useAdvanceStatus = () => {
                     creditAccountId:
                         transactionData.creditAccountId ?? undefined,
                     debitAccountId: transactionData.debitAccountId ?? undefined,
-                    categoryId: transactionData.categoryId ?? undefined,
                     status: nextStatus,
                     splitGroupId: transactionData.splitGroupId ?? undefined,
                     splitType: dataSplitType ?? undefined,

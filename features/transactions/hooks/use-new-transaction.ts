@@ -7,17 +7,15 @@ type TransactionDefaultValues = {
     date?: Date;
     payeeCustomerId?: string;
     notes?: string;
-    categoryId?: string;
+    tagIds?: string[];
     creditEntries?: {
         accountId: string;
         amount: string;
-        categoryId: string;
         notes: string;
     }[];
     debitEntries?: {
         accountId: string;
         amount: string;
-        categoryId: string;
         notes: string;
     }[];
 };
