@@ -213,15 +213,6 @@ ALTER TABLE accounts ADD COLUMN opening_balance INTEGER DEFAULT 0;
 - [ ] Update balance calculation to use account class
 - [ ] Add trial balance check to dashboard or summary
 
-### Post-MVP (Nice to Have)
-
-- [ ] Income Statement report (sum income − sum expenses)
-- [ ] Balance Sheet report (assets = liabilities + equity)
-- [ ] General Ledger view per account
-- [ ] Period closing functionality
-- [ ] COA import with class mapping
-- [ ] Smart validation (income should be credited, expenses debited)
-
 ---
 
 ## Out of Scope (Future)

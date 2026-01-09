@@ -27,6 +27,32 @@ export type ResponseType = InferResponseType<
     200
 >['data'][0];
 
+// Separate select column for conditional rendering
+export const selectColumn: ColumnDef<ResponseType> = {
+    id: 'select',
+    header: ({ table }) => (
+        <Checkbox
+            checked={
+                table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && 'indeterminate')
+            }
+            onCheckedChange={(value) =>
+                table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+        />
+    ),
+    cell: ({ row }) => (
+        <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+        />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+};
+
 const ActionsCell = ({ row }: { row: { original: ResponseType } }) => {
     const [ConfirmDialog, confirm] = useConfirm(
         'Are you sure?',
