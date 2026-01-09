@@ -6,21 +6,48 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
-import { Plus } from 'lucide-react';
+import type { Row } from '@tanstack/react-table';
+import { MoreHorizontal, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useBulkDeleteCustomers } from '@/features/customers/api/use-bulk-delete-customers';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
-
 import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
-import { columns } from './columns';
+import { useConfirm } from '@/hooks/use-confirm';
+import { columns, type ResponseType, selectColumn } from './columns';
 
 const CustomersPage = () => {
+    const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+    const [ConfirmDialog, confirm] = useConfirm(
+        'Delete customers?',
+        'This action cannot be undone.',
+    );
     const newCustomer = useNewCustomer();
     const customersQuery = useGetCustomers();
+    const bulkDeleteMutation = useBulkDeleteCustomers();
     const customers = customersQuery.data || [];
 
-    const isDisabled = customersQuery.isLoading;
+    const isDisabled = customersQuery.isLoading || bulkDeleteMutation.isPending;
+
+    const handleBulkDelete = async (rows: Row<ResponseType>[]) => {
+        const ok = await confirm();
+        if (!ok) return;
+
+        const ids = rows.map((row) => row.original.id);
+        bulkDeleteMutation.mutate({ ids });
+    };
+
+    // Add select column when in bulk delete mode
+    const tableColumns = bulkDeleteMode ? [selectColumn, ...columns] : columns;
 
     if (customersQuery.isLoading) {
         return (
@@ -41,21 +68,43 @@ const CustomersPage = () => {
 
     return (
         <div className="max-w-screen-2xl mx-auto w-full pb-10 -mt-24">
+            <ConfirmDialog />
             <Card className="border-none drop-shadow-sm">
                 <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
                     <CardTitle>Customers</CardTitle>
-                    <Button onClick={newCustomer.onOpen} size="sm">
-                        <Plus className="size-4 mr-2" />
-                        Add new
-                    </Button>
+                    <div className="flex flex-row items-center gap-x-2">
+                        <Button onClick={newCustomer.onOpen} size="sm">
+                            <Plus className="size-4 mr-2" />
+                            Add new
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost">
+                                    <MoreHorizontal className="size-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        setBulkDeleteMode(!bulkDeleteMode)
+                                    }
+                                >
+                                    {bulkDeleteMode
+                                        ? 'Cancel bulk delete'
+                                        : 'Bulk delete'}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <DataTable
                         filterKey="name"
                         paginationKey="customers"
-                        columns={columns}
+                        columns={tableColumns}
                         data={customers}
-                        onDelete={() => {}}
+                        onDelete={bulkDeleteMode ? handleBulkDelete : undefined}
                         disabled={isDisabled}
                     />
                 </CardContent>

@@ -33,6 +33,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -390,6 +392,7 @@ export default function AccountsPage() {
     const [importResults, setImportResults] = useState<CSVResult>(
         INITIAL_IMPORT_RESULTS,
     );
+    const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const newAccount = useNewAccount();
     const createAccounts = useBulkCreateAccounts();
 
@@ -478,6 +481,16 @@ export default function AccountsPage() {
                                     onUpload={onImport}
                                     variant="menu"
                                 />
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        setBulkDeleteMode(!bulkDeleteMode)
+                                    }
+                                >
+                                    {bulkDeleteMode
+                                        ? 'Cancel bulk delete'
+                                        : 'Bulk delete'}
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
