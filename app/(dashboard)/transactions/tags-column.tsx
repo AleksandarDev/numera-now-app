@@ -1,5 +1,5 @@
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
-import { cn } from '@/lib/utils';
+import { cn, getContrastingTextColor } from '@/lib/utils';
 
 type Tag = {
     id: string;
@@ -41,18 +41,18 @@ export const TagsColumn = ({ id, tags }: TagsColumnProps) => {
                 <span
                     key={tag.id}
                     className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                        'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium',
                         'border hover:opacity-80 transition-opacity',
+                        'max-w-[100px] overflow-hidden',
                     )}
                     style={{
-                        backgroundColor: tag.color
-                            ? `${tag.color}20`
-                            : '#dbeafe',
+                        backgroundColor: tag.color ?? '#3b82f6',
                         borderColor: tag.color ?? '#3b82f6',
-                        color: tag.color ?? '#1e40af',
+                        color: tag.color ? getContrastingTextColor(tag.color) : '#ffffff',
                     }}
+                    title={tag.name}
                 >
-                    {tag.name}
+                    <span className="truncate">{tag.name}</span>
                 </span>
             ))}
             {tags.length > 3 && (
