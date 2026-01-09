@@ -1,9 +1,9 @@
 'use client';
 
-import { Card } from '@signalco/ui-primitives/Card';
 import { Loader2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
 
 type MetricConfig = {
     enabled: boolean;

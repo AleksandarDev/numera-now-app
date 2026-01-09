@@ -1,16 +1,16 @@
 'use client';
 
 import { useAuth } from '@clerk/nextjs';
+import { Check, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Check, Copy, ExternalLink, Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
