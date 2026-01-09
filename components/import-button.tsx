@@ -59,7 +59,7 @@ export const ImportButton = ({
                             }}
                         >
                             <Import className="size-4" />
-                            Import
+                            Import from CSV
                         </DropdownMenuItem>
                     );
                 }}

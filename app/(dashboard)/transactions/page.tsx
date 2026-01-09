@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
-import { Loader2, MoreHorizontal, Plus } from 'lucide-react';
+import { Archive, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportCard } from '@/components/import/import-card';
@@ -16,6 +16,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSelectImportAccounts } from '@/features/accounts/hooks/use-select-import-accounts';
@@ -364,10 +365,22 @@ export default function TransactionsPage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        newTransaction.onOpen(
+                                            undefined,
+                                            'import',
+                                        )
+                                    }
+                                >
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    Import from ZIP
+                                </DropdownMenuItem>
                                 <ImportButton
                                     onUpload={onUpload}
                                     variant="menu"
                                 />
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={() =>
                                         setBulkDeleteMode(!bulkDeleteMode)

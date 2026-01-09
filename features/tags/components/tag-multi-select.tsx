@@ -65,17 +65,23 @@ export const TagMultiSelect = ({
                 }),
                 multiValueLabel: (base, { data }) => ({
                     ...base,
-                    color: data.color ? getContrastingTextColor(data.color) : '#ffffff',
+                    color: data.color
+                        ? getContrastingTextColor(data.color)
+                        : '#ffffff',
                     fontWeight: 500,
                     fontSize: '11px',
                     padding: '0 2px',
                 }),
                 multiValueRemove: (base, { data }) => ({
                     ...base,
-                    color: data.color ? getContrastingTextColor(data.color) : '#ffffff',
+                    color: data.color
+                        ? getContrastingTextColor(data.color)
+                        : '#ffffff',
                     ':hover': {
                         backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                        color: data.color ? getContrastingTextColor(data.color) : '#ffffff',
+                        color: data.color
+                            ? getContrastingTextColor(data.color)
+                            : '#ffffff',
                     },
                     padding: '0 2px',
                 }),
