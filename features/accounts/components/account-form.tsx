@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
-import { AmountInput } from '@/components/amount-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -238,16 +237,16 @@ export const AccountForm = ({
                                 <FormItem>
                                     <FormLabel>Opening Balance</FormLabel>
                                     <FormControl>
-                                        <AmountInput
+                                        <Input
+                                            type="number"
                                             disabled={disabled}
-                                            placeholder="0.00"
-                                            value={
-                                                field.value?.toString() ?? '0'
-                                            }
-                                            onChange={(value) => {
+                                            placeholder="0"
+                                            value={field.value ?? 0}
+                                            onChange={(e) => {
                                                 const numValue =
-                                                    Number.parseFloat(
-                                                        value || '0',
+                                                    Number.parseInt(
+                                                        e.target.value,
+                                                        10,
                                                     );
                                                 field.onChange(
                                                     Number.isNaN(numValue)
@@ -259,7 +258,7 @@ export const AccountForm = ({
                                     </FormControl>
                                     <FormDescription>
                                         Initial balance for this account (in
-                                        account currency)
+                                        miliunits: 1.00 = 1000)
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

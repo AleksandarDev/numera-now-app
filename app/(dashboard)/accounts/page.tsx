@@ -464,8 +464,18 @@ export default function AccountsPage() {
             if (!data.code) {
                 data.code = undefined;
             }
+            // Ensure openingBalance is a number (default to 0)
+            if (
+                data.openingBalance === null ||
+                data.openingBalance === undefined
+            ) {
+                data.openingBalance = 0;
+            } else if (typeof data.openingBalance === 'string') {
+                const parsed = Number.parseInt(data.openingBalance, 10);
+                data.openingBalance = Number.isNaN(parsed) ? 0 : parsed;
+            }
             return data;
-        }) as unknown as (typeof accountsSchema.$inferInsert)[];
+        }) as (typeof accountsSchema.$inferInsert)[];
         createAccounts.mutate(accountsData, {
             onSuccess: () => {
                 onCancelImport();

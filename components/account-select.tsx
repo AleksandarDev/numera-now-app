@@ -84,7 +84,7 @@ export const AccountSelect = ({
                 isReadOnly: false,
                 accountType: 'neutral' as const,
                 accountClass: null,
-                openingBalance: null,
+                openingBalance: 0,
                 hasInvalidConfig: false,
             };
         }
@@ -162,7 +162,7 @@ export const AccountSelect = ({
                     isReadOnly: false,
                     accountType: 'neutral' as const,
                     accountClass: null,
-                    openingBalance: null,
+                    openingBalance: 0,
                     hasInvalidConfig: false,
                 },
                 ...result,

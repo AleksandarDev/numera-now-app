@@ -28,7 +28,7 @@ export const accounts = pgTable(
         accountClass: text('account_class', {
             enum: ['asset', 'liability', 'equity', 'income', 'expense'],
         }),
-        openingBalance: integer('opening_balance').default(0),
+        openingBalance: integer('opening_balance').notNull().default(0),
     },
     (table) => [
         index('accounts_userid_idx').on(table.userId),
@@ -55,7 +55,7 @@ export const insertAccountSchema = createInsertSchema(accounts, {
         .enum(['asset', 'liability', 'equity', 'income', 'expense'])
         .nullable()
         .optional(),
-    openingBalance: z.number().int().nullable().default(0).optional(),
+    openingBalance: z.number().int().default(0).optional(),
 });
 
 // Tags table - flexible multi-select labeling system
