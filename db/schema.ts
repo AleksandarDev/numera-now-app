@@ -190,12 +190,10 @@ export const documents = pgTable(
             .references(() => documentTypes.id, {
                 onDelete: 'restrict',
             }),
-        // Primary transaction this document is attached to
-        transactionId: text('transaction_id')
-            .notNull()
-            .references(() => transactions.id, {
-                onDelete: 'cascade',
-            }),
+        // Primary transaction this document is attached to (nullable for standalone documents)
+        transactionId: text('transaction_id').references(() => transactions.id, {
+            onDelete: 'set null',
+        }),
         // Azure Blob Storage path
         storagePath: text('storage_path').notNull(),
         // Uploader user ID

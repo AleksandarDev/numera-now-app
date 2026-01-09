@@ -294,14 +294,6 @@ export const UnifiedEditTransactionForm = ({
             className="space-y-6"
         >
             {/* Status-based alerts */}
-            {isReconciled && (
-                <Alert>
-                    <Lock className="size-4" />
-                    <AlertDescription>
-                        This transaction is reconciled and cannot be edited.
-                    </AlertDescription>
-                </Alert>
-            )}
             {isCompleted && !isReconciled && (
                 <Alert>
                     <Lock className="size-4" />

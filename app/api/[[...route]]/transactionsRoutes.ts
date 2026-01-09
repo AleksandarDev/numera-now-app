@@ -2246,6 +2246,112 @@ const app = new Hono()
                 },
             });
         },
+    )
+    // Unreconcile a transaction
+    .post(
+        '/:id/unreconcile',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                reason: z
+                    .string()
+                    .min(1, 'Reason is required')
+                    .max(500, 'Reason must be less than 500 characters'),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+            const { reason } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Get the existing transaction to check its status
+            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+            const [existingTransaction] = await db
+                .select({
+                    id: transactions.id,
+                    status: transactions.status,
+                })
+                .from(transactions)
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    creditAccounts,
+                    eq(transactions.creditAccountId, creditAccounts.id),
+                )
+                .leftJoin(
+                    debitAccounts,
+                    eq(transactions.debitAccountId, debitAccounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        or(
+                            eq(accounts.userId, auth.userId),
+                            eq(creditAccounts.userId, auth.userId),
+                            eq(debitAccounts.userId, auth.userId),
+                            and(
+                                isNull(transactions.accountId),
+                                isNull(transactions.creditAccountId),
+                                isNull(transactions.debitAccountId),
+                                eq(transactions.statusChangedBy, auth.userId),
+                            ),
+                        ),
+                    ),
+                );
+
+            if (!existingTransaction) {
+                return ctx.json({ error: 'Transaction not found.' }, 404);
+            }
+
+            // Only reconciled transactions can be unreconciled
+            if (existingTransaction.status !== 'reconciled') {
+                return ctx.json(
+                    {
+                        error: 'Only reconciled transactions can be unreconciled.',
+                    },
+                    400,
+                );
+            }
+
+            // Update transaction status to completed (one step back from reconciled)
+            const [updatedTransaction] = await db
+                .update(transactions)
+                .set({
+                    status: 'completed',
+                    statusChangedAt: new UTCDate(),
+                    statusChangedBy: auth.userId,
+                })
+                .where(eq(transactions.id, id))
+                .returning();
+
+            // Record the unreconcile action in history with the reason
+            await recordStatusChange(
+                id,
+                'reconciled',
+                'completed',
+                auth.userId,
+                `Unreconciled: ${reason}`,
+            );
+
+            logDebug('[POST /transactions/:id/unreconcile] Success:', {
+                id,
+                reason,
+                newStatus: 'completed',
+            });
+
+            return ctx.json({ data: updatedTransaction });
+        },
     );
 
 export default app;

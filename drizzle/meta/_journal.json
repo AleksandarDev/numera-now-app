@@ -183,6 +183,13 @@
       "when": 1767966263563,
       "tag": "0025_faithful_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1767967943281,
+      "tag": "0026_typical_zuras",
+      "breakpoints": true
     }
   ]
 }
