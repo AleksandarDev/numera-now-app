@@ -97,6 +97,7 @@ const app = new Hono()
                 conditions.push(isNull(documents.transactionId));
             }
 
+            // Use LEFT JOIN to fetch transaction data alongside documents (avoids N+1 query)
             const data = await db
                 .select({
                     id: documents.id,
@@ -109,44 +110,26 @@ const app = new Hono()
                     uploadedBy: documents.uploadedBy,
                     uploadedAt: documents.uploadedAt,
                     storagePath: documents.storagePath,
+                    transactionDate: transactions.date,
+                    transactionPayee: transactions.payee,
                 })
                 .from(documents)
                 .leftJoin(
                     documentTypes,
                     eq(documents.documentTypeId, documentTypes.id),
                 )
+                .leftJoin(
+                    transactions,
+                    eq(documents.transactionId, transactions.id),
+                )
                 .where(and(...conditions))
                 .orderBy(desc(documents.uploadedAt));
 
-            // Generate download URLs and add transaction info
-            const documentsWithUrls = await Promise.all(
-                data.map(async (doc) => {
-                    let transactionDate = null;
-                    let transactionPayee = null;
-
-                    if (doc.transactionId) {
-                        const [txn] = await db
-                            .select({
-                                date: transactions.date,
-                                payee: transactions.payee,
-                            })
-                            .from(transactions)
-                            .where(eq(transactions.id, doc.transactionId));
-
-                        if (txn) {
-                            transactionDate = txn.date;
-                            transactionPayee = txn.payee;
-                        }
-                    }
-
-                    return {
-                        ...doc,
-                        downloadUrl: generateDownloadUrl(doc.storagePath),
-                        transactionDate,
-                        transactionPayee,
-                    };
-                }),
-            );
+            // Generate download URLs
+            const documentsWithUrls = data.map((doc) => ({
+                ...doc,
+                downloadUrl: generateDownloadUrl(doc.storagePath),
+            }));
 
             return ctx.json({ data: documentsWithUrls });
         },
