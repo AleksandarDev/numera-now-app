@@ -518,3 +518,20 @@ export const openFinancesSettings = pgTable(
 
 export const insertOpenFinancesSettingsSchema =
     createInsertSchema(openFinancesSettings);
+
+// Dashboard layout table - stores user's customized dashboard widget layout
+export const dashboardLayouts = pgTable(
+    'dashboard_layouts',
+    {
+        userId: text('user_id').primaryKey(),
+        // JSON string containing the array of widget configurations
+        // Each widget has: id, type, and type-specific config (refreshRate, etc.)
+        widgetsConfig: text('widgets_config').notNull().default('[]'),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [index('dashboard_layouts_userid_idx').on(table.userId)],
+);
+
+export const insertDashboardLayoutSchema = createInsertSchema(dashboardLayouts);

@@ -225,6 +225,13 @@
             "when": 1767988041415,
             "tag": "0031_rainy_shatterstar",
             "breakpoints": true
+        },
+        {
+            "idx": 32,
+            "version": "7",
+            "when": 1767993763597,
+            "tag": "0032_open_namor",
+            "breakpoints": true
         }
     ]
 }
