@@ -19,9 +19,9 @@ export const useUnreconcileTransaction = (id?: string) => {
             if (!id) {
                 throw new Error('Transaction ID is required');
             }
-            const response = await client.api.transactions[':id'][
-                'unreconcile'
-            ].$post({
+            const response = await client.api.transactions[
+                ':id'
+            ].unreconcile.$post({
                 json,
                 param: { id },
             });

@@ -15,7 +15,7 @@ export const useLinkDocumentToTransaction = () => {
             documentId,
             transactionId,
         }: LinkDocumentToTransactionParams) => {
-            const response = await client.api.documents[':id']['link'].$post({
+            const response = await client.api.documents[':id'].link.$post({
                 param: { id: documentId },
                 json: { transactionId },
             });

@@ -10,6 +10,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { Suspense } from 'react';
 import { DataTable } from '@/components/data-table';
 import { DocumentTypesSettingsCard } from '@/components/document-types-settings-card';
+import { OpenFinancesSettingsCard } from '@/components/open-finances-settings-card';
 import { ReconciliationSettingsCard } from '@/components/reconciliation-settings-card';
 import { StripeIntegrationCard } from '@/components/stripe-integration-card';
 import { Button } from '@/components/ui/button';
@@ -154,6 +155,7 @@ export default function SettingsPage() {
                 <DoubleEntrySettings />
                 <TransactionStatusAutomationSettings />
                 <StripeIntegrationCard />
+                <OpenFinancesSettingsCard />
                 <DocumentTypesSettingsCard />
                 <ReconciliationSettingsCard />
                 <TagsSection />
