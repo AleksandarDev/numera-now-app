@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { InvoiceImport } from '@/components/invoice-import';
 import {
     Sheet,
     SheetContent,
@@ -22,9 +23,24 @@ import {
 } from './unified-transaction-form';
 
 export const NewTransactionSheet = () => {
-    const { isOpen, onClose, defaultValues } = useNewTransaction();
+    const { isOpen, onClose, defaultValues, defaultTab } = useNewTransaction();
     const { onOpen: onOpenEdit } = useOpenTransaction();
-    const [activeTab, setActiveTab] = useState('details');
+    const [activeTab, setActiveTab] = useState<
+        'details' | 'documents' | 'import'
+    >(defaultTab || 'details');
+
+    // Update active tab when defaultTab changes
+    const effectiveTab = defaultTab || activeTab;
+
+    const handleTabChange = (value: string) => {
+        if (
+            value === 'details' ||
+            value === 'documents' ||
+            value === 'import'
+        ) {
+            setActiveTab(value);
+        }
+    };
 
     const createMutation = useCreateUnifiedTransaction(onOpenEdit, onClose);
     const tagMutation = useCreateTag();
@@ -75,8 +91,8 @@ export const NewTransactionSheet = () => {
                     </div>
                 ) : (
                     <Tabs
-                        value={activeTab}
-                        onValueChange={setActiveTab}
+                        value={effectiveTab}
+                        onValueChange={handleTabChange}
                         className="flex-1 flex flex-col"
                     >
                         <div className="px-6 mb-4">
@@ -84,6 +100,7 @@ export const NewTransactionSheet = () => {
                                 <TabsTrigger value="details">
                                     Details
                                 </TabsTrigger>
+                                <TabsTrigger value="import">Import</TabsTrigger>
                                 <TabsTrigger value="documents">
                                     Documents
                                 </TabsTrigger>
@@ -99,6 +116,13 @@ export const NewTransactionSheet = () => {
                                     onCreateCustomer={onCreateCustomer}
                                     onSubmit={onSubmit}
                                     defaultValues={defaultValues}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="import" className="mt-6">
+                                <InvoiceImport
+                                    onComplete={onClose}
+                                    onOpenTransaction={onOpenEdit}
                                 />
                             </TabsContent>
 

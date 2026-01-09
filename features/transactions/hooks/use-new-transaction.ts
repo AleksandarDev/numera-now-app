@@ -20,15 +20,21 @@ type TransactionDefaultValues = {
     }[];
 };
 
+type NewTransactionTab = 'details' | 'import' | 'documents';
+
 type NewTransactionState = {
     defaultValues?: TransactionDefaultValues;
+    defaultTab?: NewTransactionTab;
     setDefaultValues: (defaultValues?: TransactionDefaultValues) => void;
+    setDefaultTab: (tab?: NewTransactionTab) => void;
 };
 
 const useNewTransactionStore = create<NewTransactionState>((set) => ({
     defaultValues: undefined,
+    defaultTab: undefined,
     setDefaultValues: (defaultValues?: TransactionDefaultValues) =>
         set({ defaultValues }),
+    setDefaultTab: (defaultTab?: NewTransactionTab) => set({ defaultTab }),
 }));
 
 export const useNewTransaction = () => {
@@ -36,17 +42,24 @@ export const useNewTransaction = () => {
         'newTransaction',
         parseAsString,
     );
-    const { defaultValues, setDefaultValues } = useNewTransactionStore();
+    const { defaultValues, defaultTab, setDefaultValues, setDefaultTab } =
+        useNewTransactionStore();
 
     return {
         isOpen: newTransactionParam === '1',
         defaultValues,
-        onOpen: (values?: TransactionDefaultValues) => {
+        defaultTab,
+        onOpen: (
+            values?: TransactionDefaultValues,
+            tab?: NewTransactionTab,
+        ) => {
             setDefaultValues(values);
+            setDefaultTab(tab);
             void setNewTransactionParam('1');
         },
         onClose: () => {
             setDefaultValues(undefined);
+            setDefaultTab(undefined);
             void setNewTransactionParam(null);
         },
     };

@@ -48,7 +48,9 @@ export const TagsColumn = ({ id, tags }: TagsColumnProps) => {
                     style={{
                         backgroundColor: tag.color ?? '#3b82f6',
                         borderColor: tag.color ?? '#3b82f6',
-                        color: tag.color ? getContrastingTextColor(tag.color) : '#ffffff',
+                        color: tag.color
+                            ? getContrastingTextColor(tag.color)
+                            : '#ffffff',
                     }}
                     title={tag.name}
                 >

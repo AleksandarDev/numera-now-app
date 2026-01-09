@@ -2309,7 +2309,8 @@ const app = new Hono()
                         id: createId(),
                         date: parentTransactionValues.date,
                         payee: parentTransactionValues.payee,
-                        payeeCustomerId: parentTransactionValues.payeeCustomerId,
+                        payeeCustomerId:
+                            parentTransactionValues.payeeCustomerId,
                         amount: split.amount,
                         accountId: split.accountId,
                         creditAccountId: split.creditAccountId,
