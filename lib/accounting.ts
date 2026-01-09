@@ -57,14 +57,10 @@ export function calculateAccountBalance(
  * Check if an account balance is in its normal state (positive)
  * or contra/unusual state (negative)
  *
- * @param accountClass - The accounting class of the account
  * @param balance - The account balance
- * @returns true if the balance is normal (positive for its class)
+ * @returns true if the balance is normal (positive)
  */
-export function isNormalBalance(
-    accountClass: AccountClass,
-    balance: number,
-): boolean {
+export function isNormalBalance(balance: number): boolean {
     return balance >= 0;
 }
 
@@ -160,7 +156,6 @@ export function suggestAccountClass(
         case 'credit':
             // Credit accounts are typically liabilities, equity, or income
             return 'liability';
-        case 'neutral':
         default:
             // Can't suggest for neutral accounts
             return null;

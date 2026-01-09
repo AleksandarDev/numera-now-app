@@ -193,9 +193,7 @@ export const AccountForm = ({
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="asset">
-                                                    {
-                                                        ACCOUNT_CLASS_LABELS.asset
-                                                    }{' '}
+                                                    {ACCOUNT_CLASS_LABELS.asset}{' '}
                                                     (Debit normal)
                                                 </SelectItem>
                                                 <SelectItem value="expense">

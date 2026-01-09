@@ -42,6 +42,8 @@ import type { accounts as accountsSchema } from '@/db/schema';
 import { useBulkCreateAccounts } from '@/features/accounts/api/use-bulk-create-accounts';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 import { useNewAccount } from '@/features/accounts/hooks/use-new-accounts';
+import { useGetSettings } from '@/features/settings/api/use-get-settings';
+import { ACCOUNT_CLASS_LABELS } from '@/lib/accounting';
 import { ImportCard } from '../../../components/import/import-card';
 import { Actions } from './actions';
 
@@ -67,6 +69,9 @@ function AccountsDataTable() {
         pageSize: 9999,
         showClosed,
     });
+    const settingsQuery = useGetSettings();
+    const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
+
     const allAccounts = accountsQuery.data || [];
     const newAccount = useNewAccount();
 
@@ -328,6 +333,25 @@ function AccountsDataTable() {
                                                                     Read-only
                                                                 </span>
                                                             )}
+                                                            {account.accountClass && (
+                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                                    {
+                                                                        ACCOUNT_CLASS_LABELS[
+                                                                            account.accountClass as keyof typeof ACCOUNT_CLASS_LABELS
+                                                                        ]
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            {doubleEntryMode &&
+                                                                !account.accountClass && (
+                                                                    <span
+                                                                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
+                                                                        title="Account class is required for double-entry mode"
+                                                                    >
+                                                                        ⚠️ No
+                                                                        Class
+                                                                    </span>
+                                                                )}
                                                             {account.accountType ===
                                                                 'credit' && (
                                                                 <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
