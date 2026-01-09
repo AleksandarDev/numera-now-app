@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { WidgetConfig } from '@/lib/widgets/types';
-import { getWidgetDefinition } from '@/lib/widgets/registry';
-import { useDashboardStore } from '@/lib/widgets/store';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -12,9 +10,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -23,6 +20,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { getWidgetDefinition } from '@/lib/widgets/registry';
+import { useDashboardStore } from '@/lib/widgets/store';
+import type { WidgetConfig } from '@/lib/widgets/types';
 
 interface WidgetConfigDialogProps {
     widget: WidgetConfig;
@@ -55,10 +55,15 @@ export function WidgetConfigDialog({
         }));
     };
 
-    const getConfigValue = (name: string): string | number | boolean => {
+    const getConfigValue = (
+        name: string,
+    ): string | number | boolean | undefined => {
         // Type-safe way to access config values
-        const configRecord = config as unknown as Record<string, string | number | boolean>;
-        return configRecord[name];
+        const configRecord = config as unknown as Record<
+            string,
+            string | number | boolean | undefined
+        >;
+        return configRecord[name] ?? undefined;
     };
 
     return (
@@ -76,10 +81,7 @@ export function WidgetConfigDialog({
                         const value = getConfigValue(field.name);
 
                         return (
-                            <div
-                                key={field.name}
-                                className="grid gap-2"
-                            >
+                            <div key={field.name} className="grid gap-2">
                                 <Label htmlFor={field.name}>
                                     {field.label}
                                 </Label>
@@ -111,14 +113,17 @@ export function WidgetConfigDialog({
                                             field.defaultValue ??
                                             0
                                         }
-                                        onChange={(e) =>
+                                        onChange={(e) => {
+                                            const numValue = Number.parseFloat(
+                                                e.target.value,
+                                            );
                                             handleFieldChange(
                                                 field.name,
-                                                Number.parseFloat(
-                                                    e.target.value,
-                                                ),
-                                            )
-                                        }
+                                                Number.isNaN(numValue)
+                                                    ? 0
+                                                    : numValue,
+                                            );
+                                        }}
                                     />
                                 )}
 
@@ -141,42 +146,30 @@ export function WidgetConfigDialog({
                                     </div>
                                 )}
 
-                                {field.type === 'select' &&
-                                    field.options && (
-                                        <Select
-                                            value={String(
-                                                value ??
-                                                    field.defaultValue ??
-                                                    '',
-                                            )}
-                                            onValueChange={(val) =>
-                                                handleFieldChange(
-                                                    field.name,
-                                                    val,
-                                                )
-                                            }
-                                        >
-                                            <SelectTrigger id={field.name}>
-                                                <SelectValue
-                                                    placeholder="Select an option"
-                                                />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {field.options.map((option) => (
-                                                    <SelectItem
-                                                        key={String(
-                                                            option.value,
-                                                        )}
-                                                        value={String(
-                                                            option.value,
-                                                        )}
-                                                    >
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
+                                {field.type === 'select' && field.options && (
+                                    <Select
+                                        value={String(
+                                            value ?? field.defaultValue ?? '',
+                                        )}
+                                        onValueChange={(val) =>
+                                            handleFieldChange(field.name, val)
+                                        }
+                                    >
+                                        <SelectTrigger id={field.name}>
+                                            <SelectValue placeholder="Select an option" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {field.options.map((option) => (
+                                                <SelectItem
+                                                    key={String(option.value)}
+                                                    value={String(option.value)}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
 
                                 {field.description && (
                                     <p className="text-xs text-muted-foreground">

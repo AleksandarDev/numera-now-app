@@ -1,13 +1,13 @@
 import { BarChart3, Grid3x3 } from 'lucide-react';
+import { DataChartsWidget } from '@/components/widgets/data-charts-widget';
+import { DataGridWidget } from '@/components/widgets/data-grid-widget';
 import type {
+    DataChartsWidgetConfig,
+    DataGridWidgetConfig,
+    WidgetConfig,
     WidgetDefinition,
     WidgetType,
-    WidgetConfig,
-    DataGridWidgetConfig,
-    DataChartsWidgetConfig,
 } from '@/lib/widgets/types';
-import { DataGridWidget } from '@/components/widgets/data-grid-widget';
-import { DataChartsWidget } from '@/components/widgets/data-charts-widget';
 
 /**
  * Registry of all official widgets
@@ -113,6 +113,8 @@ export function getAvailableWidgets(): WidgetDefinition[] {
 
 /**
  * Get a specific widget definition by type
+ * @param type The widget type to look up
+ * @returns The widget definition, or undefined if the type is not found
  */
 export function getWidgetDefinition(
     type: WidgetType,

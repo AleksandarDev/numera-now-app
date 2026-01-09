@@ -7,7 +7,7 @@ interface DataGridWidgetProps {
     config: DataGridWidgetConfig;
 }
 
-export function DataGridWidget({ config }: DataGridWidgetProps) {
+export function DataGridWidget({ config: _config }: DataGridWidgetProps) {
     // For now, pass through to the existing DataGrid component
     // In the future, config options like showBalance, showIncome, showExpenses
     // can be used to filter the cards displayed

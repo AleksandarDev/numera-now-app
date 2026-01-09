@@ -38,9 +38,7 @@ export interface DataChartsWidgetConfig extends BaseWidgetConfig {
 /**
  * Union type of all widget configurations
  */
-export type WidgetConfig =
-    | DataGridWidgetConfig
-    | DataChartsWidgetConfig;
+export type WidgetConfig = DataGridWidgetConfig | DataChartsWidgetConfig;
 
 /**
  * Widget definition in the registry

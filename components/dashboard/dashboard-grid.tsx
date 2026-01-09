@@ -1,13 +1,13 @@
 'use client';
 
 import {
-    DndContext,
     closestCenter,
+    DndContext,
+    type DragEndEvent,
     KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
-    type DragEndEvent,
 } from '@dnd-kit/core';
 import {
     arrayMove,

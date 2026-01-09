@@ -3,12 +3,12 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Settings, Trash2 } from 'lucide-react';
-import type { WidgetConfig } from '@/lib/widgets/types';
-import { getWidgetDefinition } from '@/lib/widgets/registry';
-import { useDashboardStore } from '@/lib/widgets/store';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { getWidgetDefinition } from '@/lib/widgets/registry';
+import { useDashboardStore } from '@/lib/widgets/store';
+import type { WidgetConfig } from '@/lib/widgets/types';
 import { WidgetConfigDialog } from './widget-config-dialog';
 
 interface DraggableWidgetProps {

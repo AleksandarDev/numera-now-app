@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
-import { DashboardGrid } from '@/components/dashboard/dashboard-grid';
 import { DashboardControls } from '@/components/dashboard/dashboard-controls';
+import { DashboardGrid } from '@/components/dashboard/dashboard-grid';
 
 export default function DashboardPage() {
     return (

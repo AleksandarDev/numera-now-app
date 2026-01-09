@@ -2,6 +2,14 @@
 
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -10,16 +18,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { getAvailableWidgets } from '@/lib/widgets/registry';
 import { useDashboardStore } from '@/lib/widgets/store';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 
 export function WidgetStoreButton() {
     const [open, setOpen] = useState(false);

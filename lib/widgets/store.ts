@@ -2,8 +2,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DashboardLayout, WidgetConfig, WidgetType } from './types';
 import { createWidgetInstance } from './registry';
+import type { DashboardLayout, WidgetConfig, WidgetType } from './types';
 
 interface DashboardStore extends DashboardLayout {
     addWidget: (type: WidgetType) => void;
@@ -38,17 +38,13 @@ export const useDashboardStore = create<DashboardStore>()(
 
             removeWidget: (id) =>
                 set((state) => ({
-                    widgets: state.widgets.filter(
-                        (widget) => widget.id !== id,
-                    ),
+                    widgets: state.widgets.filter((widget) => widget.id !== id),
                 })),
 
             updateWidget: (id, config) =>
                 set((state) => ({
                     widgets: state.widgets.map((widget) =>
-                        widget.id === id
-                            ? { ...widget, ...config }
-                            : widget,
+                        widget.id === id ? { ...widget, ...config } : widget,
                     ),
                 })),
 
