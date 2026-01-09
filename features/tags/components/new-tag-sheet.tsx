@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+
 import {
     Sheet,
     SheetContent,
@@ -6,20 +7,21 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { insertCategorySchema } from '@/db/schema';
-import { useCreateCategory } from '@/features/categories/api/use-create-category';
-import { CategoryForm } from '@/features/categories/components/category-form';
-import { useNewCategory } from '@/features/categories/hooks/use-new-category';
+import { insertTagSchema } from '@/db/schema';
+import { useCreateTag } from '@/features/tags/api/use-create-tag';
+import { TagForm } from '@/features/tags/components/tag-form';
+import { useNewTag } from '@/features/tags/hooks/use-new-tag';
 
-const formSchema = insertCategorySchema.pick({
+const formSchema = insertTagSchema.pick({
     name: true,
+    color: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export const NewCategorySheet = () => {
-    const { isOpen, onClose } = useNewCategory();
-    const mutation = useCreateCategory();
+export const NewTagSheet = () => {
+    const { isOpen, onClose } = useNewTag();
+    const mutation = useCreateTag();
 
     const onSubmit = (values: FormValues) => {
         mutation.mutate(values, {
@@ -34,18 +36,19 @@ export const NewCategorySheet = () => {
             <SheetContent className="flex flex-col h-full p-0">
                 <div className="px-6 pt-6">
                     <SheetHeader>
-                        <SheetTitle>New Category</SheetTitle>
+                        <SheetTitle>New Tag</SheetTitle>
 
                         <SheetDescription>
-                            Create a new category to organize your transactions.
+                            Create a new tag to organize your transactions.
                         </SheetDescription>
                     </SheetHeader>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-6">
-                    <CategoryForm
+                    <TagForm
                         defaultValues={{
                             name: '',
+                            color: '#3b82f6',
                         }}
                         onSubmit={onSubmit}
                         disabled={mutation.isPending}

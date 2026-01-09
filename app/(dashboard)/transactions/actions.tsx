@@ -44,7 +44,6 @@ type ActionsProps = {
         amount?: number | null;
         payeeCustomerId?: string | null;
         payee?: string | null;
-        categoryId?: string | null;
         notes?: string | null;
         status?: string | null;
         accountId?: string | null;
@@ -78,27 +77,24 @@ export const Actions = ({ transaction }: ActionsProps) => {
             date: new Date(),
             payeeCustomerId: transaction.payeeCustomerId ?? '',
             notes: transaction.notes ?? '',
-            categoryId: transaction.categoryId ?? '',
             creditEntries: transaction.creditAccountId
                 ? [
                       {
                           accountId: transaction.creditAccountId,
                           amount,
-                          categoryId: transaction.categoryId ?? '',
                           notes: '',
                       },
                   ]
-                : [{ accountId: '', amount: '', categoryId: '', notes: '' }],
+                : [{ accountId: '', amount: '', notes: '' }],
             debitEntries: transaction.debitAccountId
                 ? [
                       {
                           accountId: transaction.debitAccountId,
                           amount,
-                          categoryId: transaction.categoryId ?? '',
                           notes: '',
                       },
                   ]
-                : [{ accountId: '', amount: '', categoryId: '', notes: '' }],
+                : [{ accountId: '', amount: '', notes: '' }],
         };
 
         onOpenNew(defaultValues);
@@ -135,7 +131,6 @@ export const Actions = ({ transaction }: ActionsProps) => {
                 accountId: transaction.accountId,
                 creditAccountId: transaction.creditAccountId,
                 debitAccountId: transaction.debitAccountId,
-                categoryId: transaction.categoryId,
                 splitGroupId: transaction.splitGroupId,
                 splitType: transaction.splitType,
             },

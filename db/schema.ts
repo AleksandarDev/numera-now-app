@@ -49,22 +49,66 @@ export const insertAccountSchema = createInsertSchema(accounts, {
     accountType: z.enum(['credit', 'debit', 'neutral']).default('neutral'),
 });
 
-export const categories = pgTable(
-    'categories',
+// Tags table - flexible multi-select labeling system
+export const tags = pgTable(
+    'tags',
     {
         id: text('id').primaryKey(),
-        plaidId: text('plaid_id'),
         name: text('name').notNull(),
+        color: text('color'), // Optional hex color for visual distinction
         userId: text('user_id').notNull(),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
     },
-    (table) => [index('categories_userid_idx').on(table.userId)],
+    (table) => [
+        index('tags_userid_idx').on(table.userId),
+        index('tags_name_idx').on(table.name),
+    ],
 );
 
-export const categoriesRelations = relations(categories, ({ many }) => ({
-    transactions: many(transactions),
+export const tagsRelations = relations(tags, ({ many }) => ({
+    transactionTags: many(transactionTags),
 }));
 
-export const insertCategorySchema = createInsertSchema(categories);
+export const insertTagSchema = createInsertSchema(tags);
+
+// Junction table for many-to-many relationship between transactions and tags
+export const transactionTags = pgTable(
+    'transaction_tags',
+    {
+        id: text('id').primaryKey(),
+        transactionId: text('transaction_id')
+            .notNull()
+            .references(() => transactions.id, { onDelete: 'cascade' }),
+        tagId: text('tag_id')
+            .notNull()
+            .references(() => tags.id, { onDelete: 'cascade' }),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        index('transaction_tags_transactionid_idx').on(table.transactionId),
+        index('transaction_tags_tagid_idx').on(table.tagId),
+    ],
+);
+
+export const transactionTagsRelations = relations(
+    transactionTags,
+    ({ one }) => ({
+        transaction: one(transactions, {
+            fields: [transactionTags.transactionId],
+            references: [transactions.id],
+        }),
+        tag: one(tags, {
+            fields: [transactionTags.tagId],
+            references: [tags.id],
+        }),
+    }),
+);
+
+export const insertTransactionTagSchema = createInsertSchema(transactionTags);
 
 export const customers = pgTable(
     'customers',
@@ -191,9 +235,12 @@ export const documents = pgTable(
                 onDelete: 'restrict',
             }),
         // Primary transaction this document is attached to (nullable for standalone documents)
-        transactionId: text('transaction_id').references(() => transactions.id, {
-            onDelete: 'set null',
-        }),
+        transactionId: text('transaction_id').references(
+            () => transactions.id,
+            {
+                onDelete: 'set null',
+            },
+        ),
         // Azure Blob Storage path
         storagePath: text('storage_path').notNull(),
         // Uploader user ID
@@ -252,9 +299,6 @@ export const transactions = pgTable(
         debitAccountId: text('debit_account_id').references(() => accounts.id, {
             onDelete: 'set null',
         }),
-        categoryId: text('category_id').references(() => categories.id, {
-            onDelete: 'set null',
-        }),
         // Transaction status fields
         status: text('status').notNull().default('pending'), // draft, pending, completed, reconciled
         statusChangedAt: timestamp('status_changed_at', { mode: 'date' })
@@ -272,7 +316,6 @@ export const transactions = pgTable(
         index('transactions_accountid_idx').on(table.accountId),
         index('transactions_creditaccountid_idx').on(table.creditAccountId),
         index('transactions_debutaccountid_idx').on(table.debitAccountId),
-        index('transactions_categoryid_idx').on(table.categoryId),
         index('transactions_payeecustomerid_idx').on(table.payeeCustomerId),
         index('transactions_date_idx').on(table.date),
         index('transactions_status_idx').on(table.status),
@@ -301,10 +344,6 @@ export const transactionsRelations = relations(
             references: [accounts.id],
             relationName: 'transactionsDebitAccounts',
         }),
-        categories: one(categories, {
-            fields: [transactions.categoryId],
-            references: [categories.id],
-        }),
         payeeCustomer: one(customers, {
             fields: [transactions.payeeCustomerId],
             references: [customers.id],
@@ -312,6 +351,7 @@ export const transactionsRelations = relations(
         documents: many(documents, {
             relationName: 'documents',
         }),
+        transactionTags: many(transactionTags),
     }),
 );
 
@@ -405,11 +445,10 @@ export const stripeSettings = pgTable(
             () => accounts.id,
             { onDelete: 'set null' },
         ),
-        // Default category for Stripe transactions
-        defaultCategoryId: text('default_category_id').references(
-            () => categories.id,
-            { onDelete: 'set null' },
-        ),
+        // Default tag for Stripe transactions
+        defaultTagId: text('default_tag_id').references(() => tags.id, {
+            onDelete: 'set null',
+        }),
         // Whether the integration is enabled
         isEnabled: boolean('is_enabled').notNull().default(false),
         // Date from which to start syncing payments (for initial import)
@@ -440,9 +479,9 @@ export const stripeSettingsRelations = relations(stripeSettings, ({ one }) => ({
         references: [accounts.id],
         relationName: 'stripeDebitAccount',
     }),
-    defaultCategory: one(categories, {
-        fields: [stripeSettings.defaultCategoryId],
-        references: [categories.id],
+    defaultTag: one(tags, {
+        fields: [stripeSettings.defaultTagId],
+        references: [tags.id],
     }),
 }));
 

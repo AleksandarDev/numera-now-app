@@ -7,12 +7,12 @@ import type {
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
 
-type CategoryTooltipProps = {
+type TagTooltipProps = {
     active: boolean | undefined;
     payload: Payload<ValueType, NameType>[] | undefined;
 };
 
-export const CategoryTooltip = ({ active, payload }: CategoryTooltipProps) => {
+export const TagTooltip = ({ active, payload }: TagTooltipProps) => {
     if (!active || !payload) return null;
 
     const name = payload[0].payload.name;

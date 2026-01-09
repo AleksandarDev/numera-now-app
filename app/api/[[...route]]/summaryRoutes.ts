@@ -17,7 +17,7 @@ import {
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '@/db/drizzle';
-import { accounts, categories, transactions } from '@/db/schema';
+import { accounts, tags, transactions, transactionTags } from '@/db/schema';
 import { calculatePercentageChange, fillMissingDays } from '@/lib/utils';
 
 const app = new Hono().get(
@@ -127,9 +127,12 @@ const app = new Hono().get(
 
         const creditAccounts = aliasedTable(accounts, 'creditAccounts');
         const debitAccounts = aliasedTable(accounts, 'debitAccounts');
-        const category = await db
+
+        // Get tag-based spending breakdown
+        // A transaction can have multiple tags, so we join through transactionTags
+        const tagData = await db
             .select({
-                name: categories.name,
+                name: tags.name,
                 value: sql`SUM(ABS(${transactions.amount}))`.mapWith(Number),
             })
             .from(transactions)
@@ -142,7 +145,11 @@ const app = new Hono().get(
                 debitAccounts,
                 eq(transactions.debitAccountId, debitAccounts.id),
             )
-            .innerJoin(categories, eq(transactions.categoryId, categories.id))
+            .innerJoin(
+                transactionTags,
+                eq(transactions.id, transactionTags.transactionId),
+            )
+            .innerJoin(tags, eq(transactionTags.tagId, tags.id))
             .where(
                 and(
                     accountId
@@ -163,20 +170,20 @@ const app = new Hono().get(
                     lte(transactions.date, endDate),
                 ),
             )
-            .groupBy(categories.name)
+            .groupBy(tags.name)
             .orderBy(desc(sql`SUM(ABS(${transactions.amount}))`));
 
-        const topCategories = category.slice(0, 3);
-        const otherCategories = category.slice(3);
-        const otherSum = otherCategories.reduce(
+        const topTags = tagData.slice(0, 3);
+        const otherTags = tagData.slice(3);
+        const otherSum = otherTags.reduce(
             (sum, current) => sum + current.value,
             0,
         );
 
-        const finalCategories = topCategories;
+        const finalTags = topTags;
 
-        if (otherCategories.length > 0)
-            finalCategories.push({ name: 'Other', value: otherSum });
+        if (otherTags.length > 0)
+            finalTags.push({ name: 'Other', value: otherSum });
 
         const activeDays = await db
             .select({
@@ -231,7 +238,7 @@ const app = new Hono().get(
                 incomeChange,
                 expensesAmount: currentPeriod.expenses,
                 expensesChange,
-                categories: finalCategories,
+                tags: finalTags,
                 days,
             },
         });

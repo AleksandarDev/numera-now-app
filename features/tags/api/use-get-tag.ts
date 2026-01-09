@@ -2,16 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 
 import { client } from '@/lib/hono';
 
-export const useGetCategory = (id?: string) => {
+export const useGetTag = (id?: string) => {
     const query = useQuery({
         enabled: !!id,
-        queryKey: ['category', { id }],
+        queryKey: ['tag', { id }],
         queryFn: async () => {
-            const response = await client.api.categories[':id'].$get({
+            const response = await client.api.tags[':id'].$get({
                 param: { id },
             });
 
-            if (!response.ok) throw new Error('Failed to fetch category.');
+            if (!response.ok) throw new Error('Failed to fetch tag.');
 
             const { data } = await response.json();
 

@@ -10,14 +10,14 @@ import {
     type QuickAssignSuggestion,
     QuickAssignSuggestions,
 } from '@/components/quick-assign-suggestions';
-import { Select } from '@/components/select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
+import { useGetSuggestedTags } from '@/features/tags/api/use-get-suggested-tags';
+import { TagMultiSelect } from '@/features/tags/components/tag-multi-select';
 import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
-import { useGetSuggestedCategories } from '@/features/transactions/api/use-get-suggested-categories';
 import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +26,6 @@ type CreditEntry = {
     id: string;
     accountId: string;
     amount: string;
-    categoryId?: string;
     notes?: string;
 };
 
@@ -34,7 +33,6 @@ type DebitEntry = {
     id: string;
     accountId: string;
     amount: string;
-    categoryId?: string;
     notes?: string;
 };
 
@@ -42,7 +40,7 @@ export type UnifiedTransactionFormValues = {
     date: Date;
     payeeCustomerId?: string;
     notes?: string;
-    categoryId?: string;
+    tagIds?: string[];
     creditEntries: Array<Omit<CreditEntry, 'id'>>;
     debitEntries: Array<Omit<DebitEntry, 'id'>>;
 };
@@ -50,8 +48,8 @@ export type UnifiedTransactionFormValues = {
 type Props = {
     id?: string;
     disabled?: boolean;
-    categoryOptions: { label: string; value: string }[];
-    onCreateCategory: (name: string) => void;
+    tagOptions: { label: string; value: string; color?: string | null }[];
+    onCreateTag: (name: string) => void;
     onCreateCustomer: (name: string) => Promise<string | undefined>;
     onSubmit: (values: UnifiedTransactionFormValues) => void;
     onDelete?: () => void;
@@ -62,15 +60,14 @@ const createDefaultEntry = (id: string) => ({
     id,
     accountId: '',
     amount: '',
-    categoryId: '',
     notes: '',
 });
 
 export const UnifiedTransactionForm = ({
     id,
     disabled,
-    categoryOptions,
-    onCreateCategory,
+    tagOptions,
+    onCreateTag,
     onCreateCustomer,
     onSubmit,
     onDelete,
@@ -84,9 +81,7 @@ export const UnifiedTransactionForm = ({
         defaultValues?.payeeCustomerId ?? '',
     );
     const [notes, setNotes] = useState(defaultValues?.notes ?? '');
-    const [categoryId, setCategoryId] = useState(
-        defaultValues?.categoryId ?? '',
-    );
+    const [tagIds, setTagIds] = useState<string[]>(defaultValues?.tagIds ?? []);
 
     // Entry state with unique IDs
     const [creditEntries, setCreditEntries] = useState<CreditEntry[]>(() => {
@@ -121,7 +116,7 @@ export const UnifiedTransactionForm = ({
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [isAccountSelectOpen, setIsAccountSelectOpen] = useState(false);
-    const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+    const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
 
     // Fetch customers list for quick-assign display
     const { data: customers } = useGetCustomers();
@@ -130,7 +125,8 @@ export const UnifiedTransactionForm = ({
     const effectiveNotes = notes || defaultValues?.notes || '';
     const effectiveCustomerId =
         payeeCustomerId || defaultValues?.payeeCustomerId || '';
-    const effectiveCategoryId = categoryId || defaultValues?.categoryId || '';
+    const effectiveTagIds =
+        tagIds.length > 0 ? tagIds : (defaultValues?.tagIds ?? []);
 
     // Customer suggestions - fetch when customer is not set and we have notes
     const shouldFetchCustomerSuggestions =
@@ -172,21 +168,19 @@ export const UnifiedTransactionForm = ({
         [suggestedAccountsQuery.data?.debit],
     );
 
-    // Category suggestions - fetch when customer is selected but category is not set
-    const shouldFetchCategorySuggestions =
-        !!effectiveCustomerId && !effectiveCategoryId;
-    const suggestedCategoriesQuery = useGetSuggestedCategories(
-        effectiveCustomerId,
-        {
-            enabled: shouldFetchCategorySuggestions || isCategoryMenuOpen,
-        },
+    // Tag suggestions - fetch when customer is selected but no tags set
+    const shouldFetchTagSuggestions =
+        !!effectiveCustomerId && effectiveTagIds.length === 0;
+    const suggestedTagsQuery = useGetSuggestedTags(
+        shouldFetchTagSuggestions || isTagMenuOpen
+            ? effectiveCustomerId
+            : undefined,
     );
-    const suggestedCategoryIds = useMemo(
+    const suggestedTagIds = useMemo(
         () =>
-            suggestedCategoriesQuery.data?.map(
-                (suggestion) => suggestion.categoryId,
-            ) ?? [],
-        [suggestedCategoriesQuery.data],
+            suggestedTagsQuery.data?.map((suggestion) => suggestion.tagId) ??
+            [],
+        [suggestedTagsQuery.data],
     );
 
     // Quick-assign suggestions for customer
@@ -208,35 +202,33 @@ export const UnifiedTransactionForm = ({
             .filter((s) => s.label !== 'Unknown');
     }, [suggestedCustomersQuery.data, customers, effectiveCustomerId]);
 
-    // Quick-assign suggestions for category
-    const categoryQuickAssignSuggestions = useMemo<
-        QuickAssignSuggestion[]
-    >(() => {
-        if (effectiveCategoryId || !suggestedCategoryIds.length) return [];
-        return suggestedCategoryIds.slice(0, 3).map((catId) => {
-            const category = categoryOptions.find((c) => c.value === catId);
+    // Quick-assign suggestions for tags
+    const tagQuickAssignSuggestions = useMemo<QuickAssignSuggestion[]>(() => {
+        if (effectiveTagIds.length > 0 || !suggestedTagIds.length) return [];
+        return suggestedTagIds.slice(0, 3).map((tagId) => {
+            const tag = tagOptions.find((t) => t.value === tagId);
             return {
-                id: catId,
-                label: category?.label ?? 'Unknown',
+                id: tagId,
+                label: tag?.label ?? 'Unknown',
             };
         });
-    }, [suggestedCategoryIds, categoryOptions, effectiveCategoryId]);
+    }, [suggestedTagIds, tagOptions, effectiveTagIds]);
 
-    const resolvedCategoryOptions = useMemo(() => {
-        if (suggestedCategoryIds.length === 0) {
-            return categoryOptions;
+    const resolvedTagOptions = useMemo(() => {
+        if (suggestedTagIds.length === 0) {
+            return tagOptions;
         }
 
-        const suggestedIdSet = new Set(suggestedCategoryIds);
-        const suggested = categoryOptions
+        const suggestedIdSet = new Set(suggestedTagIds);
+        const suggested = tagOptions
             .filter((option) => suggestedIdSet.has(option.value))
             .map((option) => ({ ...option, suggested: true }));
-        const remaining = categoryOptions.filter(
+        const remaining = tagOptions.filter(
             (option) => !suggestedIdSet.has(option.value),
         );
 
         return [...suggested, ...remaining];
-    }, [categoryOptions, suggestedCategoryIds]);
+    }, [tagOptions, suggestedTagIds]);
 
     const creditTotal = useMemo(
         () =>
@@ -370,7 +362,7 @@ export const UnifiedTransactionForm = ({
             date,
             payeeCustomerId: payeeCustomerId || undefined,
             notes: notes || undefined,
-            categoryId: categoryId || undefined,
+            tagIds: tagIds.length > 0 ? tagIds : undefined,
             creditEntries: creditEntries.map(({ id: _id, ...entry }) => entry),
             debitEntries: debitEntries.map(({ id: _id, ...entry }) => entry),
         });
@@ -717,25 +709,25 @@ export const UnifiedTransactionForm = ({
             {/* Optional Fields */}
             <div className="space-y-4">
                 <div className="space-y-2">
-                    <Label>Category (Optional)</Label>
-                    <Select
-                        placeholder="Select a category"
-                        options={resolvedCategoryOptions}
-                        onCreate={onCreateCategory}
-                        value={categoryId}
-                        onChange={(value) => setCategoryId(value ?? '')}
+                    <Label>Tags (Optional)</Label>
+                    <TagMultiSelect
+                        placeholder="Select tags..."
+                        options={resolvedTagOptions}
+                        onCreate={onCreateTag}
+                        value={tagIds}
+                        onChange={setTagIds}
                         disabled={isPending}
-                        onMenuOpen={() => setIsCategoryMenuOpen(true)}
-                        onMenuClose={() => setIsCategoryMenuOpen(false)}
+                        onMenuOpen={() => setIsTagMenuOpen(true)}
+                        onMenuClose={() => setIsTagMenuOpen(false)}
                     />
-                    {!categoryId && effectiveCustomerId && (
+                    {tagIds.length === 0 && effectiveCustomerId && (
                         <QuickAssignSuggestions
-                            suggestions={categoryQuickAssignSuggestions}
+                            suggestions={tagQuickAssignSuggestions}
                             isLoading={
-                                shouldFetchCategorySuggestions &&
-                                suggestedCategoriesQuery.isLoading
+                                shouldFetchTagSuggestions &&
+                                suggestedTagsQuery.isLoading
                             }
-                            onSelect={setCategoryId}
+                            onSelect={(tagId) => setTagIds([...tagIds, tagId])}
                             disabled={isPending}
                         />
                     )}

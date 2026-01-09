@@ -23,13 +23,14 @@ import { type ZodIssue, z } from 'zod';
 import { db } from '@/db/drizzle';
 import {
     accounts,
-    categories,
     createTransactionSchema,
     customers,
     documents,
     settings,
+    tags,
     transactionStatusHistory,
     transactions,
+    transactionTags,
 } from '@/db/schema';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -245,8 +246,6 @@ const app = new Hono()
                 .select({
                     id: transactions.id,
                     date: transactions.date,
-                    category: categories.name,
-                    categoryId: transactions.categoryId,
                     payee: transactions.payee,
                     payeeCustomerId: transactions.payeeCustomerId,
                     payeeCustomerName: customers.name,
@@ -282,10 +281,6 @@ const app = new Hono()
                 .leftJoin(
                     debitAccounts,
                     eq(transactions.debitAccountId, debitAccounts.id),
-                )
-                .leftJoin(
-                    categories,
-                    eq(transactions.categoryId, categories.id),
                 )
                 .leftJoin(
                     customers,
@@ -340,6 +335,7 @@ const app = new Hono()
 
                 // Group by transaction and count
                 docsData.forEach((doc) => {
+                    if (!doc.transactionId) return;
                     const existing = documentCounts.get(doc.transactionId) || {
                         total: 0,
                         requiredTypes: [],
@@ -356,7 +352,40 @@ const app = new Hono()
                 });
             }
 
-            // Combine data with document info
+            // Get tags for each transaction
+            const transactionTagsMap: Map<
+                string,
+                Array<{ id: string; name: string; color: string | null }>
+            > = new Map();
+
+            if (transactionIds.length > 0) {
+                const tagsData = await db
+                    .select({
+                        transactionId: transactionTags.transactionId,
+                        tagId: tags.id,
+                        tagName: tags.name,
+                        tagColor: tags.color,
+                    })
+                    .from(transactionTags)
+                    .innerJoin(tags, eq(transactionTags.tagId, tags.id))
+                    .where(
+                        inArray(transactionTags.transactionId, transactionIds),
+                    );
+
+                // Group by transaction
+                tagsData.forEach((tagData) => {
+                    const existing =
+                        transactionTagsMap.get(tagData.transactionId) || [];
+                    existing.push({
+                        id: tagData.tagId,
+                        name: tagData.tagName,
+                        color: tagData.tagColor,
+                    });
+                    transactionTagsMap.set(tagData.transactionId, existing);
+                });
+            }
+
+            // Combine data with document info and tags
             // If minRequiredDocs is 0, all required types must be attached
             // If minRequiredDocs > 0, at least that many required types must be attached
             const dataWithDocs = data.map((transaction) => {
@@ -382,6 +411,7 @@ const app = new Hono()
 
                 return {
                     ...transaction,
+                    tags: transactionTagsMap.get(transaction.id) ?? [],
                     documentCount:
                         documentCounts.get(transaction.id)?.total ?? 0,
                     hasAllRequiredDocuments,
@@ -769,7 +799,7 @@ const app = new Hono()
         },
     )
     .get(
-        '/suggested-categories',
+        '/suggested-tags',
         zValidator(
             'query',
             z.object({
@@ -801,34 +831,35 @@ const app = new Hono()
 
             const suggestionLimit = 5;
 
-            const categoryUsage = await db
+            // Get tags used with this customer, ordered by usage
+            const tagUsage = await db
                 .select({
-                    categoryId: transactions.categoryId,
+                    tagId: transactionTags.tagId,
                     usageCount: sql<number>`count(*)`.as('usageCount'),
                     lastUsed: sql<Date>`max(${transactions.date})`.as(
                         'lastUsed',
                     ),
                 })
-                .from(transactions)
-                .leftJoin(
-                    categories,
-                    eq(transactions.categoryId, categories.id),
+                .from(transactionTags)
+                .innerJoin(
+                    transactions,
+                    eq(transactionTags.transactionId, transactions.id),
                 )
+                .innerJoin(tags, eq(transactionTags.tagId, tags.id))
                 .where(
                     and(
                         eq(transactions.payeeCustomerId, customerId),
-                        eq(categories.userId, auth.userId),
-                        isNotNull(transactions.categoryId),
+                        eq(tags.userId, auth.userId),
                     ),
                 )
-                .groupBy(transactions.categoryId)
+                .groupBy(transactionTags.tagId)
                 .orderBy(
                     desc(sql`count(*)`),
                     desc(sql`max(${transactions.date})`),
                 )
                 .limit(suggestionLimit);
 
-            return ctx.json({ data: categoryUsage });
+            return ctx.json({ data: tagUsage });
         },
     )
     .get(
@@ -858,7 +889,6 @@ const app = new Hono()
                 .select({
                     id: transactions.id,
                     date: transactions.date,
-                    categoryId: transactions.categoryId,
                     payee: transactions.payee,
                     payeeCustomerId: transactions.payeeCustomerId,
                     amount: transactions.amount,
@@ -907,13 +937,35 @@ const app = new Hono()
                 return ctx.json({ error: 'Not found.' }, 404);
             }
 
-            return ctx.json({ data });
+            // Get tags for this transaction
+            const transactionTagsData = await db
+                .select({
+                    tagId: tags.id,
+                    tagName: tags.name,
+                    tagColor: tags.color,
+                })
+                .from(transactionTags)
+                .innerJoin(tags, eq(transactionTags.tagId, tags.id))
+                .where(eq(transactionTags.transactionId, id));
+
+            const tagsArray = transactionTagsData.map((t) => ({
+                id: t.tagId,
+                name: t.tagName,
+                color: t.tagColor,
+            }));
+
+            return ctx.json({ data: { ...data, tags: tagsArray } });
         },
     )
     .post(
         '/',
         clerkMiddleware(),
-        zValidator('json', createTransactionSchema),
+        zValidator(
+            'json',
+            createTransactionSchema.and(
+                z.object({ tagIds: z.array(z.string()).optional() }),
+            ),
+        ),
         async (ctx) => {
             const auth = getAuth(ctx);
             const values = ctx.req.valid('json');
@@ -1096,13 +1148,13 @@ const app = new Hono()
             }
 
             // Convert empty strings to null for foreign key fields
+            const { tagIds, ...transactionValues } = values;
             const cleanedValues = {
-                ...values,
-                accountId: values.accountId || null,
-                creditAccountId: values.creditAccountId || null,
-                debitAccountId: values.debitAccountId || null,
-                categoryId: values.categoryId || null,
-                payeeCustomerId: values.payeeCustomerId || null,
+                ...transactionValues,
+                accountId: transactionValues.accountId || null,
+                creditAccountId: transactionValues.creditAccountId || null,
+                debitAccountId: transactionValues.debitAccountId || null,
+                payeeCustomerId: transactionValues.payeeCustomerId || null,
             };
 
             const [data] = await db
@@ -1115,6 +1167,17 @@ const app = new Hono()
                     statusChangedBy: auth.userId,
                 })
                 .returning();
+
+            // Insert tags if provided
+            if (tagIds && tagIds.length > 0) {
+                await db.insert(transactionTags).values(
+                    tagIds.map((tagId) => ({
+                        id: createId(),
+                        transactionId: transactionId,
+                        tagId: tagId,
+                    })),
+                );
+            }
 
             // Record initial status in history
             await recordStatusChange(
@@ -1306,7 +1369,6 @@ const app = new Hono()
                         accountId: value.accountId || null,
                         creditAccountId: value.creditAccountId || null,
                         debitAccountId: value.debitAccountId || null,
-                        categoryId: value.categoryId || null,
                         payeeCustomerId: value.payeeCustomerId || null,
                     })),
                 )
@@ -1393,22 +1455,30 @@ const app = new Hono()
                 id: z.string().optional(),
             }),
         ),
-        zValidator('json', createTransactionSchema, (result, ctx) => {
-            if (!result.success) {
-                const errors = result.error.issues.map((issue) => {
-                    const path = issue.path.join('.');
-                    return path ? `${path}: ${issue.message}` : issue.message;
-                });
-                logValidationIssues(result.error.issues);
-                return ctx.json(
-                    {
-                        error: errors.join('; '),
-                        validationErrors: result.error.issues,
-                    },
-                    400,
-                );
-            }
-        }),
+        zValidator(
+            'json',
+            createTransactionSchema.and(
+                z.object({ tagIds: z.array(z.string()).optional() }),
+            ),
+            (result, ctx) => {
+                if (!result.success) {
+                    const errors = result.error.issues.map((issue) => {
+                        const path = issue.path.join('.');
+                        return path
+                            ? `${path}: ${issue.message}`
+                            : issue.message;
+                    });
+                    logValidationIssues(result.error.issues);
+                    return ctx.json(
+                        {
+                            error: errors.join('; '),
+                            validationErrors: result.error.issues,
+                        },
+                        400,
+                    );
+                }
+            },
+        ),
         async (ctx) => {
             const auth = getAuth(ctx);
             const { id } = ctx.req.valid('param');
@@ -1663,29 +1733,28 @@ const app = new Hono()
             // Use the status from our earlier check instead of querying again
             const oldTransaction = { status: existingTransaction.status };
 
+            // Extract tagIds from values
+            const { tagIds, ...transactionValues } = values;
+
             // Convert empty strings to null for foreign key fields
             const cleanedValues = {
-                ...values,
+                ...transactionValues,
                 accountId:
-                    values.accountId === undefined
+                    transactionValues.accountId === undefined
                         ? undefined
-                        : values.accountId || null,
+                        : transactionValues.accountId || null,
                 creditAccountId:
-                    values.creditAccountId === undefined
+                    transactionValues.creditAccountId === undefined
                         ? undefined
-                        : values.creditAccountId || null,
+                        : transactionValues.creditAccountId || null,
                 debitAccountId:
-                    values.debitAccountId === undefined
+                    transactionValues.debitAccountId === undefined
                         ? undefined
-                        : values.debitAccountId || null,
-                categoryId:
-                    values.categoryId === undefined
-                        ? undefined
-                        : values.categoryId || null,
+                        : transactionValues.debitAccountId || null,
                 payeeCustomerId:
-                    values.payeeCustomerId === undefined
+                    transactionValues.payeeCustomerId === undefined
                         ? undefined
-                        : values.payeeCustomerId || null,
+                        : transactionValues.payeeCustomerId || null,
             };
 
             const updateData: typeof cleanedValues & {
@@ -1758,6 +1827,25 @@ const app = new Hono()
                     },
                     404,
                 );
+            }
+
+            // Update tags if tagIds is provided
+            if (tagIds !== undefined) {
+                // Delete existing tags
+                await db
+                    .delete(transactionTags)
+                    .where(eq(transactionTags.transactionId, id));
+
+                // Insert new tags
+                if (tagIds.length > 0) {
+                    await db.insert(transactionTags).values(
+                        tagIds.map((tagId) => ({
+                            id: createId(),
+                            transactionId: id,
+                            tagId: tagId,
+                        })),
+                    );
+                }
             }
 
             // Record status change in history if status changed
@@ -1972,8 +2060,6 @@ const app = new Hono()
                 .select({
                     id: transactions.id,
                     date: transactions.date,
-                    category: categories.name,
-                    categoryId: transactions.categoryId,
                     payee: transactions.payee,
                     payeeCustomerId: transactions.payeeCustomerId,
                     payeeCustomerName: customers.name,
@@ -1998,10 +2084,6 @@ const app = new Hono()
                 .leftJoin(
                     debitAccounts,
                     eq(transactions.debitAccountId, debitAccounts.id),
-                )
-                .leftJoin(
-                    categories,
-                    eq(transactions.categoryId, categories.id),
                 )
                 .leftJoin(
                     customers,
@@ -2035,7 +2117,9 @@ const app = new Hono()
         zValidator(
             'json',
             z.object({
-                parentTransaction: createTransactionSchema,
+                parentTransaction: createTransactionSchema.and(
+                    z.object({ tagIds: z.array(z.string()).optional() }),
+                ),
                 splits: z
                     .array(
                         z.object({
@@ -2043,7 +2127,6 @@ const app = new Hono()
                             accountId: z.string().optional(),
                             creditAccountId: z.string().optional(),
                             debitAccountId: z.string().optional(),
-                            categoryId: z.string().optional(),
                             notes: z.string().optional(),
                         }),
                     )
@@ -2180,13 +2263,16 @@ const app = new Hono()
             const splitGroupId = createId();
             const status = parentTransaction.status || 'pending';
 
+            // Extract tagIds from parentTransaction before inserting
+            const { tagIds, ...parentTransactionValues } = parentTransaction;
+
             // Create parent transaction
             const parentId = createId();
             const [parent] = await db
                 .insert(transactions)
                 .values({
                     id: parentId,
-                    ...parentTransaction,
+                    ...parentTransactionValues,
                     splitGroupId,
                     splitType: 'parent',
                     status,
@@ -2194,6 +2280,17 @@ const app = new Hono()
                     statusChangedBy: auth.userId,
                 })
                 .returning();
+
+            // Insert tags if provided
+            if (tagIds && tagIds.length > 0) {
+                await db.insert(transactionTags).values(
+                    tagIds.map((tagId) => ({
+                        id: createId(),
+                        transactionId: parentId,
+                        tagId: tagId,
+                    })),
+                );
+            }
 
             // Record initial status in history
             await recordStatusChange(
@@ -2210,14 +2307,13 @@ const app = new Hono()
                 .values(
                     splits.map((split) => ({
                         id: createId(),
-                        date: parentTransaction.date,
-                        payee: parentTransaction.payee,
-                        payeeCustomerId: parentTransaction.payeeCustomerId,
+                        date: parentTransactionValues.date,
+                        payee: parentTransactionValues.payee,
+                        payeeCustomerId: parentTransactionValues.payeeCustomerId,
                         amount: split.amount,
                         accountId: split.accountId,
                         creditAccountId: split.creditAccountId,
                         debitAccountId: split.debitAccountId,
-                        categoryId: split.categoryId,
                         notes: split.notes,
                         splitGroupId,
                         splitType: 'child' as const,

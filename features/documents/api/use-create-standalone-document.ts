@@ -11,7 +11,10 @@ export const useCreateStandaloneDocument = () => {
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
-        mutationFn: async ({ documentTypeId, file }: CreateStandaloneDocumentParams) => {
+        mutationFn: async ({
+            documentTypeId,
+            file,
+        }: CreateStandaloneDocumentParams) => {
             // Generate upload URL for standalone document
             const uploadUrlResponse = await client.api.documents[
                 'generate-standalone-upload-url'
@@ -42,15 +45,16 @@ export const useCreateStandaloneDocument = () => {
             }
 
             // Save document metadata
-            const metadataResponse = await client.api.documents.standalone.$post({
-                json: {
-                    documentTypeId,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    mimeType: file.type,
-                    storagePath: uploadData.storagePath,
-                },
-            });
+            const metadataResponse =
+                await client.api.documents.standalone.$post({
+                    json: {
+                        documentTypeId,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        mimeType: file.type,
+                        storagePath: uploadData.storagePath,
+                    },
+                });
 
             if (!metadataResponse.ok) {
                 throw new Error('Failed to save document');

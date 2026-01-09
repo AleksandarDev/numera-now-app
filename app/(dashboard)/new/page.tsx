@@ -10,9 +10,9 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCreateCategory } from '@/features/categories/api/use-create-category';
-import { useGetCategories } from '@/features/categories/api/use-get-categories';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
+import { useCreateTag } from '@/features/tags/api/use-create-tag';
+import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 
 import {
@@ -24,17 +24,17 @@ function NewTransactionContent() {
     const router = useRouter();
 
     const createMutation = useCreateUnifiedTransaction();
-    const categoryMutation = useCreateCategory();
-    const categoryQuery = useGetCategories();
-    const categoryOptions = (categoryQuery.data ?? []).map((category) => ({
-        label: category.name,
-        value: category.id,
+    const tagMutation = useCreateTag();
+    const tagQuery = useGetTags();
+    const tagOptions = (tagQuery.data ?? []).map((tag) => ({
+        label: tag.name,
+        value: tag.id,
+        color: tag.color,
     }));
 
     const customerMutation = useCreateCustomer();
 
-    const onCreateCategory = (name: string) =>
-        categoryMutation.mutate({ name });
+    const onCreateTag = (name: string) => tagMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>
         customerMutation.mutateAsync({ name }).then((response) => {
             if ('data' in response) {
@@ -46,9 +46,9 @@ function NewTransactionContent() {
 
     const isPending =
         createMutation.isPending ||
-        categoryMutation.isPending ||
+        tagMutation.isPending ||
         customerMutation.isPending;
-    const isLoading = categoryQuery.isLoading;
+    const isLoading = tagQuery.isLoading;
 
     const onSubmit = (values: UnifiedTransactionFormValues) => {
         createMutation.mutate(values, {
@@ -83,8 +83,8 @@ function NewTransactionContent() {
                     ) : (
                         <UnifiedTransactionForm
                             disabled={isPending}
-                            categoryOptions={categoryOptions}
-                            onCreateCategory={onCreateCategory}
+                            tagOptions={tagOptions}
+                            onCreateTag={onCreateTag}
                             onCreateCustomer={onCreateCustomer}
                             onSubmit={onSubmit}
                         />

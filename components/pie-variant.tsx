@@ -10,7 +10,7 @@ import {
 
 import { formatPercentage } from '@/lib/utils';
 
-import { CategoryTooltip } from './category-tooltip';
+import { TagTooltip } from './tag-tooltip';
 
 const COLORS = ['#0062FF', '#12C6FF', '#FF647F', '#FF9354'];
 
@@ -78,7 +78,7 @@ export const PieVariant = ({ data }: PieVariantProps) => {
 
                 <Tooltip
                     content={({ active, payload }) => (
-                        <CategoryTooltip active={active} payload={payload} />
+                        <TagTooltip active={active} payload={payload} />
                     )}
                 />
 

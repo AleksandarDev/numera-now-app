@@ -178,8 +178,8 @@ export const CustomerForm = ({
                                 <FormLabel>Mark as Own Firm</FormLabel>
                                 <FormDescription>
                                     Mark this customer as your own company/firm.
-                                    This will be used to automatically link Stripe
-                                    payments.
+                                    This will be used to automatically link
+                                    Stripe payments.
                                 </FormDescription>
                             </div>
                         </FormItem>

@@ -9,6 +9,7 @@ import {
     stripeSettings,
     transactionStatusHistory,
     transactions,
+    transactionTags,
 } from '@/db/schema';
 import { safeDecrypt } from '@/lib/crypto';
 
@@ -66,7 +67,9 @@ const processStripeCharge = async (
     const [ownFirmCustomer] = await db
         .select({ id: customers.id })
         .from(customers)
-        .where(and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)));
+        .where(
+            and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)),
+        );
 
     // Convert amount from Stripe cents to milliunits (app stores amounts * 1000)
     // Stripe: 100 cents = 1.00 EUR
@@ -91,7 +94,6 @@ const processStripeCharge = async (
         date: new Date(charge.created * 1000),
         creditAccountId: settings.defaultCreditAccountId,
         debitAccountId: settings.defaultDebitAccountId,
-        categoryId: settings.defaultCategoryId,
         payeeCustomerId: ownFirmCustomer?.id,
         status: 'pending',
         statusChangedAt: now,
@@ -99,6 +101,15 @@ const processStripeCharge = async (
         stripePaymentId: charge.id,
         stripePaymentUrl: getStripePaymentUrl(charge.id, isLiveMode),
     });
+
+    // Add default tag if configured
+    if (settings.defaultTagId) {
+        await db.insert(transactionTags).values({
+            id: createId(),
+            transactionId,
+            tagId: settings.defaultTagId,
+        });
+    }
 
     await recordStatusChange(
         transactionId,
@@ -116,10 +127,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${CRON_SECRET}`) {
         console.error('[Stripe Cron] Unauthorized request');
-        return NextResponse.json(
-            { error: 'Unauthorized' },
-            { status: 401 },
-        );
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log('[Stripe Cron] Starting hourly sync...');

@@ -360,6 +360,7 @@ migrateCategoriesToTags()
 ```
 
 Run with:
+
 ```bash
 npx tsx scripts/migrate-categories-to-tags.ts
 ```

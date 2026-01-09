@@ -362,6 +362,10 @@ const app = new Hono()
             }
 
             // Verify ownership through transaction
+            if (!doc.transactionId) {
+                return ctx.json({ error: 'Document not linked to a transaction.' }, 400);
+            }
+
             const transaction = await getAuthorizedTransaction(
                 doc.transactionId,
                 auth.userId,
@@ -417,6 +421,10 @@ const app = new Hono()
                 }
 
                 // Verify ownership through transaction
+                if (!doc.transactionId) {
+                    return ctx.json({ error: 'Document not linked to a transaction.' }, 400);
+                }
+
                 const transaction = await getAuthorizedTransaction(
                     doc.transactionId,
                     auth.userId,

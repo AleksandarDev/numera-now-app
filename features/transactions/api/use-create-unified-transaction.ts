@@ -15,14 +15,12 @@ type SplitTransactionResponseType = InferResponseType<
 type CreditEntry = {
     accountId: string;
     amount: string;
-    categoryId?: string;
     notes?: string;
 };
 
 type DebitEntry = {
     accountId: string;
     amount: string;
-    categoryId?: string;
     notes?: string;
 };
 
@@ -30,7 +28,7 @@ type UnifiedTransactionInput = {
     date: Date;
     payeeCustomerId?: string;
     notes?: string;
-    categoryId?: string;
+    tagIds?: string[];
     creditEntries: CreditEntry[];
     debitEntries: DebitEntry[];
 };
@@ -77,10 +75,7 @@ export const useCreateUnifiedTransaction = (
                         payeeCustomerId:
                             baseTransaction.payeeCustomerId || undefined,
                         notes: baseTransaction.notes || undefined,
-                        categoryId:
-                            creditEntries[0].categoryId ||
-                            baseTransaction.categoryId ||
-                            undefined,
+                        tagIds: baseTransaction.tagIds || undefined,
                         creditAccountId: creditEntries[0].accountId,
                         debitAccountId: debitEntries[0].accountId,
                         amount,
@@ -104,7 +99,6 @@ export const useCreateUnifiedTransaction = (
                     amount: number;
                     creditAccountId?: string;
                     debitAccountId?: string;
-                    categoryId?: string;
                     notes?: string;
                 }> = [];
 
@@ -119,7 +113,6 @@ export const useCreateUnifiedTransaction = (
                         amount,
                         creditAccountId: credit.accountId,
                         debitAccountId: debitEntries[0].accountId, // Use first debit as the "main" account
-                        categoryId: credit.categoryId,
                         notes: credit.notes,
                     });
                 }
@@ -134,7 +127,6 @@ export const useCreateUnifiedTransaction = (
                         amount,
                         creditAccountId: creditEntries[0].accountId, // Use first credit as the "main" account
                         debitAccountId: debit.accountId,
-                        categoryId: debit.categoryId,
                         notes: debit.notes,
                     });
                 }
@@ -158,7 +150,7 @@ export const useCreateUnifiedTransaction = (
                             payeeCustomerId:
                                 baseTransaction.payeeCustomerId || undefined,
                             notes: baseTransaction.notes || undefined,
-                            categoryId: baseTransaction.categoryId || undefined,
+                            tagIds: baseTransaction.tagIds || undefined,
                             amount: totalAmount,
                             status,
                         },

@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import type { z } from 'zod';
+
 import {
     Sheet,
     SheetContent,
@@ -7,35 +8,36 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { insertCategorySchema } from '@/db/schema';
+import { insertTagSchema } from '@/db/schema';
 import { useConfirm } from '@/hooks/use-confirm';
-import { useDeleteCategory } from '../api/use-delete-category';
-import { useEditCategory } from '../api/use-edit-category';
-import { useGetCategory } from '../api/use-get-category';
-import { useOpenCategory } from '../hooks/use-open-category';
-import { CategoryForm } from './category-form';
+import { useDeleteTag } from '../api/use-delete-tag';
+import { useEditTag } from '../api/use-edit-tag';
+import { useGetTag } from '../api/use-get-tag';
+import { useOpenTag } from '../hooks/use-open-tag';
+import { TagForm } from './tag-form';
 
-const formSchema = insertCategorySchema.pick({
+const formSchema = insertTagSchema.pick({
     name: true,
+    color: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export const EditCategorySheet = () => {
-    const { isOpen, onClose, id } = useOpenCategory();
+export const EditTagSheet = () => {
+    const { isOpen, onClose, id } = useOpenTag();
 
     const [ConfirmDialog, confirm] = useConfirm(
         'Are you sure?',
-        'You are about to delete this category.',
+        'You are about to delete this tag.',
     );
 
-    const categoryQuery = useGetCategory(id);
-    const editMutation = useEditCategory(id);
-    const deleteMutation = useDeleteCategory(id);
+    const tagQuery = useGetTag(id);
+    const editMutation = useEditTag(id);
+    const deleteMutation = useDeleteTag(id);
 
     const isPending = editMutation.isPending || deleteMutation.isPending;
 
-    const isLoading = categoryQuery.isLoading;
+    const isLoading = tagQuery.isLoading;
 
     const onSubmit = (values: FormValues) => {
         editMutation.mutate(values, {
@@ -45,12 +47,14 @@ export const EditCategorySheet = () => {
         });
     };
 
-    const defaultValues = categoryQuery.data
+    const defaultValues = tagQuery.data
         ? {
-              name: categoryQuery.data.name,
+              name: tagQuery.data.name,
+              color: tagQuery.data.color,
           }
         : {
               name: '',
+              color: '#3b82f6',
           };
 
     const onDelete = async () => {
@@ -72,10 +76,10 @@ export const EditCategorySheet = () => {
                 <SheetContent className="flex flex-col h-full p-0">
                     <div className="px-6 pt-6">
                         <SheetHeader>
-                            <SheetTitle>Edit Category</SheetTitle>
+                            <SheetTitle>Edit Tag</SheetTitle>
 
                             <SheetDescription>
-                                Edit an existing category.
+                                Edit an existing tag.
                             </SheetDescription>
                         </SheetHeader>
                     </div>
@@ -86,7 +90,7 @@ export const EditCategorySheet = () => {
                         </div>
                     ) : (
                         <div className="flex-1 overflow-y-auto px-6">
-                            <CategoryForm
+                            <TagForm
                                 id={id}
                                 defaultValues={defaultValues}
                                 onSubmit={onSubmit}

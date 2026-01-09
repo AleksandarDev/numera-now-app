@@ -10,10 +10,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { client } from '@/lib/hono';
 import { AccountColumn } from './account-column';
 import { Actions } from './actions';
-import { CategoryColumn } from './category-column';
 import { CustomerColumn } from './customer-column';
 import { DocumentsColumn } from './documents-column';
 import { StatusColumn } from './status-column';
+import { TagsColumn } from './tags-column';
 
 export type ResponseType = InferResponseType<
     typeof client.api.transactions.$get,
@@ -72,7 +72,6 @@ export const columns: ColumnDef<ResponseType>[] = [
                         amount: row.original.amount,
                         payeeCustomerId: row.original.payeeCustomerId,
                         payee: row.original.payee,
-                        categoryId: row.original.categoryId,
                         notes: row.original.notes,
                         accountId: row.original.accountId,
                         creditAccountId: row.original.creditAccountId,
@@ -224,7 +223,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         },
     },
     {
-        accessorKey: 'category',
+        accessorKey: 'tags',
         header: ({ column }) => {
             return (
                 <Button
@@ -233,17 +232,16 @@ export const columns: ColumnDef<ResponseType>[] = [
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
                 >
-                    Category
+                    Tags
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
         cell: ({ row }) => {
             return (
-                <CategoryColumn
+                <TagsColumn
                     id={row.original.id}
-                    category={row.original.category}
-                    categoryId={row.original.categoryId}
+                    tags={row.original.tags ?? []}
                 />
             );
         },

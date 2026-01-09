@@ -1,6 +1,6 @@
 {
-    "id": "6c78c2e0-50be-4f02-bd26-ec76ffd7d2fc",
-    "prevId": "f62bbc20-90f7-4cc1-b288-6b37c6ed8a0b",
+    "id": "ce1c8aea-172f-4d69-bbfb-18b8d0a0c897",
+    "prevId": "6c04bc9e-de34-45ca-a706-9c09e6ae0b1e",
     "version": "7",
     "dialect": "postgresql",
     "tables": {
@@ -96,59 +96,6 @@
                     "columns": [
                         {
                             "expression": "code",
-                            "isExpression": false,
-                            "asc": true,
-                            "nulls": "last"
-                        }
-                    ],
-                    "isUnique": false,
-                    "concurrently": false,
-                    "method": "btree",
-                    "with": {}
-                }
-            },
-            "foreignKeys": {},
-            "compositePrimaryKeys": {},
-            "uniqueConstraints": {},
-            "policies": {},
-            "checkConstraints": {},
-            "isRLSEnabled": false
-        },
-        "public.categories": {
-            "name": "categories",
-            "schema": "",
-            "columns": {
-                "id": {
-                    "name": "id",
-                    "type": "text",
-                    "primaryKey": true,
-                    "notNull": true
-                },
-                "plaid_id": {
-                    "name": "plaid_id",
-                    "type": "text",
-                    "primaryKey": false,
-                    "notNull": false
-                },
-                "name": {
-                    "name": "name",
-                    "type": "text",
-                    "primaryKey": false,
-                    "notNull": true
-                },
-                "user_id": {
-                    "name": "user_id",
-                    "type": "text",
-                    "primaryKey": false,
-                    "notNull": true
-                }
-            },
-            "indexes": {
-                "categories_userid_idx": {
-                    "name": "categories_userid_idx",
-                    "columns": [
-                        {
-                            "expression": "user_id",
                             "isExpression": false,
                             "asc": true,
                             "nulls": "last"
@@ -516,7 +463,7 @@
                     "name": "transaction_id",
                     "type": "text",
                     "primaryKey": false,
-                    "notNull": true
+                    "notNull": false
                 },
                 "storage_path": {
                     "name": "storage_path",
@@ -623,7 +570,7 @@
                     "tableTo": "transactions",
                     "columnsFrom": ["transaction_id"],
                     "columnsTo": ["id"],
-                    "onDelete": "cascade",
+                    "onDelete": "set null",
                     "onUpdate": "no action"
                 }
             },
@@ -743,8 +690,8 @@
                     "primaryKey": false,
                     "notNull": false
                 },
-                "default_category_id": {
-                    "name": "default_category_id",
+                "default_tag_id": {
+                    "name": "default_tag_id",
                     "type": "text",
                     "primaryKey": false,
                     "notNull": false
@@ -834,16 +781,91 @@
                     "onDelete": "set null",
                     "onUpdate": "no action"
                 },
-                "stripe_settings_default_category_id_categories_id_fk": {
-                    "name": "stripe_settings_default_category_id_categories_id_fk",
+                "stripe_settings_default_tag_id_tags_id_fk": {
+                    "name": "stripe_settings_default_tag_id_tags_id_fk",
                     "tableFrom": "stripe_settings",
-                    "tableTo": "categories",
-                    "columnsFrom": ["default_category_id"],
+                    "tableTo": "tags",
+                    "columnsFrom": ["default_tag_id"],
                     "columnsTo": ["id"],
                     "onDelete": "set null",
                     "onUpdate": "no action"
                 }
             },
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {},
+            "policies": {},
+            "checkConstraints": {},
+            "isRLSEnabled": false
+        },
+        "public.tags": {
+            "name": "tags",
+            "schema": "",
+            "columns": {
+                "id": {
+                    "name": "id",
+                    "type": "text",
+                    "primaryKey": true,
+                    "notNull": true
+                },
+                "name": {
+                    "name": "name",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "color": {
+                    "name": "color",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "user_id": {
+                    "name": "user_id",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "created_at": {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "default": "now()"
+                }
+            },
+            "indexes": {
+                "tags_userid_idx": {
+                    "name": "tags_userid_idx",
+                    "columns": [
+                        {
+                            "expression": "user_id",
+                            "isExpression": false,
+                            "asc": true,
+                            "nulls": "last"
+                        }
+                    ],
+                    "isUnique": false,
+                    "concurrently": false,
+                    "method": "btree",
+                    "with": {}
+                },
+                "tags_name_idx": {
+                    "name": "tags_name_idx",
+                    "columns": [
+                        {
+                            "expression": "name",
+                            "isExpression": false,
+                            "asc": true,
+                            "nulls": "last"
+                        }
+                    ],
+                    "isUnique": false,
+                    "concurrently": false,
+                    "method": "btree",
+                    "with": {}
+                }
+            },
+            "foreignKeys": {},
             "compositePrimaryKeys": {},
             "uniqueConstraints": {},
             "policies": {},
@@ -947,6 +969,94 @@
             "checkConstraints": {},
             "isRLSEnabled": false
         },
+        "public.transaction_tags": {
+            "name": "transaction_tags",
+            "schema": "",
+            "columns": {
+                "id": {
+                    "name": "id",
+                    "type": "text",
+                    "primaryKey": true,
+                    "notNull": true
+                },
+                "transaction_id": {
+                    "name": "transaction_id",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "tag_id": {
+                    "name": "tag_id",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "created_at": {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "default": "now()"
+                }
+            },
+            "indexes": {
+                "transaction_tags_transactionid_idx": {
+                    "name": "transaction_tags_transactionid_idx",
+                    "columns": [
+                        {
+                            "expression": "transaction_id",
+                            "isExpression": false,
+                            "asc": true,
+                            "nulls": "last"
+                        }
+                    ],
+                    "isUnique": false,
+                    "concurrently": false,
+                    "method": "btree",
+                    "with": {}
+                },
+                "transaction_tags_tagid_idx": {
+                    "name": "transaction_tags_tagid_idx",
+                    "columns": [
+                        {
+                            "expression": "tag_id",
+                            "isExpression": false,
+                            "asc": true,
+                            "nulls": "last"
+                        }
+                    ],
+                    "isUnique": false,
+                    "concurrently": false,
+                    "method": "btree",
+                    "with": {}
+                }
+            },
+            "foreignKeys": {
+                "transaction_tags_transaction_id_transactions_id_fk": {
+                    "name": "transaction_tags_transaction_id_transactions_id_fk",
+                    "tableFrom": "transaction_tags",
+                    "tableTo": "transactions",
+                    "columnsFrom": ["transaction_id"],
+                    "columnsTo": ["id"],
+                    "onDelete": "cascade",
+                    "onUpdate": "no action"
+                },
+                "transaction_tags_tag_id_tags_id_fk": {
+                    "name": "transaction_tags_tag_id_tags_id_fk",
+                    "tableFrom": "transaction_tags",
+                    "tableTo": "tags",
+                    "columnsFrom": ["tag_id"],
+                    "columnsTo": ["id"],
+                    "onDelete": "cascade",
+                    "onUpdate": "no action"
+                }
+            },
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {},
+            "policies": {},
+            "checkConstraints": {},
+            "isRLSEnabled": false
+        },
         "public.transactions": {
             "name": "transactions",
             "schema": "",
@@ -1001,12 +1111,6 @@
                 },
                 "debit_account_id": {
                     "name": "debit_account_id",
-                    "type": "text",
-                    "primaryKey": false,
-                    "notNull": false
-                },
-                "category_id": {
-                    "name": "category_id",
                     "type": "text",
                     "primaryKey": false,
                     "notNull": false
@@ -1092,21 +1196,6 @@
                     "columns": [
                         {
                             "expression": "debit_account_id",
-                            "isExpression": false,
-                            "asc": true,
-                            "nulls": "last"
-                        }
-                    ],
-                    "isUnique": false,
-                    "concurrently": false,
-                    "method": "btree",
-                    "with": {}
-                },
-                "transactions_categoryid_idx": {
-                    "name": "transactions_categoryid_idx",
-                    "columns": [
-                        {
-                            "expression": "category_id",
                             "isExpression": false,
                             "asc": true,
                             "nulls": "last"
@@ -1241,15 +1330,6 @@
                     "tableFrom": "transactions",
                     "tableTo": "accounts",
                     "columnsFrom": ["debit_account_id"],
-                    "columnsTo": ["id"],
-                    "onDelete": "set null",
-                    "onUpdate": "no action"
-                },
-                "transactions_category_id_categories_id_fk": {
-                    "name": "transactions_category_id_categories_id_fk",
-                    "tableFrom": "transactions",
-                    "tableTo": "categories",
-                    "columnsFrom": ["category_id"],
                     "columnsTo": ["id"],
                     "onDelete": "set null",
                     "onUpdate": "no action"

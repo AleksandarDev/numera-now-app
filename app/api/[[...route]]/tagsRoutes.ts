@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
-import { categories, insertCategorySchema } from '@/db/schema';
+import { insertTagSchema, tags } from '@/db/schema';
 
 const app = new Hono()
     .get('/', clerkMiddleware(), async (ctx) => {
@@ -18,11 +18,12 @@ const app = new Hono()
 
         const data = await db
             .select({
-                id: categories.id,
-                name: categories.name,
+                id: tags.id,
+                name: tags.name,
+                color: tags.color,
             })
-            .from(categories)
-            .where(eq(categories.userId, auth.userId));
+            .from(tags)
+            .where(eq(tags.userId, auth.userId));
 
         return ctx.json({ data });
     })
@@ -49,16 +50,12 @@ const app = new Hono()
 
             const [data] = await db
                 .select({
-                    id: categories.id,
-                    name: categories.name,
+                    id: tags.id,
+                    name: tags.name,
+                    color: tags.color,
                 })
-                .from(categories)
-                .where(
-                    and(
-                        eq(categories.userId, auth.userId),
-                        eq(categories.id, id),
-                    ),
-                );
+                .from(tags)
+                .where(and(eq(tags.userId, auth.userId), eq(tags.id, id)));
 
             if (!data) {
                 return ctx.json({ error: 'Not found.' }, 404);
@@ -72,8 +69,9 @@ const app = new Hono()
         clerkMiddleware(),
         zValidator(
             'json',
-            insertCategorySchema.pick({
+            insertTagSchema.pick({
                 name: true,
+                color: true,
             }),
         ),
         async (ctx) => {
@@ -85,7 +83,7 @@ const app = new Hono()
             }
 
             const [data] = await db
-                .insert(categories)
+                .insert(tags)
                 .values({
                     id: createId(),
                     userId: auth.userId,
@@ -114,15 +112,15 @@ const app = new Hono()
             }
 
             const data = await db
-                .delete(categories)
+                .delete(tags)
                 .where(
                     and(
-                        eq(categories.userId, auth.userId),
-                        inArray(categories.id, values.ids),
+                        eq(tags.userId, auth.userId),
+                        inArray(tags.id, values.ids),
                     ),
                 )
                 .returning({
-                    id: categories.id,
+                    id: tags.id,
                 });
 
             return ctx.json({ data });
@@ -139,8 +137,9 @@ const app = new Hono()
         ),
         zValidator(
             'json',
-            insertCategorySchema.pick({
+            insertTagSchema.pick({
                 name: true,
+                color: true,
             }),
         ),
         async (ctx) => {
@@ -157,14 +156,9 @@ const app = new Hono()
             }
 
             const [data] = await db
-                .update(categories)
+                .update(tags)
                 .set(values)
-                .where(
-                    and(
-                        eq(categories.userId, auth.userId),
-                        eq(categories.id, id),
-                    ),
-                )
+                .where(and(eq(tags.userId, auth.userId), eq(tags.id, id)))
                 .returning();
 
             if (!data) {
@@ -196,15 +190,10 @@ const app = new Hono()
             }
 
             const [data] = await db
-                .delete(categories)
-                .where(
-                    and(
-                        eq(categories.userId, auth.userId),
-                        eq(categories.id, id),
-                    ),
-                )
+                .delete(tags)
+                .where(and(eq(tags.userId, auth.userId), eq(tags.id, id)))
                 .returning({
-                    id: categories.id,
+                    id: tags.id,
                 });
 
             if (!data) {

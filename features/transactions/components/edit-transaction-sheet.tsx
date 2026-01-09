@@ -16,10 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserAvatar } from '@/components/user-avatar';
 import { insertTransactionSchema } from '@/db/schema';
 import { useCreateAccount } from '@/features/accounts/api/use-create-account';
-import { useCreateCategory } from '@/features/categories/api/use-create-category';
-import { useGetCategories } from '@/features/categories/api/use-get-categories';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
+import { useCreateTag } from '@/features/tags/api/use-create-tag';
+import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCanReconcile } from '@/features/transactions/api/use-can-reconcile';
 import { useDeleteTransaction } from '@/features/transactions/api/use-delete-transaction';
 import { useGetDocuments } from '@/features/transactions/api/use-documents';
@@ -70,18 +70,18 @@ export const EditTransactionSheet = () => {
     const documentsQuery = useGetDocuments(id ?? '');
     const settingsQuery = useGetSettings();
 
-    const categoryMutation = useCreateCategory();
-    const categoryQuery = useGetCategories();
-    const categoryOptions = (categoryQuery.data ?? []).map((category) => ({
-        label: category.name,
-        value: category.id,
+    const tagMutation = useCreateTag();
+    const tagQuery = useGetTags();
+    const tagOptions = (tagQuery.data ?? []).map((tag) => ({
+        label: tag.name,
+        value: tag.id,
+        color: tag.color,
     }));
 
     const accountMutation = useCreateAccount();
     const customerMutation = useCreateCustomer();
 
-    const onCreateCategory = (name: string) =>
-        categoryMutation.mutate({ name });
+    const onCreateTag = (name: string) => tagMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>
         customerMutation.mutateAsync({ name }).then((response) => {
             if ('data' in response) {
@@ -96,11 +96,11 @@ export const EditTransactionSheet = () => {
         deleteMutation.isPending ||
         unreconcileMutation.isPending ||
         transactionQuery.isLoading ||
-        categoryMutation.isPending ||
+        tagMutation.isPending ||
         accountMutation.isPending ||
         customerMutation.isPending;
 
-    const isLoading = transactionQuery.isLoading || categoryQuery.isLoading;
+    const isLoading = transactionQuery.isLoading || tagQuery.isLoading;
 
     const onSubmit = (values: UnifiedEditTransactionFormValues) => {
         const autoDraftToPending =
@@ -119,16 +119,16 @@ export const EditTransactionSheet = () => {
                 (!!values.creditAccountId && !!values.debitAccountId));
 
         // Convert to FormValues format expected by the API
-        const formValues: FormValues = {
+        const formValues: FormValues & { tagIds?: string[] } = {
             date: values.date,
             creditAccountId: values.creditAccountId,
             debitAccountId: values.debitAccountId,
-            categoryId: values.categoryId || null,
             payeeCustomerId: values.payeeCustomerId || null,
             payee: nextPayee,
             amount: convertAmountToMiliunits(parseFloat(values.amount)),
             notes: values.notes || null,
             status: shouldAutoPromoteDraftToPending ? 'pending' : currentStatus,
+            tagIds: values.tagIds,
         };
 
         editMutation.mutate(formValues);
@@ -163,7 +163,10 @@ export const EditTransactionSheet = () => {
             ? {
                   creditAccountId: transactionQuery.data.creditAccountId ?? '',
                   debitAccountId: transactionQuery.data.debitAccountId ?? '',
-                  categoryId: transactionQuery.data.categoryId ?? undefined,
+                  tagIds:
+                      transactionQuery.data.tags?.map(
+                          (t: { id: string }) => t.id,
+                      ) ?? [],
                   amount: String(transactionQuery.data.amount),
                   date: transactionQuery.data.date
                       ? new Date(transactionQuery.data.date)
@@ -180,7 +183,7 @@ export const EditTransactionSheet = () => {
             : {
                   creditAccountId: '',
                   debitAccountId: '',
-                  categoryId: undefined,
+                  tagIds: [],
                   amount: '0',
                   date: new Date(),
                   payeeCustomerId: undefined,
@@ -256,27 +259,27 @@ export const EditTransactionSheet = () => {
             date: new Date(),
             payeeCustomerId: transactionQuery.data.payeeCustomerId ?? '',
             notes: transactionQuery.data.notes ?? '',
-            categoryId: transactionQuery.data.categoryId ?? '',
+            tagIds:
+                transactionQuery.data.tags?.map((t: { id: string }) => t.id) ??
+                [],
             creditEntries: transactionQuery.data.creditAccountId
                 ? [
                       {
                           accountId: transactionQuery.data.creditAccountId,
                           amount,
-                          categoryId: transactionQuery.data.categoryId ?? '',
                           notes: '',
                       },
                   ]
-                : [{ accountId: '', amount: '', categoryId: '', notes: '' }],
+                : [{ accountId: '', amount: '', notes: '' }],
             debitEntries: transactionQuery.data.debitAccountId
                 ? [
                       {
                           accountId: transactionQuery.data.debitAccountId,
                           amount,
-                          categoryId: transactionQuery.data.categoryId ?? '',
                           notes: '',
                       },
                   ]
-                : [{ accountId: '', amount: '', categoryId: '', notes: '' }],
+                : [{ accountId: '', amount: '', notes: '' }],
         };
 
         // Close the edit sheet before opening new transaction sheet
@@ -345,32 +348,21 @@ export const EditTransactionSheet = () => {
                     </div>
 
                     {/* Status Progression */}
-                    <div className='px-6'>
+                    <div className="px-6">
                         <StatusProgression
                             currentStatus={currentStatus}
                             onAdvance={onAdvanceStatus}
                             onUnreconcile={onUnreconcile}
                             disabled={isPending}
                             autoDraftToPendingEnabled={
-                                settingsQuery.data
-                                    ?.autoDraftToPending ?? false
+                                settingsQuery.data?.autoDraftToPending ?? false
                             }
                             canReconcile={canReconcile}
-                            reconciliationBlockers={
-                                reconciliationBlockers
-                            }
-                            hasAllRequiredDocuments={
-                                hasAllRequiredDocuments
-                            }
-                            requiredDocumentTypes={
-                                requiredDocTypeIds.length
-                            }
-                            attachedRequiredTypes={
-                                attachedRequiredTypesCount
-                            }
-                            minRequiredDocuments={
-                                minRequiredDocuments
-                            }
+                            reconciliationBlockers={reconciliationBlockers}
+                            hasAllRequiredDocuments={hasAllRequiredDocuments}
+                            requiredDocumentTypes={requiredDocTypeIds.length}
+                            attachedRequiredTypes={attachedRequiredTypesCount}
+                            minRequiredDocuments={minRequiredDocuments}
                         />
                     </div>
 
@@ -408,8 +400,8 @@ export const EditTransactionSheet = () => {
                                         defaultValues={defaultValuesForForm}
                                         onSubmit={onSubmit}
                                         disabled={isPending}
-                                        categoryOptions={categoryOptions}
-                                        onCreateCategory={onCreateCategory}
+                                        tagOptions={tagOptions}
+                                        onCreateTag={onCreateTag}
                                         onCreateCustomer={onCreateCustomer}
                                         onDelete={onDelete}
                                         payeeText={transactionQuery.data?.payee}
@@ -527,15 +519,21 @@ export const EditTransactionSheet = () => {
                                                                         <div className="font-medium text-foreground">
                                                                             {entry.fromStatus && (
                                                                                 <span className="text-muted-foreground">
-                                                                                    {entry.fromStatus}{' '}
+                                                                                    {
+                                                                                        entry.fromStatus
+                                                                                    }{' '}
                                                                                     →{' '}
                                                                                 </span>
                                                                             )}
-                                                                            {entry.toStatus}
+                                                                            {
+                                                                                entry.toStatus
+                                                                            }
                                                                         </div>
                                                                         {!!entry.notes && (
                                                                             <div className="text-xs text-muted-foreground mt-0.5">
-                                                                                {entry.notes}
+                                                                                {
+                                                                                    entry.notes
+                                                                                }
                                                                             </div>
                                                                         )}
                                                                         <div className="text-xs">

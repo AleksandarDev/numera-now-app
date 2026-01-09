@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
+
 import { Button } from '@/components/ui/button';
 import {
     Form,
@@ -13,15 +14,16 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { SheetFooter } from '@/components/ui/sheet';
-import { insertCategorySchema } from '@/db/schema';
+import { insertTagSchema } from '@/db/schema';
 
-const formSchema = insertCategorySchema.pick({
+const formSchema = insertTagSchema.pick({
     name: true,
+    color: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-type CategoryFormProps = {
+type TagFormProps = {
     id?: string;
     defaultValues?: FormValues;
     onSubmit: (values: FormValues) => void;
@@ -29,13 +31,13 @@ type CategoryFormProps = {
     disabled?: boolean;
 };
 
-export const CategoryForm = ({
+export const TagForm = ({
     id,
     defaultValues,
     onSubmit,
     onDelete,
     disabled,
-}: CategoryFormProps) => {
+}: TagFormProps) => {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues,
@@ -48,6 +50,7 @@ export const CategoryForm = ({
     const handleDelete = () => {
         onDelete?.();
     };
+
     return (
         <Form {...form}>
             <form
@@ -66,8 +69,30 @@ export const CategoryForm = ({
 
                             <FormControl>
                                 <Input
-                                    placeholder="e.g. Food, Travel, etc."
+                                    placeholder="e.g. Business, Personal, Travel, etc."
                                     {...field}
+                                />
+                            </FormControl>
+
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    name="color"
+                    control={form.control}
+                    disabled={disabled}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Color (Optional)</FormLabel>
+
+                            <FormControl>
+                                <Input
+                                    type="color"
+                                    placeholder="#000000"
+                                    {...field}
+                                    value={field.value ?? '#3b82f6'}
                                 />
                             </FormControl>
 
@@ -78,7 +103,7 @@ export const CategoryForm = ({
 
                 <SheetFooter>
                     <Button className="w-full" disabled={disabled}>
-                        {id ? 'Save changes' : 'Create category'}
+                        {id ? 'Save changes' : 'Create tag'}
                     </Button>
 
                     {!!id && (
@@ -90,7 +115,7 @@ export const CategoryForm = ({
                             variant="outline"
                         >
                             <Trash className="mr-2 size-4" />
-                            Delete category
+                            Delete tag
                         </Button>
                     )}
                 </SheetFooter>

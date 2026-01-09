@@ -9,11 +9,12 @@ import { z } from 'zod';
 import { db } from '@/db/drizzle';
 import {
     accounts,
-    categories,
     customers,
     stripeSettings,
+    tags,
     transactionStatusHistory,
     transactions,
+    transactionTags,
 } from '@/db/schema';
 import { encrypt, safeDecrypt } from '@/lib/crypto';
 
@@ -75,7 +76,9 @@ const processStripeCharge = async (
     const [ownFirmCustomer] = await db
         .select({ id: customers.id })
         .from(customers)
-        .where(and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)));
+        .where(
+            and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)),
+        );
 
     // Convert amount from Stripe cents to milliunits (app stores amounts * 1000)
     // Stripe: 100 cents = 1.00 EUR
@@ -100,7 +103,6 @@ const processStripeCharge = async (
         date: new Date(charge.created * 1000),
         creditAccountId: settings.defaultCreditAccountId,
         debitAccountId: settings.defaultDebitAccountId,
-        categoryId: settings.defaultCategoryId,
         payeeCustomerId: ownFirmCustomer?.id,
         status: 'pending',
         statusChangedAt: now,
@@ -108,6 +110,15 @@ const processStripeCharge = async (
         stripePaymentId: charge.id,
         stripePaymentUrl: getStripePaymentUrl(charge.id, isLiveMode),
     });
+
+    // Add default tag if configured
+    if (settings.defaultTagId) {
+        await db.insert(transactionTags).values({
+            id: createId(),
+            transactionId,
+            tagId: settings.defaultTagId,
+        });
+    }
 
     await recordStatusChange(
         transactionId,
@@ -137,7 +148,7 @@ const app = new Hono()
                 hasWebhookSecret: stripeSettings.webhookSecret,
                 defaultCreditAccountId: stripeSettings.defaultCreditAccountId,
                 defaultDebitAccountId: stripeSettings.defaultDebitAccountId,
-                defaultCategoryId: stripeSettings.defaultCategoryId,
+                defaultTagId: stripeSettings.defaultTagId,
                 isEnabled: stripeSettings.isEnabled,
                 syncFromDate: stripeSettings.syncFromDate,
                 lastSyncAt: stripeSettings.lastSyncAt,
@@ -156,7 +167,7 @@ const app = new Hono()
                     hasWebhookSecret: false,
                     defaultCreditAccountId: null,
                     defaultDebitAccountId: null,
-                    defaultCategoryId: null,
+                    defaultTagId: null,
                     isEnabled: false,
                     syncFromDate: null,
                     lastSyncAt: null,
@@ -187,7 +198,7 @@ const app = new Hono()
                 webhookSecret: z.string().optional(),
                 defaultCreditAccountId: z.string().nullable().optional(),
                 defaultDebitAccountId: z.string().nullable().optional(),
-                defaultCategoryId: z.string().nullable().optional(),
+                defaultTagId: z.string().nullable().optional(),
                 isEnabled: z.boolean().optional(),
                 syncFromDate: z.string().datetime().nullable().optional(),
             }),
@@ -279,14 +290,14 @@ const app = new Hono()
                 }
             }
 
-            // Validate category ID if provided
-            if (values.defaultCategoryId) {
-                const [category] = await db
+            // Validate tag ID if provided
+            if (values.defaultTagId) {
+                const [tag] = await db
                     .select()
-                    .from(categories)
-                    .where(eq(categories.id, values.defaultCategoryId));
-                if (!category || category.userId !== auth.userId) {
-                    return ctx.json({ error: 'Invalid category ID.' }, 400);
+                    .from(tags)
+                    .where(eq(tags.id, values.defaultTagId));
+                if (!tag || tag.userId !== auth.userId) {
+                    return ctx.json({ error: 'Invalid tag ID.' }, 400);
                 }
             }
 
@@ -318,8 +329,8 @@ const app = new Hono()
                 updateValues.defaultDebitAccountId =
                     values.defaultDebitAccountId;
             }
-            if (values.defaultCategoryId !== undefined) {
-                updateValues.defaultCategoryId = values.defaultCategoryId;
+            if (values.defaultTagId !== undefined) {
+                updateValues.defaultTagId = values.defaultTagId;
             }
             if (values.isEnabled !== undefined) {
                 updateValues.isEnabled = values.isEnabled;
@@ -357,7 +368,7 @@ const app = new Hono()
                             values.defaultCreditAccountId || null,
                         defaultDebitAccountId:
                             values.defaultDebitAccountId || null,
-                        defaultCategoryId: values.defaultCategoryId || null,
+                        defaultTagId: values.defaultTagId || null,
                         isEnabled: values.isEnabled ?? false,
                         syncFromDate: values.syncFromDate
                             ? new Date(values.syncFromDate)

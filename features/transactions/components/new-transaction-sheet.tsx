@@ -9,9 +9,9 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCreateCategory } from '@/features/categories/api/use-create-category';
-import { useGetCategories } from '@/features/categories/api/use-get-categories';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
+import { useCreateTag } from '@/features/tags/api/use-create-tag';
+import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
@@ -27,17 +27,17 @@ export const NewTransactionSheet = () => {
     const [activeTab, setActiveTab] = useState('details');
 
     const createMutation = useCreateUnifiedTransaction(onOpenEdit, onClose);
-    const categoryMutation = useCreateCategory();
-    const categoryQuery = useGetCategories();
-    const categoryOptions = (categoryQuery.data ?? []).map((category) => ({
-        label: category.name,
-        value: category.id,
+    const tagMutation = useCreateTag();
+    const tagQuery = useGetTags();
+    const tagOptions = (tagQuery.data ?? []).map((tag) => ({
+        label: tag.name,
+        value: tag.id,
+        color: tag.color,
     }));
 
     const customerMutation = useCreateCustomer();
 
-    const onCreateCategory = (name: string) =>
-        categoryMutation.mutate({ name });
+    const onCreateTag = (name: string) => tagMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>
         customerMutation.mutateAsync({ name }).then((response) => {
             if ('data' in response) {
@@ -49,9 +49,9 @@ export const NewTransactionSheet = () => {
 
     const isPending =
         createMutation.isPending ||
-        categoryMutation.isPending ||
+        tagMutation.isPending ||
         customerMutation.isPending;
-    const isLoading = categoryQuery.isLoading;
+    const isLoading = tagQuery.isLoading;
 
     const onSubmit = (values: UnifiedTransactionFormValues) => {
         createMutation.mutate(values);
@@ -94,8 +94,8 @@ export const NewTransactionSheet = () => {
                             <TabsContent value="details" className="mt-6">
                                 <UnifiedTransactionForm
                                     disabled={isPending}
-                                    categoryOptions={categoryOptions}
-                                    onCreateCategory={onCreateCategory}
+                                    tagOptions={tagOptions}
+                                    onCreateTag={onCreateTag}
                                     onCreateCustomer={onCreateCustomer}
                                     onSubmit={onSubmit}
                                     defaultValues={defaultValues}

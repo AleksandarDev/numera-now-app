@@ -198,7 +198,10 @@ interface DocumentListProps {
     readOnly?: boolean;
 }
 
-export function DocumentList({ transactionId, readOnly = false }: DocumentListProps) {
+export function DocumentList({
+    transactionId,
+    readOnly = false,
+}: DocumentListProps) {
     const { data: documents, isLoading } = useGetDocuments(transactionId);
     const { data: documentTypes = [] } = useGetDocumentTypes();
     const deleteDocument = useDeleteDocument();
@@ -471,7 +474,10 @@ interface DocumentsTabProps {
     readOnly?: boolean;
 }
 
-export function DocumentsTab({ transactionId, readOnly = false }: DocumentsTabProps) {
+export function DocumentsTab({
+    transactionId,
+    readOnly = false,
+}: DocumentsTabProps) {
     return (
         <div className="space-y-6">
             {!readOnly && <DocumentUpload transactionId={transactionId} />}
