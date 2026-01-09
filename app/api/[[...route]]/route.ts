@@ -6,6 +6,7 @@ import accountsRoutes from './accountsRoutes';
 import customersRoutes from './customersRoutes';
 import documentsRoutes from './documentsRoutes';
 import documentTypesRoutes from './documentTypesRoutes';
+import openFinancesRoutes from './openFinancesRoutes';
 import settingsRoutes from './settingsRoutes';
 import stripeRoutes from './stripeRoutes';
 import summaryRoutes from './summaryRoutes';
@@ -89,7 +90,8 @@ const routes = app
     .route('/documents', documentsRoutes)
     .route('/document-types', documentTypesRoutes)
     .route('/stripe', stripeRoutes)
-    .route('/tags', tagsRoutes);
+    .route('/tags', tagsRoutes)
+    .route('/open-finances', openFinancesRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);

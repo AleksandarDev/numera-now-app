@@ -486,3 +486,35 @@ export const stripeSettingsRelations = relations(stripeSettings, ({ one }) => ({
 }));
 
 export const insertStripeSettingsSchema = createInsertSchema(stripeSettings);
+
+// Open Finances settings table - stores per-user configuration for public financial transparency page
+export const openFinancesSettings = pgTable(
+    'open_finances_settings',
+    {
+        userId: text('user_id').primaryKey(),
+        // Whether the open finances page is enabled for this user
+        isEnabled: boolean('is_enabled').notNull().default(false),
+        // JSON object containing which metrics to expose and their custom labels
+        // e.g., {"revenue": {"enabled": true, "label": "Total Revenue"}, "expenses": {"enabled": false}}
+        exposedMetrics: text('exposed_metrics').notNull().default('{}'),
+        // Optional custom title for the public page
+        pageTitle: text('page_title'),
+        // Optional custom description
+        pageDescription: text('page_description'),
+        // Date range for displaying data
+        dateFrom: timestamp('date_from', { mode: 'date' }),
+        dateTo: timestamp('date_to', { mode: 'date' }),
+        // Whether to allow embedding in iframes
+        allowEmbedding: boolean('allow_embedding').notNull().default(true),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [index('open_finances_settings_userid_idx').on(table.userId)],
+);
+
+export const insertOpenFinancesSettingsSchema =
+    createInsertSchema(openFinancesSettings);
