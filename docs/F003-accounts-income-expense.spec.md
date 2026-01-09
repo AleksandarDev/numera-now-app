@@ -1,420 +1,251 @@
-# F003: Double-Entry Bookkeeping - Income & Expense Accounts
+# F003: Double-Entry Bookkeeping - Account Classes & Normal Balances
 
 ## Overview
 
-Accounts in double-bookkeeping systems must accurately track income and expenses to ensure financial integrity and compliance. This specification analyzes the current implementation and outlines what's needed for fully functional double-entry bookkeeping with proper account types.
+This specification defines the MVP requirements for proper double-entry bookkeeping support. The app uses **Accounts as the Chart of Accounts (COA)** and **Transactions** instead of traditional journals. This approach simplifies the user experience while maintaining accounting integrity.
 
 ## User Story
 
-As a user managing my finances, I want to create and manage accounts specifically for income and expenses so that I can accurately track my financial transactions and generate reports for budgeting and tax purposes using proper double-entry accounting principles.
+As a user managing my finances with double-entry bookkeeping, I want accounts to have proper accounting classifications (asset, liability, equity, income, expense) so that balances are calculated correctly and I can generate accurate financial reports.
 
 ---
 
-## Current Implementation Analysis
+## Current Implementation ✅
 
-### ✅ What We Have (Implemented)
+### What We Have (Solid Foundation)
 
-#### 1. **Basic Double-Entry Infrastructure**
-
-- Toggle in settings to enable/disable double-entry mode (`doubleEntryMode` setting)
-- Transactions support both `creditAccountId` and `debitAccountId` fields
-- Validation enforces both accounts when double-entry mode is enabled (except for drafts)
-- Account type field: `credit`, `debit`, or `neutral`
-- Account type validation prevents misuse (e.g., credit account can't be debit)
-
-#### 2. **Account Structure**
-
-- Hierarchical account structure using `code` field
-- Code-based parent-child relationships (e.g., "1" → "11" → "111")
-- Visual hierarchy in accounts page with expand/collapse
-- Account status: `isOpen` (active/inactive)
-- Account protection: `isReadOnly` (prevents transactions)
-- Account filtering by type in selectors
-
-#### 3. **Transaction Support**
-
-- Single-entry mode: uses `accountId` + positive/negative amounts
-- Double-entry mode: uses `creditAccountId` + `debitAccountId` + positive amounts
-- Automatic account opening when used in transactions (including parents)
-- Split transactions support double-entry
-- Import supports both single and double-entry modes
-- Validation warnings for missing credit/debit accounts in UI
-
-#### 4. **Reporting & Summary**
-
-- Income/expense calculation based on amount sign (positive = income, negative = expense)
-- Summary queries handle both single and double-entry transactions
-- Account balances aggregate across transaction types
-- Charts display income vs expenses
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Double-entry mode toggle | ✅ | `doubleEntryMode` setting |
+| Credit/Debit account fields | ✅ | `creditAccountId` + `debitAccountId` on transactions |
+| Account type filtering | ✅ | `accountType`: credit/debit/neutral |
+| Hierarchical COA | ✅ | `code` field with parent-child relationships |
+| Account controls | ✅ | `isOpen`, `isReadOnly` |
+| Split transactions | ✅ | Compound entries supported |
+| Validation | ✅ | Enforces both accounts in double-entry mode |
+| Import support | ✅ | Both single and double-entry modes |
 
 ---
 
-## ❌ What's Missing for Full Double-Entry Bookkeeping
+## MVP Requirements
 
-### 1. **Standard Account Types/Classes**
+### 1. Account Class Field (Critical) ⬜
 
-**Issue**: Only has generic `credit`/`debit`/`neutral` types, not proper accounting categories.
+**Problem**: Only has generic `credit`/`debit`/`neutral` types, not proper accounting categories.
 
-**What's Needed**:
+**Solution**: Add `accountClass` enum to accounts schema:
 
-- Account classification following standard accounting equation:
-  - **Assets** (Debit normal balance)
-  - **Liabilities** (Credit normal balance)
-  - **Equity** (Credit normal balance)
-  - **Income/Revenue** (Credit normal balance)
-  - **Expenses** (Debit normal balance)
-  - **Cost of Goods Sold (COGS)** (optional)
-  
+| Class | Normal Balance | Increases With | Examples |
+|-------|---------------|----------------|----------|
+| `asset` | Debit | Debit | Cash, Bank, Inventory, Equipment |
+| `liability` | Credit | Credit | Loans, Accounts Payable, Credit Cards |
+| `equity` | Credit | Credit | Owner's Capital, Retained Earnings |
+| `income` | Credit | Credit | Sales, Service Revenue, Interest Income |
+| `expense` | Debit | Debit | Rent, Utilities, Salaries, Supplies |
+
 **Implementation**:
 
 ```typescript
-// Update schema.ts
+// db/schema.ts
 accountClass: text('account_class', {
-  enum: ['asset', 'liability', 'equity', 'income', 'expense', 'cogs']
-}).notNull()
-
-// Derived from class
-normalBalance: 'debit' | 'credit' // auto-determined by class
+  enum: ['asset', 'liability', 'equity', 'income', 'expense']
+})
 ```
 
-### 2. **Normal Balance Logic**
+**Notes**:
 
-**Issue**: System doesn't understand normal balance behavior for different account types.
+- Field is nullable for backward compatibility
+- COGS (Cost of Goods Sold) can be treated as expense class
+- Normal balance is derived from class (not stored)
 
-**What's Needed**:
+---
 
-- Each account class should have a normal balance (debit or credit)
-- Debits increase assets & expenses, decrease liabilities, equity & income
-- Credits increase liabilities, equity & income, decrease assets & expenses
-- Account balances should reflect proper accounting signs
+### 2. Normal Balance Logic (Critical) ⬜
 
-**Implementation**:
+**Problem**: Current balance calculations use `amount >= 0` for income — that's single-entry logic.
+
+**Solution**: Calculate balances based on account class and debit/credit position:
 
 ```typescript
-const NORMAL_BALANCES = {
+// lib/accounting.ts
+export const NORMAL_BALANCES = {
   asset: 'debit',
   expense: 'debit',
   liability: 'credit',
   equity: 'credit',
   income: 'credit',
-  cogs: 'debit'
 } as const;
 
-function calculateAccountBalance(account, transactions) {
-  const normalBalance = NORMAL_BALANCES[account.accountClass];
-  // Sum debits and credits, apply sign based on normal balance
+export type AccountClass = keyof typeof NORMAL_BALANCES;
+
+export function calculateAccountBalance(
+  accountClass: AccountClass,
+  debitTotal: number,
+  creditTotal: number
+): number {
+  const normalBalance = NORMAL_BALANCES[accountClass];
+  
+  if (normalBalance === 'debit') {
+    // Debit normal: Debits increase, Credits decrease
+    return debitTotal - creditTotal;
+  } else {
+    // Credit normal: Credits increase, Debits decrease
+    return creditTotal - debitTotal;
+  }
 }
 ```
 
-### 3. **Chart of Accounts (COA) Management**
+**UI Display**:
 
-**Issue**: No standard COA template or structure enforcement.
+- Show on account detail page
+- Indicate if balance is normal or contra
 
-**What's Needed**:
+**Balance Calculation Rules**:
 
-- Predefined COA templates (Small Business, Freelance, etc.)
-- Industry-standard account numbering (e.g., 1000-1999 = Assets, 2000-2999 = Liabilities)
-- Account code validation ensuring proper hierarchy
-- Prevent users from creating invalid account structures
+- For **debit-normal accounts** (assets, expenses): Balance = Debits − Credits
+- For **credit-normal accounts** (liabilities, equity, income): Balance = Credits − Debits
+- Positive balance = normal; Negative balance = contra/unusual
 
-**Implementation**:
+---
 
-- COA template seeding on user setup
-- Account code regex validation: `/^[1-9]\d{0,3}$/`
-- Parent account must exist before creating child
-- Standard account codes:
-  - 1000-1999: Assets
-  - 2000-2999: Liabilities
-  - 3000-3999: Equity
-  - 4000-4999: Income/Revenue
-  - 5000-5999: Cost of Goods Sold
-  - 6000-6999: Expenses
+### 3. Account Form Update (Critical) ⬜
 
-### 4. **Mandatory Accounts**
+**Problem**: No UI to select account class.
 
-**Issue**: No system accounts that must exist for proper operations.
+**Solution**: Add account class dropdown to account form:
 
-**What's Needed**:
+- Show dropdown when double-entry mode is enabled
+- Options: Asset, Liability, Equity, Income, Expense
+- Display warning if account has no class assigned (in double-entry mode)
+- Auto-suggest class based on account type (credit → liability/equity/income, debit → asset/expense)
 
-- Required accounts that cannot be deleted:
-  - **Owner's Equity** (3000) - starting capital
-  - **Retained Earnings** (3999) - accumulated profit/loss
-  - **Opening Balances** (special equity account)
-- Automatic end-of-year closing entries
-- Income summary account for closing
+---
 
-### 5. **Transaction Journal Entry View**
+### 4. Validation & Warnings (High Priority) ⬜
 
-**Issue**: No proper journal entry format showing debits and credits side-by-side.
+**Problem**: No indication when accounts are misconfigured.
 
-**What's Needed**:
+**Solution**:
 
-- Traditional journal entry display format:
+- Show warning badge on accounts page for accounts missing `accountClass` (when double-entry enabled)
+- Show warning in transaction form if selected account has no class
+- Prevent non-draft transactions from using accounts without class (optional, can be soft warning)
 
-  ```
-  Date: 2026-01-08
-  Description: Office supplies purchase
-  
-  Debit:  Expenses - Office Supplies    $500.00
-  Credit:   Assets - Cash                      $500.00
-  ```
+---
 
-- Ability to create multi-line journal entries
-- Journal entry validation (total debits = total credits)
-- Transaction history in journal format
+### 5. Opening Balances (High Priority) ⬜
 
-### 6. **Trial Balance Report**
+**Problem**: No way to set initial account balances when starting the system.
 
-**Issue**: No trial balance report to verify debits equal credits.
-
-**What's Needed**:
-
-- Trial Balance report showing:
-  - All accounts with balances
-  - Debit column vs Credit column
-  - Total debits = Total credits verification
-  - Date range filtering
-  - Export capability
-
-### 7. **Financial Statements**
-
-**Issue**: No proper financial statement generation.
-
-**What's Needed**:
-
-- **Balance Sheet** (Assets = Liabilities + Equity)
-  - Assets section (by normal balance)
-  - Liabilities section
-  - Equity section
-  - Date-specific (point in time)
-  
-- **Income Statement** (Profit & Loss)
-  - Revenue section
-  - COGS section
-  - Gross Profit
-  - Expenses section
-  - Net Income/Loss
-  - Date range (period)
-  
-- **Cash Flow Statement** (optional, future)
-
-### 8. **Account Balance Calculation**
-
-**Issue**: Current balance calculations don't respect double-entry principles.
-
-**What's Needed**:
+**Solution**: Add `openingBalance` field to accounts schema:
 
 ```typescript
-// Proper account balance considering:
-// - Account class normal balance
-// - All transactions where account appears as debit OR credit
-// - Opening balance
-// - Date range for period reporting
-
-interface AccountBalance {
-  accountId: string;
-  openingBalance: number;
-  debitTotal: number;
-  creditTotal: number;
-  closingBalance: number;
-  normalBalance: 'debit' | 'credit';
-}
+openingBalance: integer('opening_balance').default(0)
 ```
 
-### 9. **Opening Balances**
+**Notes**:
 
-**Issue**: No way to set initial account balances when starting the system.
-
-**What's Needed**:
-
-- Special "Opening Balances" transaction type
-- Wizard to set up initial balances for all accounts
-- Must balance (total debits = total credits)
-- Linked to Owner's Equity or Opening Balance Equity account
-
-### 10. **Account Restrictions**
-
-**Issue**: Insufficient business rules for account usage.
-
-**What's Needed**:
-
-- Prevent transactions between incompatible account types
-- Validate transaction makes sense:
-  - Income must be credited (not debited)
-  - Expenses must be debited (not credited)
-  - Asset purchases: Debit Asset, Credit Cash/Liability
-- Smart validation messages explaining proper usage
-
-### 11. **Period Closing**
-
-**Issue**: No fiscal year-end or period closing process.
-
-**What's Needed**:
-
-- Fiscal year setup (calendar or custom)
-- Year-end closing wizard:
-  - Close all income accounts to Income Summary
-  - Close all expense accounts to Income Summary
-  - Close Income Summary to Retained Earnings
-  - Prevent modifications to closed periods
-- Period locking mechanism
-
-### 12. **Account Reports**
-
-**Issue**: Limited reporting for accounting analysis.
-
-**What's Needed**:
-
-- **General Ledger** - All transactions per account
-- **Account Statement** - Single account activity
-- **Transaction Listing** - Searchable transaction log
-- **Account Analysis** - Period comparisons
-- **Aging Reports** - For receivables/payables (if applicable)
+- Simple integer field (in miliunits like amounts)
+- Applied as starting point for balance calculations
+- Alternative: Use a special "Opening Balance" transaction — but field is simpler for MVP
 
 ---
 
-## Implementation Priority
+### 6. Trial Balance Check (High Priority) ⬜
 
-### Phase 1: Foundation (Critical)
+**Problem**: No verification that debits equal credits.
 
-1. Add `accountClass` field to schema
-2. Implement normal balance logic
-3. Update account form to select account class
-4. Migrate existing accounts (default to appropriate classes)
-5. Update balance calculation to respect normal balances
+**Solution**: Add trial balance summary/check:
 
-### Phase 2: Structure (High Priority)
+- Sum all debit balances vs all credit balances
+- Display warning if they don't match
+- Can be shown as a dedicated report page
 
-1. Implement COA templates
-2. Add opening balance feature
-3. Create mandatory system accounts
-4. Enforce account hierarchy validation
+```typescript
+// Simple trial balance check
+const debitAccounts = accounts.filter(a => 
+  NORMAL_BALANCES[a.accountClass] === 'debit'
+);
+const creditAccounts = accounts.filter(a => 
+  NORMAL_BALANCES[a.accountClass] === 'credit'
+);
 
-### Phase 3: Reporting (High Priority)
-
-1. Build Trial Balance report
-2. Create Balance Sheet
-3. Create Income Statement
-4. Implement General Ledger view
-
-### Phase 4: Advanced (Medium Priority)
-
-1. Journal entry view/creation
-2. Period closing functionality
-3. Enhanced account restrictions
-4. Account analysis reports
-
-### Phase 5: Polish (Low Priority)
-
-1. COA import/export
-2. Multi-currency support
-3. Tax reporting features
-4. Advanced reconciliation
+const totalDebits = sum(debitAccounts.map(a => a.balance));
+const totalCredits = sum(creditAccounts.map(a => a.balance));
+const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
+```
 
 ---
 
-## Database Schema Changes Required
+## Database Schema Changes
 
 ```sql
--- Add account class field
+-- Add account class field (nullable for backward compatibility)
 ALTER TABLE accounts ADD COLUMN account_class TEXT;
-ALTER TABLE accounts ADD CONSTRAINT account_class_check 
-  CHECK (account_class IN ('asset', 'liability', 'equity', 'income', 'expense', 'cogs'));
-
--- Add normal balance (computed from class but cached for performance)
-ALTER TABLE accounts ADD COLUMN normal_balance TEXT;
-ALTER TABLE accounts ADD CONSTRAINT normal_balance_check 
-  CHECK (normal_balance IN ('debit', 'credit'));
 
 -- Add opening balance field
 ALTER TABLE accounts ADD COLUMN opening_balance INTEGER DEFAULT 0;
 
--- Add account flags
-ALTER TABLE accounts ADD COLUMN is_system_account BOOLEAN DEFAULT FALSE;
-ALTER TABLE accounts ADD COLUMN allow_transactions BOOLEAN DEFAULT TRUE;
+-- Note: Keep existing accountType field for credit/debit filtering in UI
+```
 
--- Create fiscal periods table (future)
-CREATE TABLE fiscal_periods (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  start_date TIMESTAMP NOT NULL,
-  end_date TIMESTAMP NOT NULL,
-  is_closed BOOLEAN DEFAULT FALSE,
-  closed_at TIMESTAMP,
-  closed_by TEXT
-);
+**Drizzle migration**:
 
--- Update account type to be more specific
--- Note: Keep accountType for backward compatibility during migration
+```typescript
+// drizzle/0023_add_account_class.sql
+ALTER TABLE accounts ADD COLUMN account_class TEXT;
+ALTER TABLE accounts ADD COLUMN opening_balance INTEGER DEFAULT 0;
 ```
 
 ---
 
-## Configuration Examples
+## Implementation Checklist
 
-### Standard Account Classes with Codes
+### MVP (Required for Double-Entry)
 
-```typescript
-const STANDARD_ACCOUNTS = {
-  // Assets (1000-1999)
-  '1000': { name: 'Assets', class: 'asset' },
-  '1100': { name: 'Current Assets', class: 'asset', parent: '1000' },
-  '1110': { name: 'Cash', class: 'asset', parent: '1100' },
-  '1120': { name: 'Bank Account', class: 'asset', parent: '1100' },
-  '1200': { name: 'Accounts Receivable', class: 'asset', parent: '1100' },
-  
-  // Liabilities (2000-2999)
-  '2000': { name: 'Liabilities', class: 'liability' },
-  '2100': { name: 'Current Liabilities', class: 'liability', parent: '2000' },
-  '2110': { name: 'Accounts Payable', class: 'liability', parent: '2100' },
-  '2120': { name: 'Credit Card', class: 'liability', parent: '2100' },
-  
-  // Equity (3000-3999)
-  '3000': { name: 'Owner\'s Equity', class: 'equity' },
-  '3999': { name: 'Retained Earnings', class: 'equity', parent: '3000' },
-  
-  // Income (4000-4999)
-  '4000': { name: 'Income', class: 'income' },
-  '4100': { name: 'Sales Revenue', class: 'income', parent: '4000' },
-  '4200': { name: 'Service Revenue', class: 'income', parent: '4000' },
-  
-  // Expenses (6000-6999)
-  '6000': { name: 'Expenses', class: 'expense' },
-  '6100': { name: 'Operating Expenses', class: 'expense', parent: '6000' },
-  '6110': { name: 'Office Supplies', class: 'expense', parent: '6100' },
-  '6120': { name: 'Rent', class: 'expense', parent: '6100' },
-};
-```
+- [ ] Add `accountClass` field to schema
+- [ ] Add `openingBalance` field to schema
+- [ ] Create migration file
+- [ ] Add `NORMAL_BALANCES` constant and helper functions
+- [ ] Update account form with class dropdown (when double-entry enabled)
+- [ ] Update account form with opening balance input
+- [ ] Show warning indicator for accounts missing class
+- [ ] Update balance calculation to use account class
+- [ ] Add trial balance check to dashboard or summary
+
+### Post-MVP (Nice to Have)
+
+- [ ] Income Statement report (sum income − sum expenses)
+- [ ] Balance Sheet report (assets = liabilities + equity)
+- [ ] General Ledger view per account
+- [ ] Period closing functionality
+- [ ] COA import with class mapping
+- [ ] Smart validation (income should be credited, expenses debited)
+
+---
+
+## Out of Scope (Future)
+
+| Feature | Reason |
+|---------|--------|
+| COA templates | Users create their own accounts |
+| Mandatory system accounts | Not required for basic operation |
+| Journal entries | We use transactions instead |
+| Period/fiscal year closing | Advanced feature |
+| Multi-currency | Separate feature |
+| Tax reports | Separate feature |
+| IFRS/GAAP compliance | Enterprise feature |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Account class field added to schema and UI
-- [ ] Normal balance logic implemented in balance calculations
-- [ ] COA template can be applied on setup
-- [ ] Opening balances can be set and balance
-- [ ] System accounts created and protected
-- [ ] Trial Balance report shows correct debits/credits
-- [ ] Balance Sheet generates from account balances
-- [ ] Income Statement shows revenue minus expenses
-- [ ] General Ledger view shows account transactions
-- [ ] Account hierarchy enforces valid parent-child relationships
-- [ ] Transaction validation respects account classes
-- [ ] All reports export to PDF/Excel
-- [ ] Existing data migrates without loss
-- [ ] Documentation updated with accounting principles
-
----
-
-## Future Enhancements
-
-- Multi-entity/company support
-- Budget vs actual reporting
-- Consolidated financial statements
-- International Financial Reporting Standards (IFRS) compliance
-- Generally Accepted Accounting Principles (GAAP) compliance
-- Tax form generation (1099, W-2, etc.)
-- Audit trail with immutable transaction history
-- Role-based access (accountant, bookkeeper, viewer)
-- API for accounting software integration
+- [ ] `accountClass` field added to accounts schema
+- [ ] `openingBalance` field added to accounts schema
+- [ ] Account form shows class dropdown when double-entry mode enabled
+- [ ] Account form shows opening balance input
+- [ ] Accounts without class show warning indicator (in double-entry mode)
+- [ ] Balance calculations use normal balance logic based on class
+- [ ] Trial balance check shows if books are balanced
+- [ ] Existing accounts continue to work (nullable class field)
+- [ ] Migration runs without data loss
