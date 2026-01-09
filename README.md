@@ -8,6 +8,7 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 - **Categorize Transactions:** Organize your transactions by categories for better clarity.
 - **Account Management:** Assign transactions to specific accounts.
 - **CSV Import:** Import transactions from CSV files for quick data entry.
+- **Open Finances:** Share selected financial metrics publicly with customizable embeddable transparency pages.
 - (Planned) **Bank Integration:** Connect to your bank account using Plaid.
 - (Planned) **Monetization:** Monetize your platform using Lemon Squeezy.
 
@@ -74,11 +75,15 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 
    - Import transactions using a CSV file by navigating to the import section and uploading your file.
 
-5. (Planned) **Bank Integration:**
+5. **Open Finances:**
+
+   - Share selected financial metrics publicly with an embeddable transparency page. Configure what data to expose from Settings, and embed the page on your website to demonstrate financial transparency. See [Open Finances Documentation](docs/OPEN_FINANCES.md) for details.
+
+6. (Planned) **Bank Integration:**
 
    - Connect your bank account using Plaid to automatically import and sync transactions.
 
-6. (Planned) **Monetization:**
+7. (Planned) **Monetization:**
 
    - Monetize your platform by integrating Lemon Squeezy for payment processing.
 
