@@ -1,0 +1,1 @@
+ALTER TABLE "stripe_settings" ADD COLUMN "sync_from_date" timestamp;

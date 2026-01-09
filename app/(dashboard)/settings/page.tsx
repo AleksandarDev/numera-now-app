@@ -11,6 +11,7 @@ import { Suspense } from 'react';
 import { DataTable } from '@/components/data-table';
 import { DocumentTypesSettingsCard } from '@/components/document-types-settings-card';
 import { ReconciliationSettingsCard } from '@/components/reconciliation-settings-card';
+import { StripeIntegrationCard } from '@/components/stripe-integration-card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -152,6 +153,7 @@ export default function SettingsPage() {
             >
                 <DoubleEntrySettings />
                 <TransactionStatusAutomationSettings />
+                <StripeIntegrationCard />
                 <DocumentTypesSettingsCard />
                 <ReconciliationSettingsCard />
                 <CategoriesSection />

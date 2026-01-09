@@ -271,6 +271,7 @@ const app = new Hono()
                     statusChangedBy: transactions.statusChangedBy,
                     splitGroupId: transactions.splitGroupId,
                     splitType: transactions.splitType,
+                    stripePaymentId: transactions.stripePaymentId,
                 })
                 .from(transactions)
                 .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -872,6 +873,8 @@ const app = new Hono()
                     statusChangedBy: transactions.statusChangedBy,
                     splitGroupId: transactions.splitGroupId,
                     splitType: transactions.splitType,
+                    stripePaymentId: transactions.stripePaymentId,
+                    stripePaymentUrl: transactions.stripePaymentUrl,
                 })
                 .from(transactions)
                 .leftJoin(accounts, eq(transactions.accountId, accounts.id))
