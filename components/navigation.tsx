@@ -29,6 +29,10 @@ const routes = [
         label: 'Transactions',
     },
     {
+        href: '/documents',
+        label: 'Documents',
+    },
+    {
         href: '/customers',
         label: 'Customers',
     },

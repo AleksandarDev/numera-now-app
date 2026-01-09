@@ -2,7 +2,14 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { AlertCircle, Download, FileText, Loader2, Trash2 } from 'lucide-react';
+import {
+    AlertCircle,
+    Download,
+    FileText,
+    Link2,
+    Loader2,
+    Trash2,
+} from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentDropzone } from '@/components/document-dropzone';
@@ -14,6 +21,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useGetUnattachedDocuments } from '@/features/documents/api/use-get-unattached-documents';
+import { useLinkDocumentToTransaction } from '@/features/documents/api/use-link-document-to-transaction';
 import {
     useDeleteDocument,
     useGetDocuments,
@@ -186,9 +195,10 @@ export function DocumentUpload({
 
 interface DocumentListProps {
     transactionId: string;
+    readOnly?: boolean;
 }
 
-export function DocumentList({ transactionId }: DocumentListProps) {
+export function DocumentList({ transactionId, readOnly = false }: DocumentListProps) {
     const { data: documents, isLoading } = useGetDocuments(transactionId);
     const { data: documentTypes = [] } = useGetDocumentTypes();
     const deleteDocument = useDeleteDocument();
@@ -292,32 +302,40 @@ export function DocumentList({ transactionId }: DocumentListProps) {
                     <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{doc.fileName}</p>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            {/* Editable document type */}
-                            <Select
-                                value={doc.documentTypeId}
-                                onValueChange={(value) =>
-                                    handleTypeChange(doc.id, value)
-                                }
-                            >
-                                <SelectTrigger
-                                    className={cn(
-                                        'h-6 w-auto gap-1 border-none bg-transparent px-0 text-xs font-medium',
-                                        'hover:bg-accent hover:text-accent-foreground',
-                                    )}
+                            {/* Editable document type - show select only if not readOnly */}
+                            {readOnly ? (
+                                <span className="font-medium">
+                                    {documentTypes.find(
+                                        (t) => t.id === doc.documentTypeId,
+                                    )?.name || 'Unknown'}
+                                </span>
+                            ) : (
+                                <Select
+                                    value={doc.documentTypeId}
+                                    onValueChange={(value) =>
+                                        handleTypeChange(doc.id, value)
+                                    }
                                 >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {documentTypes.map((type) => (
-                                        <SelectItem
-                                            key={type.id}
-                                            value={type.id}
-                                        >
-                                            {type.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                    <SelectTrigger
+                                        className={cn(
+                                            'h-6 w-auto gap-1 border-none bg-transparent px-0 text-xs font-medium',
+                                            'hover:bg-accent hover:text-accent-foreground',
+                                        )}
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {documentTypes.map((type) => (
+                                            <SelectItem
+                                                key={type.id}
+                                                value={type.id}
+                                            >
+                                                {type.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                             <span>•</span>
                             <span>{formatFileSize(doc.fileSize)}</span>
                             <span>•</span>
@@ -339,15 +357,17 @@ export function DocumentList({ transactionId }: DocumentListProps) {
                         >
                             <Download className="h-4 w-4" />
                         </Button>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(doc.id)}
-                            disabled={deleteDocument.isPending}
-                            title="Delete"
-                        >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {!readOnly && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDelete(doc.id)}
+                                disabled={deleteDocument.isPending}
+                                title="Delete"
+                            >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        )}
                     </div>
                 </div>
             ))}
@@ -361,15 +381,102 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-interface DocumentsTabProps {
+interface UnattachedDocumentsProps {
     transactionId: string;
 }
 
-export function DocumentsTab({ transactionId }: DocumentsTabProps) {
+function UnattachedDocuments({ transactionId }: UnattachedDocumentsProps) {
+    const { data: unattachedDocs, isLoading } = useGetUnattachedDocuments();
+    const { data: documentTypes = [] } = useGetDocumentTypes();
+    const linkDocument = useLinkDocumentToTransaction();
+    const queryClient = useQueryClient();
+
+    const handleLink = async (documentId: string) => {
+        try {
+            await linkDocument.mutateAsync({
+                documentId,
+                transactionId,
+            });
+            queryClient.invalidateQueries({
+                queryKey: ['documents', transactionId],
+            });
+        } catch (error) {
+            console.error('Link error:', error);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading unattached documents...
+            </div>
+        );
+    }
+
+    if (!unattachedDocs || unattachedDocs.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground">
+                Link Existing Document
+            </h4>
+            <p className="text-xs text-muted-foreground">
+                You have {unattachedDocs.length} unattached document
+                {unattachedDocs.length > 1 ? 's' : ''} that can be linked to
+                this transaction.
+            </p>
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {unattachedDocs.map((doc) => (
+                    <div
+                        key={doc.id}
+                        className="flex items-center justify-between rounded-lg border bg-card p-2 text-sm"
+                    >
+                        <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate text-sm">
+                                {doc.fileName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {documentTypes.find(
+                                    (t) => t.id === doc.documentTypeId,
+                                )?.name || 'Unknown'}{' '}
+                                • {formatFileSize(doc.fileSize)} •{' '}
+                                {format(
+                                    new Date(doc.uploadedAt),
+                                    'MMM d, yyyy',
+                                )}
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleLink(doc.id)}
+                            disabled={linkDocument.isPending}
+                            className="gap-1"
+                        >
+                            <Link2 className="h-3 w-3" />
+                            Link
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+interface DocumentsTabProps {
+    transactionId: string;
+    readOnly?: boolean;
+}
+
+export function DocumentsTab({ transactionId, readOnly = false }: DocumentsTabProps) {
     return (
         <div className="space-y-6">
-            <DocumentUpload transactionId={transactionId} />
-            <DocumentList transactionId={transactionId} />
+            {!readOnly && <DocumentUpload transactionId={transactionId} />}
+            {!readOnly && <UnattachedDocuments transactionId={transactionId} />}
+            <DocumentList transactionId={transactionId} readOnly={readOnly} />
         </div>
     );
 }

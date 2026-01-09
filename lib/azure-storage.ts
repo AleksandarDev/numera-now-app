@@ -75,6 +75,18 @@ export function generateStoragePath(
 }
 
 /**
+ * Generate a unique storage path for a standalone document (not attached to a transaction)
+ */
+export function generateStandaloneStoragePath(
+    userId: string,
+    fileName: string,
+): string {
+    const timestamp = Date.now();
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    return `users/${userId}/standalone/${timestamp}-${sanitizedFileName}`;
+}
+
+/**
  * Upload a document to Azure Blob Storage
  */
 export async function uploadDocument(
@@ -190,6 +202,42 @@ export function generateUploadUrl(
         return sasUrl;
     } catch (error) {
         console.error('Error generating upload SAS URL:', error);
+        throw new Error('Failed to generate upload URL');
+    }
+}
+
+/**
+ * Generate a SAS URL for uploading a standalone document (not attached to transaction)
+ * Returns both the uploadUrl and storagePath for saving metadata
+ * Expires in 30 minutes by default
+ */
+export function generateStandaloneUploadUrl(
+    userId: string,
+    fileName: string,
+    expirationMinutes: number = 30,
+): { uploadUrl: string; storagePath: string } {
+    try {
+        const { sharedKeyCredential, accountName, containerName } =
+            getAzureClients();
+        const storagePath = generateStandaloneStoragePath(userId, fileName);
+        const expiryDate = new Date();
+        expiryDate.setMinutes(expiryDate.getMinutes() + expirationMinutes);
+
+        const sasQueryParams = generateBlobSASQueryParameters(
+            {
+                containerName,
+                blobName: storagePath,
+                permissions: BlobSASPermissions.parse('cw'), // Create, Write
+                expiresOn: expiryDate,
+            },
+            sharedKeyCredential,
+        );
+
+        const uploadUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${storagePath}?${sasQueryParams.toString()}`;
+
+        return { uploadUrl, storagePath };
+    } catch (error) {
+        console.error('Error generating standalone upload SAS URL:', error);
         throw new Error('Failed to generate upload URL');
     }
 }

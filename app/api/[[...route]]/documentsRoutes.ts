@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { aliasedTable, and, eq, isNull, or } from 'drizzle-orm';
+import { aliasedTable, and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -9,6 +9,7 @@ import { db } from '@/db/drizzle';
 import { accounts, documents, documentTypes, transactions } from '@/db/schema';
 import {
     generateDownloadUrl,
+    generateStandaloneUploadUrl,
     generateUploadUrl,
     verifyStoragePathOwnership,
 } from '@/lib/azure-storage';
@@ -53,6 +54,103 @@ const getAuthorizedTransaction = async (
 };
 
 const app = new Hono()
+    // Get all documents (with filters)
+    .get(
+        '/',
+        clerkMiddleware(),
+        zValidator(
+            'query',
+            z.object({
+                documentTypeId: z.string().optional(),
+                from: z.string().optional(),
+                to: z.string().optional(),
+                unattached: z.string().optional(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { documentTypeId, from, to, unattached } =
+                ctx.req.valid('query');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const conditions = [
+                eq(documents.uploadedBy, auth.userId),
+                eq(documents.isDeleted, false),
+            ];
+
+            if (documentTypeId) {
+                conditions.push(eq(documents.documentTypeId, documentTypeId));
+            }
+
+            if (from) {
+                conditions.push(gte(documents.uploadedAt, new Date(from)));
+            }
+
+            if (to) {
+                conditions.push(lte(documents.uploadedAt, new Date(to)));
+            }
+
+            if (unattached === 'true') {
+                conditions.push(isNull(documents.transactionId));
+            }
+
+            const data = await db
+                .select({
+                    id: documents.id,
+                    fileName: documents.fileName,
+                    fileSize: documents.fileSize,
+                    mimeType: documents.mimeType,
+                    documentTypeId: documents.documentTypeId,
+                    documentTypeName: documentTypes.name,
+                    transactionId: documents.transactionId,
+                    uploadedBy: documents.uploadedBy,
+                    uploadedAt: documents.uploadedAt,
+                    storagePath: documents.storagePath,
+                })
+                .from(documents)
+                .leftJoin(
+                    documentTypes,
+                    eq(documents.documentTypeId, documentTypes.id),
+                )
+                .where(and(...conditions))
+                .orderBy(desc(documents.uploadedAt));
+
+            // Generate download URLs and add transaction info
+            const documentsWithUrls = await Promise.all(
+                data.map(async (doc) => {
+                    let transactionDate = null;
+                    let transactionPayee = null;
+
+                    if (doc.transactionId) {
+                        const [txn] = await db
+                            .select({
+                                date: transactions.date,
+                                payee: transactions.payee,
+                            })
+                            .from(transactions)
+                            .where(eq(transactions.id, doc.transactionId));
+
+                        if (txn) {
+                            transactionDate = txn.date;
+                            transactionPayee = txn.payee;
+                        }
+                    }
+
+                    return {
+                        ...doc,
+                        downloadUrl: generateDownloadUrl(doc.storagePath),
+                        transactionDate,
+                        transactionPayee,
+                    };
+                }),
+            );
+
+            return ctx.json({ data: documentsWithUrls });
+        },
+    )
     // Get all documents for a transaction
     .get('/transaction/:transactionId', clerkMiddleware(), async (ctx) => {
         const auth = getAuth(ctx);
@@ -396,6 +494,7 @@ const app = new Hono()
                 .select({
                     storagePath: documents.storagePath,
                     transactionId: documents.transactionId,
+                    uploadedBy: documents.uploadedBy,
                 })
                 .from(documents)
                 .where(eq(documents.id, id));
@@ -404,13 +503,17 @@ const app = new Hono()
                 return ctx.json({ error: 'Document not found.' }, 404);
             }
 
-            // Verify ownership through transaction
-            const transaction = await getAuthorizedTransaction(
-                doc.transactionId,
-                auth.userId,
-            );
+            // Verify ownership - either through transaction or uploadedBy for standalone docs
+            if (doc.transactionId) {
+                const transaction = await getAuthorizedTransaction(
+                    doc.transactionId,
+                    auth.userId,
+                );
 
-            if (!transaction) {
+                if (!transaction) {
+                    return ctx.json({ error: 'Unauthorized.' }, 403);
+                }
+            } else if (doc.uploadedBy !== auth.userId) {
                 return ctx.json({ error: 'Unauthorized.' }, 403);
             }
 
@@ -425,6 +528,199 @@ const app = new Hono()
             console.error('Error deleting document:', error);
             return ctx.json({ error: 'Failed to delete document' }, 500);
         }
-    });
+    })
+
+    // Generate upload URL for standalone document (no transaction)
+    .post(
+        '/generate-standalone-upload-url',
+        clerkMiddleware(),
+        zValidator(
+            'json',
+            z.object({
+                fileName: z.string(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { fileName } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            try {
+                const { uploadUrl, storagePath } = generateStandaloneUploadUrl(
+                    auth.userId,
+                    fileName,
+                    30, // 30 minutes expiration
+                );
+
+                return ctx.json({
+                    data: {
+                        uploadUrl,
+                        storagePath,
+                        expiresIn: 30,
+                    },
+                });
+            } catch (error) {
+                console.error('Error generating standalone upload URL:', error);
+                return ctx.json(
+                    { error: 'Failed to generate upload URL' },
+                    500,
+                );
+            }
+        },
+    )
+
+    // Save standalone document metadata (no transaction)
+    .post(
+        '/standalone',
+        clerkMiddleware(),
+        zValidator(
+            'json',
+            z.object({
+                documentTypeId: z.string(),
+                fileName: z.string(),
+                fileSize: z.number(),
+                mimeType: z.string(),
+                storagePath: z.string(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const {
+                documentTypeId,
+                fileName,
+                fileSize,
+                mimeType,
+                storagePath,
+            } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Verify document type belongs to user
+            const [docType] = await db
+                .select()
+                .from(documentTypes)
+                .where(
+                    and(
+                        eq(documentTypes.id, documentTypeId),
+                        eq(documentTypes.userId, auth.userId),
+                    ),
+                );
+
+            if (!docType) {
+                return ctx.json({ error: 'Document type not found.' }, 404);
+            }
+
+            // Verify storage path ownership
+            if (!verifyStoragePathOwnership(storagePath, auth.userId)) {
+                return ctx.json({ error: 'Invalid storage path.' }, 400);
+            }
+
+            try {
+                const [data] = await db
+                    .insert(documents)
+                    .values({
+                        id: createId(),
+                        transactionId: null,
+                        documentTypeId,
+                        fileName,
+                        fileSize,
+                        mimeType,
+                        storagePath,
+                        uploadedBy: auth.userId,
+                    })
+                    .returning();
+
+                return ctx.json({ data }, 201);
+            } catch (error) {
+                console.error(
+                    'Error saving standalone document metadata:',
+                    error,
+                );
+                return ctx.json({ error: 'Failed to save document' }, 500);
+            }
+        },
+    )
+
+    // Link a document to a transaction
+    .post(
+        '/:id/link',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                transactionId: z.string(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+            const { transactionId } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            try {
+                // Verify document exists and belongs to user
+                const [doc] = await db
+                    .select({
+                        uploadedBy: documents.uploadedBy,
+                        transactionId: documents.transactionId,
+                    })
+                    .from(documents)
+                    .where(eq(documents.id, id));
+
+                if (!doc) {
+                    return ctx.json({ error: 'Document not found.' }, 404);
+                }
+
+                if (doc.uploadedBy !== auth.userId) {
+                    return ctx.json({ error: 'Unauthorized.' }, 403);
+                }
+
+                if (doc.transactionId) {
+                    return ctx.json(
+                        {
+                            error: 'Document is already attached to a transaction.',
+                        },
+                        400,
+                    );
+                }
+
+                // Verify transaction belongs to user
+                const transaction = await getAuthorizedTransaction(
+                    transactionId,
+                    auth.userId,
+                );
+
+                if (!transaction) {
+                    return ctx.json({ error: 'Transaction not found.' }, 404);
+                }
+
+                // Link the document to the transaction
+                const [updatedDoc] = await db
+                    .update(documents)
+                    .set({ transactionId })
+                    .where(eq(documents.id, id))
+                    .returning();
+
+                return ctx.json({ data: updatedDoc });
+            } catch (error) {
+                console.error('Error linking document:', error);
+                return ctx.json({ error: 'Failed to link document' }, 500);
+            }
+        },
+    );
 
 export default app;

@@ -27,6 +27,7 @@ import { useEditTransaction } from '@/features/transactions/api/use-edit-transac
 import { useGetSplitGroup } from '@/features/transactions/api/use-get-split-group';
 import { useGetStatusHistory } from '@/features/transactions/api/use-get-status-history';
 import { useGetTransaction } from '@/features/transactions/api/use-get-transaction';
+import { useUnreconcileTransaction } from '@/features/transactions/api/use-unreconcile-transaction';
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -63,6 +64,7 @@ export const EditTransactionSheet = () => {
     const canReconcileQuery = useCanReconcile(id);
     const editMutation = useEditTransaction(id);
     const deleteMutation = useDeleteTransaction(id);
+    const unreconcileMutation = useUnreconcileTransaction(id);
 
     // Document validation queries
     const documentsQuery = useGetDocuments(id ?? '');
@@ -92,6 +94,7 @@ export const EditTransactionSheet = () => {
     const isPending =
         editMutation.isPending ||
         deleteMutation.isPending ||
+        unreconcileMutation.isPending ||
         transactionQuery.isLoading ||
         categoryMutation.isPending ||
         accountMutation.isPending ||
@@ -148,6 +151,11 @@ export const EditTransactionSheet = () => {
                     ? splitType
                     : undefined,
         });
+    };
+
+    const onUnreconcile = async (reason: string) => {
+        if (!transactionQuery.data) return;
+        await unreconcileMutation.mutateAsync({ reason });
     };
 
     const defaultValuesForForm: Partial<UnifiedEditTransactionFormValues> =
@@ -298,11 +306,13 @@ export const EditTransactionSheet = () => {
         <>
             <ConfirmDialog />
             <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-                <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg">
+                <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg overflow-hidden">
                     <div className="px-6 pt-6">
                         <SheetHeader>
                             <SheetTitle className="flex items-center gap-2">
-                                Edit Transaction
+                                {currentStatus === 'reconciled'
+                                    ? 'Transaction Details'
+                                    : 'Edit Transaction'}
                                 {transactionQuery.data?.stripePaymentId && (
                                     <Badge
                                         variant="outline"
@@ -313,7 +323,9 @@ export const EditTransactionSheet = () => {
                                 )}
                             </SheetTitle>
                             <SheetDescription>
-                                Edit an existing transaction.
+                                {currentStatus === 'reconciled'
+                                    ? 'View reconciled transaction details.'
+                                    : 'Edit an existing transaction.'}
                                 {transactionQuery.data?.stripePaymentUrl && (
                                     <a
                                         href={
@@ -332,6 +344,36 @@ export const EditTransactionSheet = () => {
                         </SheetHeader>
                     </div>
 
+                    {/* Status Progression */}
+                    <div className='px-6'>
+                        <StatusProgression
+                            currentStatus={currentStatus}
+                            onAdvance={onAdvanceStatus}
+                            onUnreconcile={onUnreconcile}
+                            disabled={isPending}
+                            autoDraftToPendingEnabled={
+                                settingsQuery.data
+                                    ?.autoDraftToPending ?? false
+                            }
+                            canReconcile={canReconcile}
+                            reconciliationBlockers={
+                                reconciliationBlockers
+                            }
+                            hasAllRequiredDocuments={
+                                hasAllRequiredDocuments
+                            }
+                            requiredDocumentTypes={
+                                requiredDocTypeIds.length
+                            }
+                            attachedRequiredTypes={
+                                attachedRequiredTypesCount
+                            }
+                            minRequiredDocuments={
+                                minRequiredDocuments
+                            }
+                        />
+                    </div>
+
                     {isLoading ? (
                         <div className="absolute inset-0 flex items-center justify-center">
                             <Loader2 className="size-4 animate-spin text-muted-foreground" />
@@ -340,7 +382,7 @@ export const EditTransactionSheet = () => {
                         <Tabs
                             value={activeTab}
                             onValueChange={handleTabChange}
-                            className="flex-1 flex flex-col"
+                            className="flex-1 flex flex-col min-h-0"
                         >
                             <div className="px-6 mb-4">
                                 <TabsList className="w-full">
@@ -356,38 +398,11 @@ export const EditTransactionSheet = () => {
                                 </TabsList>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-6">
+                            <div className="flex-1 overflow-y-auto px-6 pb-6">
                                 <TabsContent
                                     value="details"
-                                    className="space-y-6 h-full"
+                                    className="space-y-6 mt-0"
                                 >
-                                    {/* Status Progression */}
-                                    <StatusProgression
-                                        currentStatus={currentStatus}
-                                        onAdvance={onAdvanceStatus}
-                                        disabled={isPending}
-                                        autoDraftToPendingEnabled={
-                                            settingsQuery.data
-                                                ?.autoDraftToPending ?? false
-                                        }
-                                        canReconcile={canReconcile}
-                                        reconciliationBlockers={
-                                            reconciliationBlockers
-                                        }
-                                        hasAllRequiredDocuments={
-                                            hasAllRequiredDocuments
-                                        }
-                                        requiredDocumentTypes={
-                                            requiredDocTypeIds.length
-                                        }
-                                        attachedRequiredTypes={
-                                            attachedRequiredTypesCount
-                                        }
-                                        minRequiredDocuments={
-                                            minRequiredDocuments
-                                        }
-                                    />
-
                                     <UnifiedEditTransactionForm
                                         id={id}
                                         defaultValues={defaultValuesForForm}
@@ -458,17 +473,20 @@ export const EditTransactionSheet = () => {
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="documents">
+                                <TabsContent value="documents" className="mt-0">
                                     {transactionQuery.data && (
                                         <DocumentsTab
                                             transactionId={
                                                 transactionQuery.data.id
                                             }
+                                            readOnly={
+                                                currentStatus === 'reconciled'
+                                            }
                                         />
                                     )}
                                 </TabsContent>
 
-                                <TabsContent value="history">
+                                <TabsContent value="history" className="mt-0">
                                     {statusHistoryQuery.data &&
                                     statusHistoryQuery.data.length > 0 ? (
                                         <div className="space-y-2 rounded-md border p-3">
@@ -505,22 +523,21 @@ export const EditTransactionSheet = () => {
                                                                             'unknown'
                                                                         }
                                                                     />
-                                                                    <div>
+                                                                    <div className="flex-1 min-w-0">
                                                                         <div className="font-medium text-foreground">
-                                                                            {
-                                                                                entry.toStatus
-                                                                            }
-                                                                        </div>
-                                                                        {!!entry.notes &&
-                                                                            entry.notes
-                                                                                .toLowerCase()
-                                                                                .includes(
-                                                                                    'automatic',
-                                                                                ) && (
-                                                                                <div className="text-xs text-muted-foreground">
-                                                                                    Automatic
-                                                                                </div>
+                                                                            {entry.fromStatus && (
+                                                                                <span className="text-muted-foreground">
+                                                                                    {entry.fromStatus}{' '}
+                                                                                    →{' '}
+                                                                                </span>
                                                                             )}
+                                                                            {entry.toStatus}
+                                                                        </div>
+                                                                        {!!entry.notes && (
+                                                                            <div className="text-xs text-muted-foreground mt-0.5">
+                                                                                {entry.notes}
+                                                                            </div>
+                                                                        )}
                                                                         <div className="text-xs">
                                                                             {entry.changedAt
                                                                                 ? new Date(
