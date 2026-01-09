@@ -1,20 +1,13 @@
 'use client';
 
-import { File, Loader2, Upload, X } from 'lucide-react';
+import { File, Loader2, Upload } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import {
     type DropzoneOptions,
     type FileRejection,
     useDropzone,
 } from 'react-dropzone';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-interface PendingFile {
-    file: File;
-    id: string;
-    preview?: string;
-}
 
 interface DocumentDropzoneProps {
     onFilesAccepted: (files: File[]) => void;
@@ -51,7 +44,6 @@ export function DocumentDropzone({
     disabled = false,
     className,
 }: DocumentDropzoneProps) {
-    const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [rejectedFiles, setRejectedFiles] = useState<FileRejection[]>([]);
 
     const onDrop = useCallback(
@@ -59,48 +51,12 @@ export function DocumentDropzone({
             setRejectedFiles(fileRejections);
 
             if (acceptedFiles.length > 0) {
-                // Create pending files with unique IDs
-                const newPendingFiles: PendingFile[] = acceptedFiles.map(
-                    (file) => ({
-                        file,
-                        id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                        preview: file.type.startsWith('image/')
-                            ? URL.createObjectURL(file)
-                            : undefined,
-                    }),
-                );
-
-                setPendingFiles((prev) => [...prev, ...newPendingFiles]);
+                // Upload files immediately
+                onFilesAccepted(acceptedFiles);
             }
         },
-        [],
+        [onFilesAccepted],
     );
-
-    const handleRemovePending = useCallback((id: string) => {
-        setPendingFiles((prev) => {
-            const file = prev.find((f) => f.id === id);
-            if (file?.preview) {
-                URL.revokeObjectURL(file.preview);
-            }
-            return prev.filter((f) => f.id !== id);
-        });
-    }, []);
-
-    const handleUploadAll = useCallback(() => {
-        if (pendingFiles.length === 0) return;
-
-        const files = pendingFiles.map((pf) => pf.file);
-        onFilesAccepted(files);
-
-        // Clean up previews
-        pendingFiles.forEach((pf) => {
-            if (pf.preview) {
-                URL.revokeObjectURL(pf.preview);
-            }
-        });
-        setPendingFiles([]);
-        setRejectedFiles([]);
-    }, [pendingFiles, onFilesAccepted]);
 
     const { getRootProps, getInputProps, isDragActive, isDragReject } =
         useDropzone({
@@ -188,93 +144,6 @@ export function DocumentDropzone({
                             </span>
                         </div>
                     ))}
-                </div>
-            )}
-
-            {/* Pending files list */}
-            {pendingFiles.length > 0 && (
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">
-                            {pendingFiles.length} file
-                            {pendingFiles.length !== 1 ? 's' : ''} ready to
-                            upload
-                        </p>
-                        <div className="flex gap-2">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    pendingFiles.forEach((pf) => {
-                                        if (pf.preview)
-                                            URL.revokeObjectURL(pf.preview);
-                                    });
-                                    setPendingFiles([]);
-                                }}
-                                disabled={isUploading}
-                            >
-                                Clear all
-                            </Button>
-                            <Button
-                                type="button"
-                                size="sm"
-                                onClick={handleUploadAll}
-                                disabled={isUploading}
-                            >
-                                {isUploading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Uploading...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        Upload all
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        {pendingFiles.map((pf) => (
-                            <div
-                                key={pf.id}
-                                className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2"
-                            >
-                                {pf.preview ? (
-                                    // biome-ignore lint/performance/noImgElement: In memory preview
-                                    <img
-                                        src={pf.preview}
-                                        alt={pf.file.name}
-                                        className="h-10 w-10 rounded object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
-                                        <File className="h-5 w-5 text-muted-foreground" />
-                                    </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">
-                                        {pf.file.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {formatFileSize(pf.file.size)}
-                                    </p>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRemovePending(pf.id)}
-                                    disabled={isUploading}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             )}
         </div>
