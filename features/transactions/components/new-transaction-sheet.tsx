@@ -14,6 +14,7 @@ import { useGetCategories } from '@/features/categories/api/use-get-categories';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
 import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
+import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 
 import {
     UnifiedTransactionForm,
@@ -22,9 +23,10 @@ import {
 
 export const NewTransactionSheet = () => {
     const { isOpen, onClose, defaultValues } = useNewTransaction();
+    const { onOpen: onOpenEdit } = useOpenTransaction();
     const [activeTab, setActiveTab] = useState('details');
 
-    const createMutation = useCreateUnifiedTransaction();
+    const createMutation = useCreateUnifiedTransaction(onOpenEdit, onClose);
     const categoryMutation = useCreateCategory();
     const categoryQuery = useGetCategories();
     const categoryOptions = (categoryQuery.data ?? []).map((category) => ({
