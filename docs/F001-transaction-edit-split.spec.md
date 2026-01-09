@@ -1,5 +1,7 @@
 # F001: Transaction Edit Split
 
+Status: Draft - do not implement
+
 ## Feature Overview
 
 Add the ability to split an existing transaction directly from the edit form, allowing users to break down a single transaction into multiple parts with different categories or accounts.
