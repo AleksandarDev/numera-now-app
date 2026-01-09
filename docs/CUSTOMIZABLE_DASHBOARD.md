@@ -19,7 +19,12 @@ This implementation adds a fully customizable dashboard with drag-and-drop widge
 lib/widgets/
 ├── types.ts         - TypeScript type definitions
 ├── registry.ts      - Widget registry and factory functions
-└── store.ts         - Zustand store with localStorage persistence
+└── store.ts         - Zustand store with database persistence
+
+features/dashboard/api/
+├── use-get-dashboard-layout.ts    - Hook to fetch layout from database
+├── use-update-dashboard-layout.ts - Hook to save layout to database
+└── index.ts                       - API exports
 ```
 
 #### Components
@@ -31,10 +36,27 @@ components/
 │   ├── widget-config-dialog.tsx     - Configuration modal
 │   ├── widget-store-button.tsx      - Add widget button
 │   ├── dashboard-controls.tsx       - Control bar
+│   ├── dashboard-sync.tsx           - Database sync component
 │   └── README.md                    - Documentation
 └── widgets/
     ├── data-grid-widget.tsx         - Financial summary widget wrapper
     └── data-charts-widget.tsx       - Analytics charts widget wrapper
+```
+
+#### API Routes
+```
+app/api/[[...route]]/
+├── dashboardRoutes.ts               - Dashboard layout API endpoints
+└── route.ts                         - Main API router (updated)
+```
+
+#### Database Schema
+```
+db/
+├── schema.ts                        - Database schema (added dashboard_layouts table)
+
+drizzle/
+└── 0031_add_dashboard_layouts.sql   - Migration for dashboard_layouts table
 ```
 
 ### 3. Key Features
@@ -52,9 +74,11 @@ components/
 - **Reset Layout**: Restore default dashboard configuration
 
 #### Persistence
-- Layout saved to localStorage using Zustand persist middleware
-- Survives page refreshes and browser sessions
-- Scoped to individual users (when combined with user context)
+- **Database Storage**: Layout saved to PostgreSQL database (table: `dashboard_layouts`)
+- **Per-User Persistence**: Each user has their own saved layout
+- **Cross-Device Sync**: Layout persists across devices and sessions
+- **Auto-Save**: Changes automatically saved to database with 1-second debounce
+- **API Integration**: Uses Hono API routes for database operations
 
 #### Configuration Options
 

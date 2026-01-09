@@ -1,7 +1,6 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { createWidgetInstance } from './registry';
 import type { DashboardLayout, WidgetConfig, WidgetType } from './types';
 
@@ -11,6 +10,9 @@ interface DashboardStore extends DashboardLayout {
     updateWidget: (id: string, config: Partial<WidgetConfig>) => void;
     reorderWidgets: (newOrder: WidgetConfig[]) => void;
     resetToDefault: () => void;
+    setWidgets: (widgets: WidgetConfig[]) => void;
+    isInitialized: boolean;
+    setInitialized: (initialized: boolean) => void;
 }
 
 /**
@@ -25,44 +27,50 @@ const defaultLayout: DashboardLayout = {
 
 /**
  * Dashboard store for managing widget layout and configuration
+ * Note: This store no longer uses localStorage. State is synced with the database
+ * via the DashboardSync component.
  */
-export const useDashboardStore = create<DashboardStore>()(
-    persist(
-        (set) => ({
-            widgets: defaultLayout.widgets,
+export const useDashboardStore = create<DashboardStore>()((set) => ({
+    widgets: defaultLayout.widgets,
+    isInitialized: false,
 
-            addWidget: (type) =>
-                set((state) => ({
-                    widgets: [...state.widgets, createWidgetInstance(type)],
-                })),
-
-            removeWidget: (id) =>
-                set((state) => ({
-                    widgets: state.widgets.filter((widget) => widget.id !== id),
-                })),
-
-            updateWidget: (id, config) =>
-                set((state) => ({
-                    widgets: state.widgets.map((widget) =>
-                        widget.id === id ? { ...widget, ...config } : widget,
-                    ),
-                })),
-
-            reorderWidgets: (newOrder) =>
-                set({
-                    widgets: newOrder,
-                }),
-
-            resetToDefault: () =>
-                set({
-                    widgets: [
-                        createWidgetInstance('data-grid'),
-                        createWidgetInstance('data-charts'),
-                    ],
-                }),
+    setWidgets: (widgets) =>
+        set({
+            widgets,
         }),
-        {
-            name: 'dashboard-layout',
-        },
-    ),
-);
+
+    setInitialized: (initialized) =>
+        set({
+            isInitialized: initialized,
+        }),
+
+    addWidget: (type) =>
+        set((state) => ({
+            widgets: [...state.widgets, createWidgetInstance(type)],
+        })),
+
+    removeWidget: (id) =>
+        set((state) => ({
+            widgets: state.widgets.filter((widget) => widget.id !== id),
+        })),
+
+    updateWidget: (id, config) =>
+        set((state) => ({
+            widgets: state.widgets.map((widget) =>
+                widget.id === id ? { ...widget, ...config } : widget,
+            ),
+        })),
+
+    reorderWidgets: (newOrder) =>
+        set({
+            widgets: newOrder,
+        }),
+
+    resetToDefault: () =>
+        set({
+            widgets: [
+                createWidgetInstance('data-grid'),
+                createWidgetInstance('data-charts'),
+            ],
+        }),
+}));
