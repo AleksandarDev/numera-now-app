@@ -263,6 +263,9 @@ export const transactions = pgTable(
         // Split transaction fields
         splitGroupId: text('split_group_id'), // Groups related split transactions together
         splitType: text('split_type'), // 'parent' or 'child' - parent is the main transaction
+        // Stripe integration fields
+        stripePaymentId: text('stripe_payment_id'), // Stripe payment intent or charge ID
+        stripePaymentUrl: text('stripe_payment_url'), // URL to Stripe dashboard for this payment
     },
     (table) => [
         index('transactions_accountid_idx').on(table.accountId),
@@ -274,6 +277,7 @@ export const transactions = pgTable(
         index('transactions_status_idx').on(table.status),
         index('transactions_splitgroupid_idx').on(table.splitGroupId),
         index('transactions_splittype_idx').on(table.splitType),
+        index('transactions_stripepaymentid_idx').on(table.stripePaymentId),
     ],
 );
 
@@ -379,3 +383,66 @@ export const transactionStatusHistoryRelations = relations(
 export const insertTransactionStatusHistorySchema = createInsertSchema(
     transactionStatusHistory,
 );
+
+// Stripe integration settings table - stores per-user Stripe configuration
+export const stripeSettings = pgTable(
+    'stripe_settings',
+    {
+        userId: text('user_id').primaryKey(),
+        // Stripe account ID (from Connect or just API key usage)
+        stripeAccountId: text('stripe_account_id'),
+        // Encrypted Stripe secret key (for API access)
+        stripeSecretKey: text('stripe_secret_key'),
+        // Webhook signing secret for verifying webhook events
+        webhookSecret: text('webhook_secret'),
+        // Default accounts for Stripe transactions
+        defaultCreditAccountId: text('default_credit_account_id').references(
+            () => accounts.id,
+            { onDelete: 'set null' },
+        ),
+        defaultDebitAccountId: text('default_debit_account_id').references(
+            () => accounts.id,
+            { onDelete: 'set null' },
+        ),
+        // Default category for Stripe transactions
+        defaultCategoryId: text('default_category_id').references(
+            () => categories.id,
+            { onDelete: 'set null' },
+        ),
+        // Whether the integration is enabled
+        isEnabled: boolean('is_enabled').notNull().default(false),
+        // Date from which to start syncing payments (for initial import)
+        syncFromDate: timestamp('sync_from_date', { mode: 'date' }),
+        // Last sync timestamp
+        lastSyncAt: timestamp('last_sync_at', { mode: 'date' }),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        index('stripe_settings_userid_idx').on(table.userId),
+        index('stripe_settings_stripeaccountid_idx').on(table.stripeAccountId),
+    ],
+);
+
+export const stripeSettingsRelations = relations(stripeSettings, ({ one }) => ({
+    defaultCreditAccount: one(accounts, {
+        fields: [stripeSettings.defaultCreditAccountId],
+        references: [accounts.id],
+        relationName: 'stripeCreditAccount',
+    }),
+    defaultDebitAccount: one(accounts, {
+        fields: [stripeSettings.defaultDebitAccountId],
+        references: [accounts.id],
+        relationName: 'stripeDebitAccount',
+    }),
+    defaultCategory: one(categories, {
+        fields: [stripeSettings.defaultCategoryId],
+        references: [categories.id],
+    }),
+}));
+
+export const insertStripeSettingsSchema = createInsertSchema(stripeSettings);

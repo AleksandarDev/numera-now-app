@@ -8,6 +8,7 @@ import customersRoutes from './customersRoutes';
 import documentsRoutes from './documentsRoutes';
 import documentTypesRoutes from './documentTypesRoutes';
 import settingsRoutes from './settingsRoutes';
+import stripeRoutes from './stripeRoutes';
 import summaryRoutes from './summaryRoutes';
 import transactionsRoutes from './transactionsRoutes';
 
@@ -87,7 +88,8 @@ const routes = app
     .route('/transactions', transactionsRoutes)
     .route('/settings', settingsRoutes)
     .route('/documents', documentsRoutes)
-    .route('/document-types', documentTypesRoutes);
+    .route('/document-types', documentTypesRoutes)
+    .route('/stripe', stripeRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);

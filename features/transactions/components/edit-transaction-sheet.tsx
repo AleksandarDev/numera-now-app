@@ -1,8 +1,9 @@
-import { Copy, Loader2 } from 'lucide-react';
+import { Copy, ExternalLink, Loader2 } from 'lucide-react';
 import React, { Fragment, useMemo, useState } from 'react';
 import type { z } from 'zod';
 import { DocumentsTab } from '@/components/documents-tab';
 import { StatusProgression } from '@/components/status-progression';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -300,9 +301,33 @@ export const EditTransactionSheet = () => {
                 <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg">
                     <div className="px-6 pt-6">
                         <SheetHeader>
-                            <SheetTitle>Edit Transaction</SheetTitle>
+                            <SheetTitle className="flex items-center gap-2">
+                                Edit Transaction
+                                {transactionQuery.data?.stripePaymentId && (
+                                    <Badge
+                                        variant="outline"
+                                        className="text-xs font-normal"
+                                    >
+                                        Stripe
+                                    </Badge>
+                                )}
+                            </SheetTitle>
                             <SheetDescription>
                                 Edit an existing transaction.
+                                {transactionQuery.data?.stripePaymentUrl && (
+                                    <a
+                                        href={
+                                            transactionQuery.data
+                                                .stripePaymentUrl
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
+                                    >
+                                        View in Stripe
+                                        <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                )}
                             </SheetDescription>
                         </SheetHeader>
                     </div>
