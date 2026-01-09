@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@clerk/nextjs';
-import { Check, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { Check, Copy, ExternalLink, Info, Loader2, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -149,6 +149,46 @@ export function OpenFinancesSettingsCard() {
                         disabled={updateSettings.isPending}
                     />
                 </div>
+
+                {/* Instructions - Always visible */}
+                {!isEnabled && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-2">
+                        <div className="flex items-start gap-2">
+                            <Info className="size-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium text-blue-900">
+                                    How to Share Your Financial Transparency
+                                </p>
+                                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                                    <li>
+                                        Enable Open Finances using the toggle
+                                        above
+                                    </li>
+                                    <li>
+                                        Configure which metrics you want to
+                                        share publicly
+                                    </li>
+                                    <li>
+                                        Enter the values for your selected
+                                        metrics
+                                    </li>
+                                    <li>
+                                        Copy the public URL to share directly,
+                                        or use the embed code to add it to your
+                                        website
+                                    </li>
+                                </ol>
+                                <p className="text-xs text-blue-700 mt-2">
+                                    Your public page will be available at:{' '}
+                                    <code className="bg-blue-100 px-1 py-0.5 rounded text-blue-900">
+                                        {embedUrl ||
+                                            '/open-finances/[your-user-id]'}
+                                    </code>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {isEnabled && (
                     <>
@@ -341,65 +381,38 @@ export function OpenFinancesSettingsCard() {
                             />
                         </div>
 
-                        {/* Public URL and Embed Code */}
-                        <div className="space-y-3">
-                            <div>
-                                <Label>Public URL</Label>
-                                <div className="flex gap-2 mt-2">
-                                    <Input
-                                        value={embedUrl}
-                                        readOnly
-                                        className="flex-1"
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() =>
-                                            copyToClipboard(embedUrl)
-                                        }
-                                    >
-                                        {copied ? (
-                                            <Check className="size-4" />
-                                        ) : (
-                                            <Copy className="size-4" />
-                                        )}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        asChild
-                                    >
-                                        <a
-                                            href={embedUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <ExternalLink className="size-4" />
-                                        </a>
-                                    </Button>
-                                </div>
+                        {/* Sharing & Embedding Section - More Prominent */}
+                        <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 space-y-4">
+                            <div className="flex items-center gap-2">
+                                <Share2 className="size-5 text-green-700" />
+                                <h3 className="font-semibold text-green-900">
+                                    Share Your Transparency Page
+                                </h3>
                             </div>
 
-                            {allowEmbedding && (
+                            <div className="space-y-3">
+                                {/* Public URL */}
                                 <div>
-                                    <Label>Embed Code</Label>
-                                    <p className="text-xs text-muted-foreground mb-2">
-                                        Copy this code to embed the page on your
-                                        website
+                                    <Label className="text-green-900">
+                                        Public URL
+                                    </Label>
+                                    <p className="text-xs text-green-700 mb-2">
+                                        Share this link directly with your
+                                        stakeholders or on social media
                                     </p>
                                     <div className="flex gap-2">
-                                        <Textarea
-                                            value={embedCode}
+                                        <Input
+                                            value={embedUrl}
                                             readOnly
-                                            className="flex-1 font-mono text-xs"
-                                            rows={3}
+                                            className="flex-1 bg-white"
                                         />
                                         <Button
                                             variant="outline"
                                             size="icon"
                                             onClick={() =>
-                                                copyToClipboard(embedCode)
+                                                copyToClipboard(embedUrl)
                                             }
+                                            title="Copy URL"
                                         >
                                             {copied ? (
                                                 <Check className="size-4" />
@@ -407,9 +420,86 @@ export function OpenFinancesSettingsCard() {
                                                 <Copy className="size-4" />
                                             )}
                                         </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            asChild
+                                            title="Open in new tab"
+                                        >
+                                            <a
+                                                href={embedUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <ExternalLink className="size-4" />
+                                            </a>
+                                        </Button>
                                     </div>
                                 </div>
-                            )}
+
+                                {/* Embed Code */}
+                                {allowEmbedding && (
+                                    <div>
+                                        <Label className="text-green-900">
+                                            Embed Code
+                                        </Label>
+                                        <p className="text-xs text-green-700 mb-2">
+                                            Copy this code to embed the
+                                            transparency page on your website
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <Textarea
+                                                value={embedCode}
+                                                readOnly
+                                                className="flex-1 font-mono text-xs bg-white"
+                                                rows={3}
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() =>
+                                                    copyToClipboard(embedCode)
+                                                }
+                                                title="Copy embed code"
+                                            >
+                                                {copied ? (
+                                                    <Check className="size-4" />
+                                                ) : (
+                                                    <Copy className="size-4" />
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Usage Instructions */}
+                                <div className="text-xs text-green-800 bg-green-100 p-3 rounded-md">
+                                    <p className="font-medium mb-1">
+                                        💡 Quick Guide:
+                                    </p>
+                                    <ul className="space-y-1 list-disc list-inside">
+                                        <li>
+                                            Use the URL to link from your
+                                            website or share on social media
+                                        </li>
+                                        {allowEmbedding && (
+                                            <li>
+                                                Use the embed code to display
+                                                the page directly on your
+                                                website
+                                            </li>
+                                        )}
+                                        <li>
+                                            Changes to metrics update
+                                            immediately—no redeployment needed
+                                        </li>
+                                        <li>
+                                            Only enabled metrics are visible to
+                                            the public
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </>
                 )}
