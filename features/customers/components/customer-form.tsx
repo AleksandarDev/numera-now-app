@@ -3,9 +3,11 @@ import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -157,6 +159,29 @@ export const CustomerForm = ({
                                     value={field.value ?? ''}
                                 />
                             </FormControl>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="isOwnFirm"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                                <Checkbox
+                                    disabled={disabled}
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>Mark as Own Firm</FormLabel>
+                                <FormDescription>
+                                    Mark this customer as your own company/firm.
+                                    This will be used to automatically link Stripe
+                                    payments.
+                                </FormDescription>
+                            </div>
                         </FormItem>
                     )}
                 />

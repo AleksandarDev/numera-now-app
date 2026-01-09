@@ -1,10 +1,11 @@
 import { createId } from '@paralleldrive/cuid2';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 import { db } from '@/db/drizzle';
 import {
+    customers,
     stripeSettings,
     transactionStatusHistory,
     transactions,
@@ -61,6 +62,12 @@ const processStripeCharge = async (
         return { id: existingTransaction.id, created: false };
     }
 
+    // Look up the own firm customer for this user
+    const [ownFirmCustomer] = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)));
+
     // Convert amount from Stripe cents to milliunits (app stores amounts * 1000)
     // Stripe: 100 cents = 1.00 EUR
     // App: 1000 milliunits = 1.00 EUR
@@ -85,6 +92,7 @@ const processStripeCharge = async (
         creditAccountId: settings.defaultCreditAccountId,
         debitAccountId: settings.defaultDebitAccountId,
         categoryId: settings.defaultCategoryId,
+        payeeCustomerId: ownFirmCustomer?.id,
         status: 'pending',
         statusChangedAt: now,
         statusChangedBy: userId,
@@ -104,16 +112,14 @@ const processStripeCharge = async (
 };
 
 export async function GET(request: NextRequest) {
-    // Verify cron secret if configured
-    if (CRON_SECRET) {
-        const authHeader = request.headers.get('authorization');
-        if (authHeader !== `Bearer ${CRON_SECRET}`) {
-            console.error('[Stripe Cron] Unauthorized request');
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 },
-            );
-        }
+    // Verify cron secret
+    const authHeader = request.headers.get('authorization');
+    if (authHeader !== `Bearer ${CRON_SECRET}`) {
+        console.error('[Stripe Cron] Unauthorized request');
+        return NextResponse.json(
+            { error: 'Unauthorized' },
+            { status: 401 },
+        );
     }
 
     console.log('[Stripe Cron] Starting hourly sync...');
