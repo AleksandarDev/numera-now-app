@@ -107,7 +107,12 @@ const app = new Hono()
         try {
             exposedMetrics = JSON.parse(settings.exposedMetrics);
         } catch (error) {
-            console.error('Error parsing exposed metrics:', error);
+            console.error(
+                'Error parsing exposed metrics for user',
+                userId,
+                ':',
+                error,
+            );
         }
 
         // Return only the publicly configured data

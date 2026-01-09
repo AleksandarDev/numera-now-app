@@ -93,9 +93,11 @@ export function OpenFinancesSettingsCard() {
     };
 
     const embedUrl = userId
-        ? `${window.location.origin}/open-finances/${userId}`
+        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/open-finances/${userId}`
         : '';
-    const embedCode = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" style="border: 1px solid #e5e7eb; border-radius: 8px;"></iframe>`;
+    const embedCode = embedUrl
+        ? `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" style="border: 1px solid #e5e7eb; border-radius: 8px;"></iframe>`
+        : '';
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);

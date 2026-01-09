@@ -106,6 +106,16 @@ To update the displayed financial information:
 ### Rate Limiting
 The public endpoint is rate-limited to prevent abuse while ensuring legitimate access.
 
+### Embedding Security
+By default, the Open Finances page can be embedded on any website. For production environments, you can restrict embedding to specific trusted domains by setting the `ALLOWED_EMBED_ORIGINS` environment variable:
+
+```bash
+# Allow only specific domains to embed the page
+ALLOWED_EMBED_ORIGINS="'self' https://yourdomain.com https://partner.com"
+```
+
+This sets the Content-Security-Policy `frame-ancestors` directive to only allow embedding from the specified origins.
+
 ## Best Practices
 
 1. **Regular Updates**: Update your metrics regularly to maintain transparency

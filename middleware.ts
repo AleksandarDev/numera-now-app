@@ -17,20 +17,17 @@ export default clerkMiddleware(async (auth, req) => {
         // Remove X-Frame-Options to allow embedding
         response.headers.delete('X-Frame-Options');
         // Set CSP to allow embedding from any origin
+        // Note: In production, consider restricting this to specific domains
+        // by setting ALLOWED_EMBED_ORIGINS environment variable
+        const allowedOrigins = process.env.ALLOWED_EMBED_ORIGINS || "'self' *";
         response.headers.set(
             'Content-Security-Policy',
-            "frame-ancestors 'self' *",
+            `frame-ancestors ${allowedOrigins}`,
         );
-        // Add CORS headers
+        // Add CORS headers for public API access
         response.headers.set('Access-Control-Allow-Origin', '*');
-        response.headers.set(
-            'Access-Control-Allow-Methods',
-            'GET, OPTIONS',
-        );
-        response.headers.set(
-            'Access-Control-Allow-Headers',
-            'Content-Type',
-        );
+        response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
     }
 
     // Protect non-public routes
