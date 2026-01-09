@@ -455,8 +455,17 @@ export default function AccountsPage() {
 
     const onSubmitImport = async (values: Record<string, string | null>[]) => {
         // Transform the imported records to match the accounts schema
-        const accountsData =
-            values as unknown as (typeof accountsSchema.$inferInsert)[];
+        const accountsData = values.map((value) => {
+            const data: Record<string, unknown> = { ...value };
+            // Convert null to undefined for optional fields
+            if (!data.accountClass) {
+                data.accountClass = undefined;
+            }
+            if (!data.code) {
+                data.code = undefined;
+            }
+            return data;
+        }) as unknown as (typeof accountsSchema.$inferInsert)[];
         createAccounts.mutate(accountsData, {
             onSuccess: () => {
                 onCancelImport();

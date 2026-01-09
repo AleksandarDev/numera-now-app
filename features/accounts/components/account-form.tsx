@@ -185,7 +185,7 @@ export const AccountForm = ({
                                     <FormControl>
                                         <Select
                                             disabled={disabled}
-                                            value={field.value}
+                                            value={field.value ?? undefined}
                                             onValueChange={field.onChange}
                                         >
                                             <SelectTrigger>
@@ -241,7 +241,9 @@ export const AccountForm = ({
                                         <AmountInput
                                             disabled={disabled}
                                             placeholder="0.00"
-                                            value={field.value?.toString()}
+                                            value={
+                                                field.value?.toString() ?? '0'
+                                            }
                                             onChange={(value) => {
                                                 const numValue =
                                                     Number.parseFloat(

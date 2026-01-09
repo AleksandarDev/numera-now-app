@@ -53,8 +53,9 @@ export const insertAccountSchema = createInsertSchema(accounts, {
     accountType: z.enum(['credit', 'debit', 'neutral']).default('neutral'),
     accountClass: z
         .enum(['asset', 'liability', 'equity', 'income', 'expense'])
+        .nullable()
         .optional(),
-    openingBalance: z.number().int().default(0).optional(),
+    openingBalance: z.number().int().nullable().default(0).optional(),
 });
 
 // Tags table - flexible multi-select labeling system
