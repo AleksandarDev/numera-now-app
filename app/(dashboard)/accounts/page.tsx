@@ -471,7 +471,7 @@ export default function AccountsPage() {
             ) {
                 data.openingBalance = 0;
             } else if (typeof data.openingBalance === 'string') {
-                const parsed = Number.parseInt(data.openingBalance, 10);
+                const parsed = Number(data.openingBalance);
                 data.openingBalance = Number.isNaN(parsed) ? 0 : parsed;
             }
             return data;

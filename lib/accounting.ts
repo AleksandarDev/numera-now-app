@@ -88,6 +88,12 @@ export interface AccountBalanceSummary {
 }
 
 /**
+ * Rounding tolerance for trial balance checks (in miliunits)
+ * Allows for small rounding errors (< 1 cent = 10 miliunits)
+ */
+const ROUNDING_TOLERANCE = 10;
+
+/**
  * Calculate trial balance check
  *
  * In proper double-entry bookkeeping, total debits should equal total credits.
@@ -128,8 +134,8 @@ export function calculateTrialBalance(accounts: AccountBalanceSummary[]): {
     }
 
     const difference = totalDebits - totalCredits;
-    // Allow for small rounding errors (< 1 cent in miliunits = 10)
-    const isBalanced = Math.abs(difference) < 10;
+    // Allow for small rounding errors
+    const isBalanced = Math.abs(difference) < ROUNDING_TOLERANCE;
 
     return {
         totalDebits,

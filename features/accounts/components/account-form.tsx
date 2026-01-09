@@ -175,11 +175,9 @@ export const AccountForm = ({
                                 <FormItem>
                                     <FormLabel>
                                         Account Class
-                                        {doubleEntryMode && (
-                                            <span className="text-red-500 ml-1">
-                                                *
-                                            </span>
-                                        )}
+                                        <span className="text-red-500 ml-1">
+                                            *
+                                        </span>
                                     </FormLabel>
                                     <FormControl>
                                         <Select
@@ -243,11 +241,9 @@ export const AccountForm = ({
                                             placeholder="0"
                                             value={field.value ?? 0}
                                             onChange={(e) => {
-                                                const numValue =
-                                                    Number.parseInt(
-                                                        e.target.value,
-                                                        10,
-                                                    );
+                                                const numValue = Number(
+                                                    e.target.value,
+                                                );
                                                 field.onChange(
                                                     Number.isNaN(numValue)
                                                         ? 0
