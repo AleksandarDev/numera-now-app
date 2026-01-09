@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferResponseType } from 'hono';
-import { ArrowUpDown, MoreHorizontal, TriangleAlert } from 'lucide-react';
+import { ArrowUpDown, Building2, MoreHorizontal, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -111,6 +111,12 @@ export const columns: ColumnDef<ResponseType>[] = [
                         <Badge variant="destructive" className="text-xs">
                             <TriangleAlert className="size-4 mr-2" />
                             Incomplete
+                        </Badge>
+                    )}
+                    {row.original.isOwnFirm && (
+                        <Badge variant="secondary" className="text-xs">
+                            <Building2 className="size-4 mr-2" />
+                            Own Firm
                         </Badge>
                     )}
                     <span>{row.getValue('name')}</span>

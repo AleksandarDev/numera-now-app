@@ -97,6 +97,7 @@ const app = new Hono()
                     contactEmail: customers.contactEmail,
                     contactTelephone: customers.contactTelephone,
                     isComplete: customers.isComplete,
+                    isOwnFirm: customers.isOwnFirm,
                     transactionCount: sql<number>`count(${transactions.id})`.as(
                         'transaction_count',
                     ),
@@ -379,6 +380,19 @@ const app = new Hono()
 
             const isComplete = isCustomerComplete(values);
 
+            // If marking this customer as own firm, unmark all other customers
+            if (values.isOwnFirm) {
+                await db
+                    .update(customers)
+                    .set({ isOwnFirm: false })
+                    .where(
+                        and(
+                            eq(customers.userId, auth.userId),
+                            eq(customers.isOwnFirm, true),
+                        ),
+                    );
+            }
+
             const [data] = await db
                 .insert(customers)
                 .values({
@@ -423,6 +437,19 @@ const app = new Hono()
             }
 
             const isComplete = isCustomerComplete(values);
+
+            // If marking this customer as own firm, unmark all other customers
+            if (values.isOwnFirm) {
+                await db
+                    .update(customers)
+                    .set({ isOwnFirm: false })
+                    .where(
+                        and(
+                            eq(customers.userId, auth.userId),
+                            eq(customers.isOwnFirm, true),
+                        ),
+                    );
+            }
 
             const [data] = await db
                 .update(customers)

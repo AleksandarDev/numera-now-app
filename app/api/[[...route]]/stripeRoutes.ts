@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { z } from 'zod';
@@ -10,6 +10,7 @@ import { db } from '@/db/drizzle';
 import {
     accounts,
     categories,
+    customers,
     stripeSettings,
     transactionStatusHistory,
     transactions,
@@ -70,6 +71,12 @@ const processStripeCharge = async (
         return { id: existingTransaction.id, created: false };
     }
 
+    // Look up the own firm customer for this user
+    const [ownFirmCustomer] = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)));
+
     // Convert amount from Stripe cents to milliunits (app stores amounts * 1000)
     // Stripe: 100 cents = 1.00 EUR
     // App: 1000 milliunits = 1.00 EUR
@@ -94,6 +101,7 @@ const processStripeCharge = async (
         creditAccountId: settings.defaultCreditAccountId,
         debitAccountId: settings.defaultDebitAccountId,
         categoryId: settings.defaultCategoryId,
+        payeeCustomerId: ownFirmCustomer?.id,
         status: 'pending',
         statusChangedAt: now,
         statusChangedBy: userId,

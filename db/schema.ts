@@ -78,12 +78,15 @@ export const customers = pgTable(
         contactTelephone: text('contact_telephone'),
         userId: text('user_id').notNull(),
         isComplete: boolean('is_complete').notNull().default(false),
+        // Flag to mark this customer as the user's own firm/company
+        isOwnFirm: boolean('is_own_firm').notNull().default(false),
     },
     (table) => [
         index('customers_userid_idx').on(table.userId),
         index('customers_name_idx').on(table.name),
         index('customers_pin_idx').on(table.pin),
         index('customers_iscomplete_idx').on(table.isComplete),
+        index('customers_isownfirm_idx').on(table.isOwnFirm),
     ],
 );
 
