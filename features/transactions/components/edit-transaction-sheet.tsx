@@ -1,8 +1,9 @@
-import { Loader2 } from 'lucide-react';
+import { Copy, Loader2 } from 'lucide-react';
 import React, { Fragment, useMemo, useState } from 'react';
 import type { z } from 'zod';
 import { DocumentsTab } from '@/components/documents-tab';
 import { StatusProgression } from '@/components/status-progression';
+import { Button } from '@/components/ui/button';
 import {
     Sheet,
     SheetContent,
@@ -25,9 +26,14 @@ import { useEditTransaction } from '@/features/transactions/api/use-edit-transac
 import { useGetSplitGroup } from '@/features/transactions/api/use-get-split-group';
 import { useGetStatusHistory } from '@/features/transactions/api/use-get-status-history';
 import { useGetTransaction } from '@/features/transactions/api/use-get-transaction';
+import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { useConfirm } from '@/hooks/use-confirm';
-import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
+import {
+    convertAmountFromMiliunits,
+    convertAmountToMiliunits,
+    formatCurrency,
+} from '@/lib/utils';
 
 import {
     UnifiedEditTransactionForm,
@@ -41,6 +47,7 @@ type FormValues = z.infer<typeof formSchema>;
 export const EditTransactionSheet = () => {
     const { isOpen, onClose, id, initialTab, tab, setTab } =
         useOpenTransaction();
+    const { onOpen: onOpenNew } = useNewTransaction();
 
     const [ConfirmDialog, confirm] = useConfirm(
         'Are you sure?',
@@ -226,6 +233,48 @@ export const EditTransactionSheet = () => {
         }
     };
 
+    const handleDuplicate = () => {
+        if (!transactionQuery.data) return;
+
+        const amount = transactionQuery.data.amount
+            ? convertAmountFromMiliunits(
+                  Math.abs(transactionQuery.data.amount),
+              ).toString()
+            : '0';
+
+        // Prepare default values for the new transaction form
+        const defaultValues = {
+            date: new Date(),
+            payeeCustomerId: transactionQuery.data.payeeCustomerId ?? '',
+            notes: transactionQuery.data.notes ?? '',
+            categoryId: transactionQuery.data.categoryId ?? '',
+            creditEntries: transactionQuery.data.creditAccountId
+                ? [
+                      {
+                          accountId: transactionQuery.data.creditAccountId,
+                          amount,
+                          categoryId: transactionQuery.data.categoryId ?? '',
+                          notes: '',
+                      },
+                  ]
+                : [{ accountId: '', amount: '', categoryId: '', notes: '' }],
+            debitEntries: transactionQuery.data.debitAccountId
+                ? [
+                      {
+                          accountId: transactionQuery.data.debitAccountId,
+                          amount,
+                          categoryId: transactionQuery.data.categoryId ?? '',
+                          notes: '',
+                      },
+                  ]
+                : [{ accountId: '', amount: '', categoryId: '', notes: '' }],
+        };
+
+        // Close the edit sheet before opening new transaction sheet
+        onClose();
+        onOpenNew(defaultValues);
+    };
+
     type TabValue = 'details' | 'documents' | 'history';
     const [activeTab, setActiveTab] = useState<TabValue>(
         tab || initialTab || 'details',
@@ -365,6 +414,23 @@ export const EditTransactionSheet = () => {
                                                 </div>
                                             </div>
                                         )}
+
+                                    {/* Duplicate button */}
+                                    <div className="pb-4">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={handleDuplicate}
+                                            disabled={
+                                                isPending ||
+                                                !transactionQuery.data
+                                            }
+                                            className="w-full"
+                                        >
+                                            <Copy className="mr-2 size-4" />
+                                            Duplicate Transaction
+                                        </Button>
+                                    </div>
                                 </TabsContent>
 
                                 <TabsContent value="documents">

@@ -35,7 +35,10 @@ type UnifiedTransactionInput = {
     debitEntries: DebitEntry[];
 };
 
-export const useCreateUnifiedTransaction = () => {
+export const useCreateUnifiedTransaction = (
+    onOpen?: (id: string, tab?: 'details' | 'documents' | 'history') => void,
+    onCloseNew?: () => void,
+) => {
     const queryClient = useQueryClient();
 
     const mutation = useMutation<
@@ -174,10 +177,34 @@ export const useCreateUnifiedTransaction = () => {
                 return await response.json();
             }
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             toast.success('Transaction created.');
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
             queryClient.invalidateQueries({ queryKey: ['summary'] });
+
+            // Extract the transaction ID from the response
+            // For single transactions, data.data is the transaction object
+            // For split transactions, data.data has parent and children
+            let transactionId: string | undefined;
+            if ('data' in data) {
+                if ('parent' in data.data) {
+                    // Split transaction - use parent ID
+                    transactionId = data.data.parent.id;
+                } else {
+                    // Single transaction
+                    transactionId = data.data.id;
+                }
+            }
+
+            // Close the new transaction sheet and open edit sheet
+            if (transactionId) {
+                if (onCloseNew) {
+                    onCloseNew();
+                }
+                if (onOpen) {
+                    onOpen(transactionId, 'details');
+                }
+            }
         },
         onError: (error) => {
             toast.error(error.message || 'Failed to create transaction.');
