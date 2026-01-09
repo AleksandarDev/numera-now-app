@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import type { MultiValue } from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 
+import { getContrastingTextColor } from '@/lib/utils';
+
 type TagOption = {
     label: string;
     value: string;
@@ -56,24 +58,26 @@ export const TagMultiSelect = ({
                 }),
                 multiValue: (base, { data }) => ({
                     ...base,
-                    backgroundColor: data.color ? `${data.color}20` : '#dbeafe',
+                    backgroundColor: data.color ?? '#3b82f6',
                     borderColor: data.color ?? '#3b82f6',
                     border: '1px solid',
+                    padding: '1px 4px',
                 }),
                 multiValueLabel: (base, { data }) => ({
                     ...base,
-                    color: data.color ?? '#1e40af',
+                    color: data.color ? getContrastingTextColor(data.color) : '#ffffff',
                     fontWeight: 500,
+                    fontSize: '11px',
+                    padding: '0 2px',
                 }),
                 multiValueRemove: (base, { data }) => ({
                     ...base,
-                    color: data.color ?? '#1e40af',
+                    color: data.color ? getContrastingTextColor(data.color) : '#ffffff',
                     ':hover': {
-                        backgroundColor: data.color
-                            ? `${data.color}40`
-                            : '#bfdbfe',
-                        color: data.color ?? '#1e3a8a',
+                        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                        color: data.color ? getContrastingTextColor(data.color) : '#ffffff',
                     },
+                    padding: '0 2px',
                 }),
             }}
             value={formattedValue}

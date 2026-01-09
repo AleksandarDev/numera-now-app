@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn, getContrastingTextColor } from '@/lib/utils';
 
 type TagBadgeProps = {
     name: string;
@@ -14,14 +14,14 @@ export const TagBadge = ({
     className,
 }: TagBadgeProps) => {
     const baseClasses =
-        'inline-flex items-center rounded-full font-medium whitespace-nowrap';
+        'inline-flex items-center rounded-full font-medium max-w-[120px] overflow-hidden';
     const sizeClasses =
-        size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm';
+        size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs';
 
     const style = color
         ? {
-              backgroundColor: `${color}20`,
-              color: color,
+              backgroundColor: color,
+              color: getContrastingTextColor(color),
               borderColor: color,
           }
         : {};
@@ -36,8 +36,9 @@ export const TagBadge = ({
                 className,
             )}
             style={style}
+            title={name}
         >
-            {name}
+            <span className="truncate">{name}</span>
         </span>
     );
 };

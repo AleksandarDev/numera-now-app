@@ -100,3 +100,27 @@ export function formatPercentage(
 
     return result;
 }
+
+/**
+ * Calculate contrasting text color (black or white) based on background color
+ * Uses relative luminance calculation from WCAG guidelines
+ */
+export function getContrastingTextColor(hexColor: string): string {
+    // Remove # if present
+    const hex = hexColor.replace('#', '');
+
+    // Convert to RGB
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    // Calculate relative luminance
+    const luminance = (c: number) =>
+        c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+
+    const L =
+        0.2126 * luminance(r) + 0.7152 * luminance(g) + 0.0722 * luminance(b);
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return L > 0.5 ? '#000000' : '#FFFFFF';
+}
