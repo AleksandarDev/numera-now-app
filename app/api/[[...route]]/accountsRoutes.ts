@@ -1,12 +1,17 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { and, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, lte, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
-import { accounts, insertAccountSchema } from '@/db/schema';
+import {
+    accounts,
+    customers,
+    insertAccountSchema,
+    transactions,
+} from '@/db/schema';
 
 const app = new Hono()
     .get(
@@ -145,6 +150,111 @@ const app = new Hono()
             }
 
             return ctx.json({ data });
+        },
+    )
+    .get(
+        '/:id/ledger',
+        zValidator(
+            'param',
+            z.object({
+                id: z.string(),
+            }),
+        ),
+        zValidator(
+            'query',
+            z.object({
+                from: z.string().optional(),
+                to: z.string().optional(),
+                search: z.string().optional(),
+            }),
+        ),
+        clerkMiddleware(),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+            const { from, to, search } = ctx.req.valid('query');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // First verify the account exists and belongs to the user
+            const [account] = await db
+                .select({
+                    id: accounts.id,
+                    name: accounts.name,
+                    code: accounts.code,
+                    accountClass: accounts.accountClass,
+                    accountType: accounts.accountType,
+                    openingBalance: accounts.openingBalance,
+                })
+                .from(accounts)
+                .where(
+                    and(eq(accounts.userId, auth.userId), eq(accounts.id, id)),
+                );
+
+            if (!account) {
+                return ctx.json({ error: 'Account not found.' }, 404);
+            }
+
+            // Build filter conditions for transactions
+            const conditions = [
+                eq(accounts.userId, auth.userId),
+                or(
+                    eq(transactions.accountId, id),
+                    eq(transactions.creditAccountId, id),
+                    eq(transactions.debitAccountId, id),
+                ),
+            ];
+
+            if (from) {
+                conditions.push(gte(transactions.date, new Date(from)));
+            }
+            if (to) {
+                conditions.push(lte(transactions.date, new Date(to)));
+            }
+
+            // Add search filter to database query
+            if (search) {
+                conditions.push(
+                    or(
+                        ilike(transactions.payee, `%${search}%`),
+                        ilike(customers.name, `%${search}%`),
+                        ilike(transactions.notes, `%${search}%`),
+                    ),
+                );
+            }
+
+            // Get all transactions for this account
+            const ledgerEntries = await db
+                .select({
+                    id: transactions.id,
+                    date: transactions.date,
+                    amount: transactions.amount,
+                    payee: transactions.payee,
+                    notes: transactions.notes,
+                    accountId: transactions.accountId,
+                    creditAccountId: transactions.creditAccountId,
+                    debitAccountId: transactions.debitAccountId,
+                    status: transactions.status,
+                    payeeCustomerId: transactions.payeeCustomerId,
+                    customerName: customers.name,
+                })
+                .from(transactions)
+                .leftJoin(
+                    customers,
+                    eq(transactions.payeeCustomerId, customers.id),
+                )
+                .innerJoin(accounts, eq(accounts.userId, auth.userId))
+                .where(and(...conditions))
+                .orderBy(desc(transactions.date), desc(transactions.id));
+
+            return ctx.json({
+                data: {
+                    account,
+                    entries: ledgerEntries,
+                },
+            });
         },
     )
     .post(

@@ -1,6 +1,7 @@
 'use client';
 
-import { Edit, MoreHorizontal, Trash } from 'lucide-react';
+import { BookOpen, Edit, MoreHorizontal, Trash } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export const Actions = ({ id, disabled }: Props) => {
+    const router = useRouter();
     const [ConfirmationDialog, confirm] = useConfirm(
         'Are you sure?',
         'You are about to delete this account.',
@@ -32,6 +34,11 @@ export const Actions = ({ id, disabled }: Props) => {
             deleteMutation.mutate();
         }
     };
+
+    const handleViewLedger = () => {
+        router.push(`/accounts/${id}`);
+    };
+
     return (
         <>
             <ConfirmationDialog />
@@ -45,6 +52,13 @@ export const Actions = ({ id, disabled }: Props) => {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                        disabled={disabled}
+                        onClick={handleViewLedger}
+                    >
+                        <BookOpen className="size-4 mr-2" />
+                        View Ledger
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                         disabled={deleteMutation.isPending}
                         onClick={() => onOpen(id)}
