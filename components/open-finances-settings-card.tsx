@@ -21,7 +21,6 @@ import { useUpdateOpenFinancesSettings } from '@/features/open-finances/api/use-
 type MetricConfig = {
     enabled: boolean;
     label: string;
-    value?: string;
 };
 
 type ExposedMetrics = {
@@ -64,27 +63,6 @@ export function OpenFinancesSettingsCard() {
                 label:
                     exposedMetrics[metric]?.label ||
                     metric.charAt(0).toUpperCase() + metric.slice(1),
-                value: exposedMetrics[metric]?.value || '',
-            },
-        };
-        updateSettings.mutate({
-            exposedMetrics: JSON.stringify(newMetrics),
-        });
-    };
-
-    const handleUpdateMetricValue = (
-        metric: keyof ExposedMetrics,
-        value: string,
-    ) => {
-        const newMetrics = {
-            ...exposedMetrics,
-            [metric]: {
-                ...exposedMetrics[metric],
-                enabled: exposedMetrics[metric]?.enabled ?? true,
-                label:
-                    exposedMetrics[metric]?.label ||
-                    metric.charAt(0).toUpperCase() + metric.slice(1),
-                value: value,
             },
         };
         updateSettings.mutate({
@@ -169,8 +147,8 @@ export function OpenFinancesSettingsCard() {
                                         share publicly
                                     </li>
                                     <li>
-                                        Enter the values for your selected
-                                        metrics
+                                        Metrics will be automatically calculated
+                                        from your transactions
                                     </li>
                                     <li>
                                         Copy the public URL to share directly,
@@ -222,16 +200,22 @@ export function OpenFinancesSettingsCard() {
                         <div className="space-y-3">
                             <Label>Exposed Metrics</Label>
                             <p className="text-xs text-muted-foreground">
-                                Select which financial metrics to share publicly
-                                and set their values
+                                Select which financial metrics to share
+                                publicly. Values are automatically calculated
+                                from your transactions.
                             </p>
 
                             {/* Revenue */}
-                            <div className="rounded-lg border p-3 space-y-2">
+                            <div className="rounded-lg border p-3">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="metric-revenue">
-                                        Revenue
-                                    </Label>
+                                    <div className="flex-1">
+                                        <Label htmlFor="metric-revenue">
+                                            Revenue
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Total income from your transactions
+                                        </p>
+                                    </div>
                                     <Switch
                                         id="metric-revenue"
                                         checked={
@@ -244,28 +228,20 @@ export function OpenFinancesSettingsCard() {
                                         disabled={updateSettings.isPending}
                                     />
                                 </div>
-                                {exposedMetrics.revenue?.enabled && (
-                                    <Input
-                                        placeholder="e.g., $100,000"
-                                        value={
-                                            exposedMetrics.revenue?.value ?? ''
-                                        }
-                                        onChange={(e) =>
-                                            handleUpdateMetricValue(
-                                                'revenue',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                )}
                             </div>
 
                             {/* Expenses */}
-                            <div className="rounded-lg border p-3 space-y-2">
+                            <div className="rounded-lg border p-3">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="metric-expenses">
-                                        Expenses
-                                    </Label>
+                                    <div className="flex-1">
+                                        <Label htmlFor="metric-expenses">
+                                            Expenses
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Total expenses from your
+                                            transactions
+                                        </p>
+                                    </div>
                                     <Switch
                                         id="metric-expenses"
                                         checked={
@@ -278,28 +254,19 @@ export function OpenFinancesSettingsCard() {
                                         disabled={updateSettings.isPending}
                                     />
                                 </div>
-                                {exposedMetrics.expenses?.enabled && (
-                                    <Input
-                                        placeholder="e.g., $60,000"
-                                        value={
-                                            exposedMetrics.expenses?.value ?? ''
-                                        }
-                                        onChange={(e) =>
-                                            handleUpdateMetricValue(
-                                                'expenses',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                )}
                             </div>
 
                             {/* Profit */}
-                            <div className="rounded-lg border p-3 space-y-2">
+                            <div className="rounded-lg border p-3">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="metric-profit">
-                                        Profit
-                                    </Label>
+                                    <div className="flex-1">
+                                        <Label htmlFor="metric-profit">
+                                            Profit
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Net profit (revenue - expenses)
+                                        </p>
+                                    </div>
                                     <Switch
                                         id="metric-profit"
                                         checked={
@@ -312,28 +279,20 @@ export function OpenFinancesSettingsCard() {
                                         disabled={updateSettings.isPending}
                                     />
                                 </div>
-                                {exposedMetrics.profit?.enabled && (
-                                    <Input
-                                        placeholder="e.g., $40,000"
-                                        value={
-                                            exposedMetrics.profit?.value ?? ''
-                                        }
-                                        onChange={(e) =>
-                                            handleUpdateMetricValue(
-                                                'profit',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                )}
                             </div>
 
                             {/* Balance */}
-                            <div className="rounded-lg border p-3 space-y-2">
+                            <div className="rounded-lg border p-3">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="metric-balance">
-                                        Balance
-                                    </Label>
+                                    <div className="flex-1">
+                                        <Label htmlFor="metric-balance">
+                                            Balance
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Current account balance (assets -
+                                            liabilities)
+                                        </p>
+                                    </div>
                                     <Switch
                                         id="metric-balance"
                                         checked={
@@ -346,20 +305,6 @@ export function OpenFinancesSettingsCard() {
                                         disabled={updateSettings.isPending}
                                     />
                                 </div>
-                                {exposedMetrics.balance?.enabled && (
-                                    <Input
-                                        placeholder="e.g., $150,000"
-                                        value={
-                                            exposedMetrics.balance?.value ?? ''
-                                        }
-                                        onChange={(e) =>
-                                            handleUpdateMetricValue(
-                                                'balance',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                )}
                             </div>
                         </div>
 
@@ -490,8 +435,8 @@ export function OpenFinancesSettingsCard() {
                                             </li>
                                         )}
                                         <li>
-                                            Changes to metrics update
-                                            immediately—no redeployment needed
+                                            Metrics are calculated automatically
+                                            from your real transaction data
                                         </li>
                                         <li>
                                             Only enabled metrics are visible to
