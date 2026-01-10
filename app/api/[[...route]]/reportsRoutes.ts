@@ -1,7 +1,7 @@
 import { UTCDate } from '@date-fns/utc';
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
-import { endOfDay, parse, subDays } from 'date-fns';
+import { endOfDay, parse, startOfYear } from 'date-fns';
 import { and, eq, gte, inArray, lte, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -30,7 +30,7 @@ const app = new Hono().get(
 
         const startDate = from
             ? parse(from, 'yyyy-MM-dd', new UTCDate())
-            : subDays(new UTCDate(), 30);
+            : startOfYear(new UTCDate());
         const endDate = to
             ? endOfDay(parse(to, 'yyyy-MM-dd', new UTCDate()))
             : new UTCDate();

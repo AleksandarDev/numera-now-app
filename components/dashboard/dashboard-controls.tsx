@@ -13,7 +13,11 @@ export function DashboardControls() {
             <div className="flex items-center gap-2">
                 <WidgetStoreButton />
             </div>
-            <Button variant="plain" onClick={resetToDefault} className="text-white/70">
+            <Button
+                variant="plain"
+                onClick={resetToDefault}
+                className="text-white/70"
+            >
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Reset Layout
             </Button>
