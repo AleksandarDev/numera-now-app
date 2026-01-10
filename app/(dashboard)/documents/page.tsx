@@ -128,11 +128,6 @@ export default function DocumentsPage() {
         ? (Array.from({ length: 10 }, () => ({})) as ResponseType[])
         : documents;
 
-    const tableColumns = isInitialLoading ? skeletonColumns : columns;
-    const tableData = isInitialLoading
-        ? Array.from({ length: 10 }, () => ({}))
-        : documents;
-
     return (
         <div className="mx-auto -mt-24 w-full max-w-screen-2xl pb-10">
             <Card className="border-none drop-shadow-sm">
