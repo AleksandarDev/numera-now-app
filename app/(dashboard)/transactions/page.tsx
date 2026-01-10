@@ -9,6 +9,8 @@ import {
 import { Archive, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
+import { AccountFilter } from '@/components/account-filter';
+import { DateFilter } from '@/components/date-filter';
 import { ImportCard } from '@/components/import/import-card';
 import { ImportButton } from '@/components/import-button';
 import { Button } from '@/components/ui/button';
@@ -396,6 +398,10 @@ export default function TransactionsPage() {
                 </CardHeader>
 
                 <CardContent>
+                    <div className="flex flex-col items-stretch gap-y-2 md:flex-row md:gap-x-2 md:gap-y-0">
+                        <AccountFilter />
+                        <DateFilter />
+                    </div>
                     <Suspense
                         fallback={
                             <div className="flex h-[500px] w-full items-center justify-center">
