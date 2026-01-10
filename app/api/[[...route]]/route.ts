@@ -8,6 +8,7 @@ import dashboardRoutes from './dashboardRoutes';
 import documentsRoutes from './documentsRoutes';
 import documentTypesRoutes from './documentTypesRoutes';
 import openFinancesRoutes from './openFinancesRoutes';
+import reportsRoutes from './reportsRoutes';
 import settingsRoutes from './settingsRoutes';
 import stripeRoutes from './stripeRoutes';
 import summaryRoutes from './summaryRoutes';
@@ -93,6 +94,7 @@ const routes = app
     .route('/document-types', documentTypesRoutes)
     .route('/stripe', stripeRoutes)
     .route('/tags', tagsRoutes)
+    .route('/reports', reportsRoutes)
     .route('/open-finances', openFinancesRoutes);
 
 export const GET = handle(app);

@@ -40,6 +40,10 @@ const routes = [
         href: '/accounts',
         label: 'Accounts',
     },
+    {
+        href: '/reports',
+        label: 'Reports',
+    },
 ];
 
 const settingsRoute = {
