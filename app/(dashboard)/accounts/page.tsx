@@ -42,6 +42,8 @@ import type { accounts as accountsSchema } from '@/db/schema';
 import { useBulkCreateAccounts } from '@/features/accounts/api/use-bulk-create-accounts';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 import { useNewAccount } from '@/features/accounts/hooks/use-new-accounts';
+import { useGetSettings } from '@/features/settings/api/use-get-settings';
+import { ACCOUNT_CLASS_LABELS } from '@/lib/accounting';
 import { ImportCard } from '../../../components/import/import-card';
 import { Actions } from './actions';
 
@@ -67,6 +69,9 @@ function AccountsDataTable() {
         pageSize: 9999,
         showClosed,
     });
+    const settingsQuery = useGetSettings();
+    const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
+
     const allAccounts = accountsQuery.data || [];
     const newAccount = useNewAccount();
 
@@ -328,6 +333,25 @@ function AccountsDataTable() {
                                                                     Read-only
                                                                 </span>
                                                             )}
+                                                            {account.accountClass && (
+                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                                    {
+                                                                        ACCOUNT_CLASS_LABELS[
+                                                                            account.accountClass
+                                                                        ]
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            {doubleEntryMode &&
+                                                                !account.accountClass && (
+                                                                    <span
+                                                                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
+                                                                        title="Account class is required for double-entry mode"
+                                                                    >
+                                                                        ⚠️ No
+                                                                        Class
+                                                                    </span>
+                                                                )}
                                                             {account.accountType ===
                                                                 'credit' && (
                                                                 <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
@@ -431,8 +455,27 @@ export default function AccountsPage() {
 
     const onSubmitImport = async (values: Record<string, string | null>[]) => {
         // Transform the imported records to match the accounts schema
-        const accountsData =
-            values as unknown as (typeof accountsSchema.$inferInsert)[];
+        const accountsData = values.map((value) => {
+            const data: Record<string, unknown> = { ...value };
+            // Convert null to undefined for optional fields
+            if (!data.accountClass) {
+                data.accountClass = undefined;
+            }
+            if (!data.code) {
+                data.code = undefined;
+            }
+            // Ensure openingBalance is a number (default to 0)
+            if (
+                data.openingBalance === null ||
+                data.openingBalance === undefined
+            ) {
+                data.openingBalance = 0;
+            } else if (typeof data.openingBalance === 'string') {
+                const parsed = Number(data.openingBalance);
+                data.openingBalance = Number.isNaN(parsed) ? 0 : parsed;
+            }
+            return data;
+        }) as (typeof accountsSchema.$inferInsert)[];
         createAccounts.mutate(accountsData, {
             onSuccess: () => {
                 onCancelImport();

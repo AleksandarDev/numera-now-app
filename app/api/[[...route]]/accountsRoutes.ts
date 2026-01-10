@@ -57,6 +57,8 @@ const app = new Hono()
                     isOpen: accounts.isOpen,
                     isReadOnly: accounts.isReadOnly,
                     accountType: accounts.accountType,
+                    accountClass: accounts.accountClass,
+                    openingBalance: accounts.openingBalance,
                 })
                 .from(accounts)
                 .where(
@@ -130,6 +132,8 @@ const app = new Hono()
                     isOpen: accounts.isOpen,
                     isReadOnly: accounts.isReadOnly,
                     accountType: accounts.accountType,
+                    accountClass: accounts.accountClass,
+                    openingBalance: accounts.openingBalance,
                 })
                 .from(accounts)
                 .where(
@@ -154,6 +158,8 @@ const app = new Hono()
                 isOpen: true,
                 isReadOnly: true,
                 accountType: true,
+                accountClass: true,
+                openingBalance: true,
             }),
         ),
         async (ctx) => {
@@ -254,6 +260,8 @@ const app = new Hono()
                 isOpen: true,
                 isReadOnly: true,
                 accountType: true,
+                accountClass: true,
+                openingBalance: true,
             }),
         ),
         async (ctx) => {
