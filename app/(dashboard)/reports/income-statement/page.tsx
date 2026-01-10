@@ -52,8 +52,8 @@ export default function IncomeStatementPage() {
                     <CardTitle>Income Statement</CardTitle>
                     {data && (
                         <p className="text-sm text-muted-foreground">
-                            {format(new Date(data.startDate), 'MMM dd, yyyy')}{' '}
-                            - {format(new Date(data.endDate), 'MMM dd, yyyy')}
+                            {format(new Date(data.startDate), 'MMM dd, yyyy')} -{' '}
+                            {format(new Date(data.endDate), 'MMM dd, yyyy')}
                         </p>
                     )}
                 </CardHeader>

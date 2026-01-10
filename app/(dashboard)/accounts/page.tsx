@@ -482,15 +482,22 @@ export default function AccountsPage() {
         });
 
         // CSV header
-        const headers = ['Code', 'Name', 'Status', 'OpeningBalance', 'AccountClass'];
-        
+        const headers = [
+            'Code',
+            'Name',
+            'Status',
+            'OpeningBalance',
+            'AccountClass',
+        ];
+
         // Convert accounts to CSV rows
         const rows = sortedAccounts.map((account) => {
             // Force code to be treated as text in Excel by using ="value" format to preserve leading zeros
             const code = account.code ? `="${account.code}"` : '';
-            const name = account.name.includes(',') || account.name.includes('"') 
-                ? `"${account.name.replace(/"/g, '""')}"` 
-                : account.name;
+            const name =
+                account.name.includes(',') || account.name.includes('"')
+                    ? `"${account.name.replace(/"/g, '""')}"`
+                    : account.name;
             const status = account.isOpen ? 'Open' : 'Closed';
             // Convert milliunits to units (divide by 1000)
             const openingBalance = (account.openingBalance / 1000).toFixed(2);
@@ -503,11 +510,16 @@ export default function AccountsPage() {
 
         // Create and download the file with UTF-8 BOM for proper encoding
         const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([BOM + csvContent], {
+            type: 'text/csv;charset=utf-8;',
+        });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `accounts-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute(
+            'download',
+            `accounts-export-${new Date().toISOString().split('T')[0]}.csv`,
+        );
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -623,7 +635,10 @@ export default function AccountsPage() {
                                 />
                                 <DropdownMenuItem
                                     onClick={exportAccountsToCSV}
-                                    disabled={accountsQuery.isLoading || !accountsQuery.data?.length}
+                                    disabled={
+                                        accountsQuery.isLoading ||
+                                        !accountsQuery.data?.length
+                                    }
                                 >
                                     <Download className="mr-2 size-4" />
                                     Export CSV

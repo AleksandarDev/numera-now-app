@@ -15,16 +15,15 @@ export const useGetIncomeStatement = () => {
     const query = useQuery({
         queryKey: ['income-statement', { from: queryFrom, to: queryTo }],
         queryFn: async () => {
-            const response = await client.api.reports[
-                'income-statement'
-            ].$get({
+            const response = await client.api.reports['income-statement'].$get({
                 query: {
                     from: queryFrom,
                     to: queryTo,
                 },
             });
 
-            if (!response.ok) throw new Error('Failed to fetch income statement.');
+            if (!response.ok)
+                throw new Error('Failed to fetch income statement.');
 
             const { data } = await response.json();
 

@@ -54,7 +54,8 @@ export const TagsColumn = ({ id, tags }: TagsColumnProps) => {
                         style={
                             badgeColors
                                 ? {
-                                      backgroundColor: badgeColors.backgroundColor,
+                                      backgroundColor:
+                                          badgeColors.backgroundColor,
                                       color: badgeColors.textColor,
                                   }
                                 : {}

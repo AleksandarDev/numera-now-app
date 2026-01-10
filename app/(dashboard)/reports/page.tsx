@@ -3,10 +3,10 @@
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import { FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -31,9 +31,9 @@ export default function ReportsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Reports</CardTitle>
-                    <CardDescription>
+                    <Typography level="body2" className="text-muted-foreground">
                         View financial reports for your accounts
-                    </CardDescription>
+                    </Typography>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -56,9 +56,9 @@ export default function ReportsPage() {
                                                     {report.name}
                                                 </CardTitle>
                                             </div>
-                                            <CardDescription>
+                                            <Typography level="body2" className="text-muted-foreground">
                                                 {report.description}
-                                            </CardDescription>
+                                            </Typography>
                                         </CardHeader>
                                         <CardContent>
                                             <Button variant="outline" size="sm">
