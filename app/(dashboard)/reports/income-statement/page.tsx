@@ -14,6 +14,99 @@ import { Loader2 } from 'lucide-react';
 import { useGetIncomeStatement } from '@/features/reports/api/use-get-income-statement';
 import { cn, formatCurrency } from '@/lib/utils';
 
+type Account = {
+    id: string;
+    name: string;
+    code: string | null;
+    balance: number;
+    isReadOnly?: boolean;
+};
+
+type AccountNode = Account & {
+    level: number;
+    children: AccountNode[];
+};
+
+function buildAccountHierarchy(accounts: Account[]): AccountNode[] {
+    const accountMap = new Map<string, AccountNode>();
+    const rootNodes: AccountNode[] = [];
+
+    // Create nodes for all accounts
+    accounts.forEach((account) => {
+        if (account.code) {
+            accountMap.set(account.code, {
+                ...account,
+                level: account.code.length - 1,
+                children: [],
+            });
+        }
+    });
+
+    // Build parent-child relationships
+    accounts.forEach((account) => {
+        if (!account.code) return;
+
+        const node = accountMap.get(account.code);
+        if (!node) return;
+
+        if (account.code.length === 1) {
+            // Top-level account
+            rootNodes.push(node);
+        } else {
+            // Find parent (code with one less digit)
+            const parentCode = account.code.slice(0, -1);
+            const parent = accountMap.get(parentCode);
+            if (parent) {
+                parent.children.push(node);
+            } else {
+                // If parent not found, treat as root
+                rootNodes.push(node);
+            }
+        }
+    });
+
+    return rootNodes;
+}
+
+function renderAccountNode(node: AccountNode): React.ReactElement {
+    const indent = node.level * 16; // 16px per level
+
+    return (
+        <div key={node.id}>
+            <div
+                className="flex justify-between items-center py-1"
+                style={{ paddingLeft: `${indent + 16}px` }}
+            >
+                <div className="flex items-center gap-2">
+                    <Typography level="body1" className="font-medium">
+                        {node.name}
+                    </Typography>
+                    {node.code && (
+                        <Typography
+                            level="body2"
+                            mono
+                            className="text-muted-foreground"
+                        >
+                            {node.code}
+                        </Typography>
+                    )}
+                </div>
+                <Typography
+                    level="body1"
+                    mono
+                    className={cn(
+                        'font-medium',
+                        node.balance < 0 && 'text-red-600',
+                    )}
+                >
+                    {formatCurrency(node.balance)}
+                </Typography>
+            </div>
+            {node.children.map((child) => renderAccountNode(child))}
+        </div>
+    );
+}
+
 export default function IncomeStatementPage() {
     const incomeStatement = useGetIncomeStatement();
 
@@ -74,43 +167,9 @@ export default function IncomeStatementPage() {
                                             No income accounts
                                         </p>
                                     ) : (
-                                        data.incomeAccounts.map((account) => (
-                                            <div
-                                                key={account.id}
-                                                className="flex justify-between items-center pl-4 py-1"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Typography
-                                                        level="body1"
-                                                        className="font-medium"
-                                                    >
-                                                        {account.name}
-                                                    </Typography>
-                                                    {account.code && (
-                                                        <Typography
-                                                            level="body2"
-                                                            mono
-                                                            className="text-muted-foreground"
-                                                        >
-                                                            {account.code}
-                                                        </Typography>
-                                                    )}
-                                                </div>
-                                                <Typography
-                                                    level="body1"
-                                                    mono
-                                                    className={cn(
-                                                        'font-medium',
-                                                        account.balance < 0 &&
-                                                            'text-red-600',
-                                                    )}
-                                                >
-                                                    {formatCurrency(
-                                                        account.balance,
-                                                    )}
-                                                </Typography>
-                                            </div>
-                                        ))
+                                        buildAccountHierarchy(
+                                            data.incomeAccounts,
+                                        ).map((node) => renderAccountNode(node))
                                     )}
                                     <div className="flex justify-between items-center pt-2 border-t-2 border-gray-900 font-semibold">
                                         <Typography
@@ -148,43 +207,9 @@ export default function IncomeStatementPage() {
                                             No expense accounts
                                         </p>
                                     ) : (
-                                        data.expenseAccounts.map((account) => (
-                                            <div
-                                                key={account.id}
-                                                className="flex justify-between items-center pl-4 py-1"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Typography
-                                                        level="body1"
-                                                        className="font-medium"
-                                                    >
-                                                        {account.name}
-                                                    </Typography>
-                                                    {account.code && (
-                                                        <Typography
-                                                            level="body2"
-                                                            mono
-                                                            className="text-muted-foreground"
-                                                        >
-                                                            {account.code}
-                                                        </Typography>
-                                                    )}
-                                                </div>
-                                                <Typography
-                                                    level="body1"
-                                                    mono
-                                                    className={cn(
-                                                        'font-medium',
-                                                        account.balance < 0 &&
-                                                            'text-red-600',
-                                                    )}
-                                                >
-                                                    {formatCurrency(
-                                                        account.balance,
-                                                    )}
-                                                </Typography>
-                                            </div>
-                                        ))
+                                        buildAccountHierarchy(
+                                            data.expenseAccounts,
+                                        ).map((node) => renderAccountNode(node))
                                     )}
                                     <div className="flex justify-between items-center pt-2 border-t-2 border-gray-900 font-semibold">
                                         <Typography

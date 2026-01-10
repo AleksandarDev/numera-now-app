@@ -56,7 +56,10 @@ export default function ReportsPage() {
                                                     {report.name}
                                                 </CardTitle>
                                             </div>
-                                            <Typography level="body2" className="text-muted-foreground">
+                                            <Typography
+                                                level="body2"
+                                                className="text-muted-foreground"
+                                            >
                                                 {report.description}
                                             </Typography>
                                         </CardHeader>
