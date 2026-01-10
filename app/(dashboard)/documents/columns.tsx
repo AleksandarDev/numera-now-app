@@ -129,7 +129,7 @@ export const getColumns = ({
                                 ? format(new Date(doc.transactionDate), 'MMM d')
                                 : 'View'}
                             {doc.transactionPayee &&
-                                ` - ${doc.transactionPayee.slice(0, MAX_PAYEE_LENGTH)}...`}
+                                ` - ${doc.transactionPayee.length > MAX_PAYEE_LENGTH ? doc.transactionPayee.slice(0, MAX_PAYEE_LENGTH) + '...' : doc.transactionPayee}`}
                         </div>
                     ) : (
                         <span className="text-muted-foreground text-sm">
