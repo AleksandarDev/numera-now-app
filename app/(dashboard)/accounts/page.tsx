@@ -41,10 +41,12 @@ import {
 import { Input } from '@/components/ui/input';
 import type { accounts as accountsSchema } from '@/db/schema';
 import { useBulkCreateAccounts } from '@/features/accounts/api/use-bulk-create-accounts';
+import { useGetAccountBalances } from '@/features/accounts/api/use-get-account-balances';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 import { useNewAccount } from '@/features/accounts/hooks/use-new-accounts';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { ACCOUNT_CLASS_LABELS } from '@/lib/accounting';
+import { cn, formatCurrency } from '@/lib/utils';
 import { ImportCard } from '../../../components/import/import-card';
 import { Actions } from './actions';
 
@@ -70,10 +72,12 @@ function AccountsDataTable() {
         pageSize: 9999,
         showClosed,
     });
+    const balancesQuery = useGetAccountBalances();
     const settingsQuery = useGetSettings();
     const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
 
     const allAccounts = accountsQuery.data || [];
+    const balances = balancesQuery.data || {};
     const newAccount = useNewAccount();
 
     const isDisabled = accountsQuery.isLoading;
@@ -284,7 +288,7 @@ function AccountsDataTable() {
                                                             : 24), // Add indent for leaf nodes
                                                 }}
                                             >
-                                                <div className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2 gap-1">
+                                                <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-4 py-2 gap-1">
                                                     {/* Expand/Collapse Button */}
                                                     <div className="w-6 flex justify-center">
                                                         {accountHasChildren &&
@@ -383,6 +387,43 @@ function AccountsDataTable() {
                                                             {code}
                                                         </Typography>
                                                     </Stack>
+
+                                                    {/* Balance */}
+                                                    <div className="text-right min-w-[100px] px-2">
+                                                        {account.isOpen &&
+                                                            balances[
+                                                                account.id
+                                                            ] !== undefined && (
+                                                                <Typography
+                                                                    level="body1"
+                                                                    mono
+                                                                    className={cn(
+                                                                        'font-medium',
+                                                                        balances[
+                                                                            account
+                                                                                .id
+                                                                        ] < 0 &&
+                                                                            'text-red-600',
+                                                                    )}
+                                                                >
+                                                                    {formatCurrency(
+                                                                        balances[
+                                                                            account
+                                                                                .id
+                                                                        ],
+                                                                    )}
+                                                                </Typography>
+                                                            )}
+                                                        {account.isOpen &&
+                                                            balances[
+                                                                account.id
+                                                            ] === undefined &&
+                                                            balancesQuery.isLoading && (
+                                                                <span className="text-muted-foreground text-sm">
+                                                                    ...
+                                                                </span>
+                                                            )}
+                                                    </div>
 
                                                     {/* Actions */}
                                                     <Actions
