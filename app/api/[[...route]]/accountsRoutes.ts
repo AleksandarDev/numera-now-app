@@ -199,7 +199,6 @@ const app = new Hono()
 
             // Build filter conditions for transactions
             const conditions = [
-                eq(accounts.userId, auth.userId),
                 or(
                     eq(transactions.accountId, id),
                     eq(transactions.creditAccountId, id),
@@ -245,7 +244,6 @@ const app = new Hono()
                     customers,
                     eq(transactions.payeeCustomerId, customers.id),
                 )
-                .innerJoin(accounts, eq(accounts.userId, auth.userId))
                 .where(and(...conditions))
                 .orderBy(desc(transactions.date), desc(transactions.id));
 
