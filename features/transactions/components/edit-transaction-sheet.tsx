@@ -32,11 +32,7 @@ import { useUnreconcileTransaction } from '@/features/transactions/api/use-unrec
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { useConfirm } from '@/hooks/use-confirm';
-import {
-    convertAmountFromMiliunits,
-    convertAmountToMiliunits,
-    formatCurrency,
-} from '@/lib/utils';
+import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
 
 import {
     UnifiedEditTransactionForm,
@@ -256,10 +252,9 @@ export const EditTransactionSheet = () => {
     const handleDuplicate = () => {
         if (!transactionQuery.data) return;
 
+        // Amount is already converted from milliunits by useGetTransaction
         const amount = transactionQuery.data.amount
-            ? convertAmountFromMiliunits(
-                  Math.abs(transactionQuery.data.amount),
-              ).toString()
+            ? Math.abs(transactionQuery.data.amount).toString()
             : '0';
 
         // Prepare default values for the new transaction form
