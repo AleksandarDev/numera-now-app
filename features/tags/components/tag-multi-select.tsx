@@ -62,7 +62,8 @@ export const TagMultiSelect = ({
                         : null;
                     return {
                         ...base,
-                        backgroundColor: badgeColors?.backgroundColor ?? '#dbeafe',
+                        backgroundColor:
+                            badgeColors?.backgroundColor ?? '#dbeafe',
                         border: 'none',
                         borderRadius: '9999px',
                         padding: '0 2px',
