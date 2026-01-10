@@ -13,12 +13,20 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { SheetFooter } from '@/components/ui/sheet';
 import { insertTagSchema } from '@/db/schema';
 
 const formSchema = insertTagSchema.pick({
     name: true,
     color: true,
+    tagType: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -95,6 +103,39 @@ export const TagForm = ({
                                     value={field.value ?? '#3b82f6'}
                                 />
                             </FormControl>
+
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    name="tagType"
+                    control={form.control}
+                    disabled={disabled}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Tag Type</FormLabel>
+
+                            <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                disabled={disabled}
+                            >
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select tag type" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="general">
+                                        General
+                                    </SelectItem>
+                                    <SelectItem value="source">
+                                        Source
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
 
                             <FormMessage />
                         </FormItem>

@@ -65,6 +65,11 @@ export const tags = pgTable(
         id: text('id').primaryKey(),
         name: text('name').notNull(),
         color: text('color'), // Optional hex color for visual distinction
+        tagType: text('tag_type', {
+            enum: ['general', 'source'],
+        })
+            .notNull()
+            .default('general'),
         userId: text('user_id').notNull(),
         createdAt: timestamp('created_at', { mode: 'date' })
             .notNull()
@@ -73,6 +78,7 @@ export const tags = pgTable(
     (table) => [
         index('tags_userid_idx').on(table.userId),
         index('tags_name_idx').on(table.name),
+        index('tags_tagtype_idx').on(table.tagType),
     ],
 );
 
@@ -80,7 +86,9 @@ export const tagsRelations = relations(tags, ({ many }) => ({
     transactionTags: many(transactionTags),
 }));
 
-export const insertTagSchema = createInsertSchema(tags);
+export const insertTagSchema = createInsertSchema(tags, {
+    tagType: z.enum(['general', 'source']).default('general').optional(),
+});
 
 // Junction table for many-to-many relationship between transactions and tags
 export const transactionTags = pgTable(
