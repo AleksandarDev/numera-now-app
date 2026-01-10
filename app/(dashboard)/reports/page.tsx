@@ -21,6 +21,13 @@ const reports = [
         href: '/reports/income-statement',
         icon: FileText,
     },
+    {
+        name: 'Balance Sheet',
+        description:
+            'View your assets, liabilities, and equity at a specific date.',
+        href: '/reports/balance-sheet',
+        icon: FileText,
+    },
 ];
 
 export default function ReportsPage() {
