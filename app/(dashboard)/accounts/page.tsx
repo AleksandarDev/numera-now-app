@@ -337,7 +337,7 @@ function AccountsDataTable() {
                                                                 <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                                                                     {
                                                                         ACCOUNT_CLASS_LABELS[
-                                                                            account.accountClass as keyof typeof ACCOUNT_CLASS_LABELS
+                                                                            account.accountClass
                                                                         ]
                                                                     }
                                                                 </span>
