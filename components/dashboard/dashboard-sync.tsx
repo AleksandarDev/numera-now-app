@@ -17,6 +17,8 @@ export function DashboardSync() {
     const { widgets, setWidgets, isInitialized, setInitialized } =
         useDashboardStore();
     const isFirstLoad = useRef(true);
+    const hasLoadedFromDb = useRef(false);
+    const previousWidgetsRef = useRef<string>('');
 
     // Load initial data from database
     useEffect(() => {
@@ -30,6 +32,11 @@ export function DashboardSync() {
                 dashboardData.widgets.length > 0
             ) {
                 setWidgets(dashboardData.widgets);
+                // Store the initial state to compare against later
+                previousWidgetsRef.current = JSON.stringify(
+                    dashboardData.widgets,
+                );
+                hasLoadedFromDb.current = true;
             }
 
             setInitialized(true);
@@ -37,12 +44,23 @@ export function DashboardSync() {
     }, [isLoading, dashboardData, setWidgets, setInitialized]);
 
     // Sync changes to database (debounced)
+    // Only saves if widgets have actually changed since last save
     useEffect(() => {
-        if (!isInitialized) {
+        // Don't save until we're initialized AND have loaded from DB
+        if (!isInitialized || !hasLoadedFromDb.current) {
+            return;
+        }
+
+        // Check if widgets have actually changed
+        const currentWidgetsJson = JSON.stringify(widgets);
+        if (currentWidgetsJson === previousWidgetsRef.current) {
+            // No changes, skip save
             return;
         }
 
         const timeoutId = setTimeout(() => {
+            // Update the ref to prevent duplicate saves
+            previousWidgetsRef.current = currentWidgetsJson;
             updateLayout({
                 widgets,
             });
