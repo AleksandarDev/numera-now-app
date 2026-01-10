@@ -15,6 +15,7 @@ import { useNewTag } from '@/features/tags/hooks/use-new-tag';
 const formSchema = insertTagSchema.pick({
     name: true,
     color: true,
+    tagType: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,6 +50,7 @@ export const NewTagSheet = () => {
                         defaultValues={{
                             name: '',
                             color: '#3b82f6',
+                            tagType: 'general' as const,
                         }}
                         onSubmit={onSubmit}
                         disabled={mutation.isPending}
