@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -136,6 +137,12 @@ export const TagForm = ({
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
+
+                            <FormDescription>
+                                Source tags mark transaction origin (e.g.,
+                                Stripe, manual, imported). General tags are for
+                                categorization.
+                            </FormDescription>
 
                             <FormMessage />
                         </FormItem>
