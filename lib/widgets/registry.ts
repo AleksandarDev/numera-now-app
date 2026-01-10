@@ -1,5 +1,6 @@
 import { BarChart3, Grid3x3, LineChart, PieChart } from 'lucide-react';
 import { ChartWidget } from '@/components/widgets/chart-widget';
+import { ChartWidget } from '@/components/widgets/chart-widget';
 import { DataChartsWidget } from '@/components/widgets/data-charts-widget';
 import { DataGridWidget } from '@/components/widgets/data-grid-widget';
 import { FinancialSummaryWidget } from '@/components/widgets/financial-summary-widget';
