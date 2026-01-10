@@ -253,6 +253,13 @@
             "when": 1768085393037,
             "tag": "0035_daffy_moonstone",
             "breakpoints": true
+        },
+        {
+            "idx": 36,
+            "version": "7",
+            "when": 1768088985481,
+            "tag": "0036_short_warlock",
+            "breakpoints": true
         }
     ]
 }

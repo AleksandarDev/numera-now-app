@@ -977,6 +977,18 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
+            // Check if the transaction date falls within a closed period
+            const { validateDateNotInClosedPeriod } = await import(
+                '@/lib/accounting-periods'
+            );
+            const periodError = await validateDateNotInClosedPeriod(
+                values.date,
+                auth.userId,
+            );
+            if (periodError) {
+                return ctx.json({ error: periodError }, 400);
+            }
+
             // Check if double-entry mode is enabled
             const [userSettings] = await db
                 .select()
@@ -1397,8 +1409,60 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
+            // First, get the transactions to check their dates
             const creditAccounts = aliasedTable(accounts, 'creditAccounts');
             const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+            const transactionsToCheck = await db
+                .select({
+                    id: transactions.id,
+                    date: transactions.date,
+                })
+                .from(transactions)
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    creditAccounts,
+                    eq(transactions.creditAccountId, creditAccounts.id),
+                )
+                .leftJoin(
+                    debitAccounts,
+                    eq(transactions.debitAccountId, debitAccounts.id),
+                )
+                .where(
+                    and(
+                        inArray(transactions.id, values.ids),
+                        or(
+                            eq(accounts.userId, auth.userId),
+                            eq(creditAccounts.userId, auth.userId),
+                            eq(debitAccounts.userId, auth.userId),
+                            and(
+                                isNull(transactions.accountId),
+                                isNull(transactions.creditAccountId),
+                                isNull(transactions.debitAccountId),
+                                eq(transactions.statusChangedBy, auth.userId),
+                            ),
+                        ),
+                    ),
+                );
+
+            // Check if any transaction date is in a closed period
+            const { validateDateNotInClosedPeriod } = await import(
+                '@/lib/accounting-periods'
+            );
+            for (const transaction of transactionsToCheck) {
+                const periodError = await validateDateNotInClosedPeriod(
+                    transaction.date,
+                    auth.userId,
+                );
+                if (periodError) {
+                    return ctx.json(
+                        {
+                            error: `Cannot delete transaction ${transaction.id}: ${periodError}`,
+                        },
+                        400,
+                    );
+                }
+            }
+
             const transactionsToDelete = db.$with('transactions_to_delete').as(
                 db
                     .select({ id: transactions.id })
@@ -1507,6 +1571,7 @@ const app = new Hono()
             const [existingTransaction] = await db
                 .select({
                     status: transactions.status,
+                    date: transactions.date,
                     creditAccountId: transactions.creditAccountId,
                     debitAccountId: transactions.debitAccountId,
                     amount: transactions.amount,
@@ -1542,6 +1607,29 @@ const app = new Hono()
 
             if (!existingTransaction) {
                 return ctx.json({ error: 'Transaction not found.' }, 404);
+            }
+
+            // Check if the existing transaction date is in a closed period
+            const { validateDateNotInClosedPeriod } = await import(
+                '@/lib/accounting-periods'
+            );
+            const existingDateError = await validateDateNotInClosedPeriod(
+                existingTransaction.date,
+                auth.userId,
+            );
+            if (existingDateError) {
+                return ctx.json({ error: existingDateError }, 400);
+            }
+
+            // If the date is being changed, check if the new date is in a closed period
+            if (values.date && values.date !== existingTransaction.date) {
+                const newDateError = await validateDateNotInClosedPeriod(
+                    values.date,
+                    auth.userId,
+                );
+                if (newDateError) {
+                    return ctx.json({ error: newDateError }, 400);
+                }
             }
 
             // Prevent editing reconciled transactions entirely
@@ -1903,40 +1991,88 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
+            // First, get the transaction to check its date
             const creditAccounts = aliasedTable(accounts, 'creditAccounts');
             const debitAccounts = aliasedTable(accounts, 'debitAccounts');
-            const transactionsToDelete = db.$with('transactions_to_delete').as(
-                db
-                    .select({ id: transactions.id })
-                    .from(transactions)
-                    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-                    .leftJoin(
-                        creditAccounts,
-                        eq(transactions.creditAccountId, creditAccounts.id),
-                    )
-                    .leftJoin(
-                        debitAccounts,
-                        eq(transactions.debitAccountId, debitAccounts.id),
-                    )
-                    .where(
-                        and(
-                            eq(transactions.id, id),
-                            or(
-                                eq(accounts.userId, auth.userId),
-                                eq(creditAccounts.userId, auth.userId),
-                                eq(debitAccounts.userId, auth.userId),
-                            ),
+            const [transactionToDelete] = await db
+                .select({
+                    id: transactions.id,
+                    date: transactions.date,
+                })
+                .from(transactions)
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    creditAccounts,
+                    eq(transactions.creditAccountId, creditAccounts.id),
+                )
+                .leftJoin(
+                    debitAccounts,
+                    eq(transactions.debitAccountId, debitAccounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        or(
+                            eq(accounts.userId, auth.userId),
+                            eq(creditAccounts.userId, auth.userId),
+                            eq(debitAccounts.userId, auth.userId),
                         ),
                     ),
+                );
+
+            if (!transactionToDelete) {
+                return ctx.json({ error: 'Not found.' }, 404);
+            }
+
+            // Check if the transaction date is in a closed period
+            const { validateDateNotInClosedPeriod } = await import(
+                '@/lib/accounting-periods'
             );
+            const periodError = await validateDateNotInClosedPeriod(
+                transactionToDelete.date,
+                auth.userId,
+            );
+            if (periodError) {
+                return ctx.json({ error: periodError }, 400);
+            }
+
+            const transactionsToDeleteCTE = db
+                .$with('transactions_to_delete')
+                .as(
+                    db
+                        .select({ id: transactions.id })
+                        .from(transactions)
+                        .leftJoin(
+                            accounts,
+                            eq(transactions.accountId, accounts.id),
+                        )
+                        .leftJoin(
+                            creditAccounts,
+                            eq(transactions.creditAccountId, creditAccounts.id),
+                        )
+                        .leftJoin(
+                            debitAccounts,
+                            eq(transactions.debitAccountId, debitAccounts.id),
+                        )
+                        .where(
+                            and(
+                                eq(transactions.id, id),
+                                or(
+                                    eq(accounts.userId, auth.userId),
+                                    eq(creditAccounts.userId, auth.userId),
+                                    eq(debitAccounts.userId, auth.userId),
+                                ),
+                            ),
+                        ),
+                );
 
             const [data] = await db
-                .with(transactionsToDelete)
+                .with(transactionsToDeleteCTE)
                 .delete(transactions)
                 .where(
                     inArray(
                         transactions.id,
-                        sql`(select id from ${transactionsToDelete})`,
+                        sql`(select id from ${transactionsToDeleteCTE})`,
                     ),
                 )
                 .returning({

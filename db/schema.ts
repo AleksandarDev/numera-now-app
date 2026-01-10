@@ -28,12 +28,16 @@ export const accounts = pgTable(
         accountClass: text('account_class', {
             enum: ['asset', 'liability', 'equity', 'income', 'expense'],
         }),
+        systemRole: text('system_role', {
+            enum: ['profit_and_loss', 'retained_earnings'],
+        }),
         openingBalance: integer('opening_balance').notNull().default(0),
     },
     (table) => [
         index('accounts_userid_idx').on(table.userId),
         index('accounts_isopen_idx').on(table.isOpen),
         index('accounts_code_idx').on(table.code),
+        index('accounts_systemrole_idx').on(table.systemRole),
     ],
 );
 
@@ -53,6 +57,10 @@ export const insertAccountSchema = createInsertSchema(accounts, {
     accountType: z.enum(['credit', 'debit', 'neutral']).default('neutral'),
     accountClass: z
         .enum(['asset', 'liability', 'equity', 'income', 'expense'])
+        .nullable()
+        .optional(),
+    systemRole: z
+        .enum(['profit_and_loss', 'retained_earnings'])
         .nullable()
         .optional(),
     openingBalance: z.number().int().default(0).optional(),
@@ -328,6 +336,8 @@ export const transactions = pgTable(
         // Stripe integration fields
         stripePaymentId: text('stripe_payment_id'), // Stripe payment intent or charge ID
         stripePaymentUrl: text('stripe_payment_url'), // URL to Stripe dashboard for this payment
+        // Closing period tracking
+        closingPeriodId: text('closing_period_id'), // Links closing entries to accounting periods
     },
     (table) => [
         index('transactions_accountid_idx').on(table.accountId),
@@ -339,6 +349,7 @@ export const transactions = pgTable(
         index('transactions_splitgroupid_idx').on(table.splitGroupId),
         index('transactions_splittype_idx').on(table.splitType),
         index('transactions_stripepaymentid_idx').on(table.stripePaymentId),
+        index('transactions_closingperiodid_idx').on(table.closingPeriodId),
     ],
 );
 
@@ -549,3 +560,45 @@ export const dashboardLayouts = pgTable(
 );
 
 export const insertDashboardLayoutSchema = createInsertSchema(dashboardLayouts);
+
+// Accounting periods table - stores fiscal year/period locks for year closing
+export const accountingPeriods = pgTable(
+    'accounting_periods',
+    {
+        id: text('id').primaryKey(),
+        userId: text('user_id').notNull(),
+        startDate: timestamp('start_date', { mode: 'date' }).notNull(),
+        endDate: timestamp('end_date', { mode: 'date' }).notNull(),
+        status: text('status', { enum: ['open', 'closed'] })
+            .notNull()
+            .default('open'),
+        closedAt: timestamp('closed_at', { mode: 'date' }),
+        closedBy: text('closed_by'),
+        notes: text('notes'),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        index('accounting_periods_userid_idx').on(table.userId),
+        index('accounting_periods_status_idx').on(table.status),
+        index('accounting_periods_startdate_idx').on(table.startDate),
+        index('accounting_periods_enddate_idx').on(table.endDate),
+    ],
+);
+
+export const accountingPeriodsRelations = relations(
+    accountingPeriods,
+    ({ many }) => ({
+        transactions: many(transactions),
+    }),
+);
+
+export const insertAccountingPeriodSchema = createInsertSchema(
+    accountingPeriods,
+    {
+        startDate: z.coerce.date(),
+        endDate: z.coerce.date(),
+        status: z.enum(['open', 'closed']).default('open').optional(),
+    },
+);
