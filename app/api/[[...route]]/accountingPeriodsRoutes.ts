@@ -443,6 +443,266 @@ const app = new Hono()
                 },
             });
         },
+    )
+    .post(
+        '/create-closing-entries',
+        clerkMiddleware(),
+        zValidator(
+            'json',
+            z.object({
+                periodId: z.string(),
+                profitAndLossAccountId: z.string(),
+                retainedEarningsAccountId: z.string().optional(),
+                closingDate: z.coerce.date(),
+                transactionStatus: z
+                    .enum(['draft', 'pending', 'completed', 'reconciled'])
+                    .default('completed'),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const {
+                periodId,
+                profitAndLossAccountId,
+                retainedEarningsAccountId,
+                closingDate,
+                transactionStatus,
+            } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Get the period
+            const [period] = await db
+                .select()
+                .from(accountingPeriods)
+                .where(
+                    and(
+                        eq(accountingPeriods.id, periodId),
+                        eq(accountingPeriods.userId, auth.userId),
+                    ),
+                );
+
+            if (!period) {
+                return ctx.json({ error: 'Period not found.' }, 404);
+            }
+
+            // Get all income and expense accounts with their balances for the period
+            const accountBalances = await db
+                .select({
+                    accountId: accounts.id,
+                    accountName: accounts.name,
+                    accountCode: accounts.code,
+                    accountClass: accounts.accountClass,
+                    accountType: accounts.accountType,
+                    balance: transactions.amount,
+                })
+                .from(transactions)
+                .innerJoin(
+                    accounts,
+                    or(
+                        eq(transactions.accountId, accounts.id),
+                        eq(transactions.creditAccountId, accounts.id),
+                        eq(transactions.debitAccountId, accounts.id),
+                    ),
+                )
+                .where(
+                    and(
+                        eq(accounts.userId, auth.userId),
+                        or(
+                            eq(accounts.accountClass, 'income'),
+                            eq(accounts.accountClass, 'expense'),
+                        ),
+                        gte(transactions.date, period.startDate),
+                        lte(transactions.date, period.endDate),
+                    ),
+                );
+
+            // Aggregate balances by account
+            const balanceMap = new Map<string, number>();
+            for (const row of accountBalances) {
+                const key = row.accountId;
+                const existing = balanceMap.get(key) || 0;
+                balanceMap.set(key, existing + (row.balance || 0));
+            }
+
+            // Get user settings for double-entry mode
+            const { settings } = await import('@/db/schema');
+            const [userSettings] = await db
+                .select()
+                .from(settings)
+                .where(eq(settings.userId, auth.userId));
+
+            const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+
+            // Create closing entries
+            const createdTransactions = [];
+            const splitGroupId = createId();
+
+            // In double-entry mode, create journal entries
+            if (doubleEntryMode) {
+                // Close income accounts (credit balance) -> debit income, credit P&L
+                // Close expense accounts (debit balance) -> debit P&L, credit expense
+                for (const [accountId, balance] of balanceMap.entries()) {
+                    if (balance === 0) continue;
+
+                    const [account] = await db
+                        .select()
+                        .from(accounts)
+                        .where(eq(accounts.id, accountId));
+
+                    if (!account) continue;
+
+                    const transactionId = createId();
+                    let creditAccountId: string;
+                    let debitAccountId: string;
+
+                    if (account.accountClass === 'income') {
+                        // Close income: debit income account, credit P&L
+                        debitAccountId = accountId;
+                        creditAccountId = profitAndLossAccountId;
+                    } else {
+                        // Close expense: debit P&L, credit expense account
+                        debitAccountId = profitAndLossAccountId;
+                        creditAccountId = accountId;
+                    }
+
+                    const [transaction] = await db
+                        .insert(transactions)
+                        .values({
+                            id: transactionId,
+                            amount: Math.abs(balance),
+                            payee: `Year closing - ${account.name}`,
+                            notes: `Closing entry for period ${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]}`,
+                            date: closingDate,
+                            creditAccountId,
+                            debitAccountId,
+                            status: transactionStatus,
+                            statusChangedAt: new Date(),
+                            statusChangedBy: auth.userId,
+                            splitGroupId,
+                            splitType: 'child',
+                            closingPeriodId: periodId,
+                        })
+                        .returning();
+
+                    createdTransactions.push(transaction);
+                }
+
+                // If retained earnings account is specified, transfer P&L to it
+                if (retainedEarningsAccountId) {
+                    // Calculate net result
+                    const netResult = Array.from(balanceMap.values()).reduce(
+                        (sum, balance) => sum + balance,
+                        0,
+                    );
+
+                    if (netResult !== 0) {
+                        const transactionId = createId();
+                        let creditAccountId: string;
+                        let debitAccountId: string;
+
+                        if (netResult > 0) {
+                            // Profit: debit P&L, credit Retained Earnings
+                            debitAccountId = profitAndLossAccountId;
+                            creditAccountId = retainedEarningsAccountId;
+                        } else {
+                            // Loss: debit Retained Earnings, credit P&L
+                            debitAccountId = retainedEarningsAccountId;
+                            creditAccountId = profitAndLossAccountId;
+                        }
+
+                        const [transaction] = await db
+                            .insert(transactions)
+                            .values({
+                                id: transactionId,
+                                amount: Math.abs(netResult),
+                                payee: 'Year closing - Transfer to Retained Earnings',
+                                notes: `Transfer net result to retained earnings for period ${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]}`,
+                                date: closingDate,
+                                creditAccountId,
+                                debitAccountId,
+                                status: transactionStatus,
+                                statusChangedAt: new Date(),
+                                statusChangedBy: auth.userId,
+                                splitGroupId,
+                                splitType: 'child',
+                                closingPeriodId: periodId,
+                            })
+                            .returning();
+
+                        createdTransactions.push(transaction);
+                    }
+                }
+            } else {
+                // Single-entry mode: create simple transactions
+                for (const [accountId, balance] of balanceMap.entries()) {
+                    if (balance === 0) continue;
+
+                    const [account] = await db
+                        .select()
+                        .from(accounts)
+                        .where(eq(accounts.id, accountId));
+
+                    if (!account) continue;
+
+                    const transactionId = createId();
+
+                    // Close the account by reversing its balance
+                    const [transaction] = await db
+                        .insert(transactions)
+                        .values({
+                            id: transactionId,
+                            amount: -balance, // Reverse the balance
+                            payee: `Year closing - ${account.name}`,
+                            notes: `Closing entry for period ${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]}`,
+                            date: closingDate,
+                            accountId,
+                            status: transactionStatus,
+                            statusChangedAt: new Date(),
+                            statusChangedBy: auth.userId,
+                            splitGroupId,
+                            splitType: 'child',
+                            closingPeriodId: periodId,
+                        })
+                        .returning();
+
+                    createdTransactions.push(transaction);
+                }
+
+                // Transfer net result to P&L account
+                const netResult = Array.from(balanceMap.values()).reduce(
+                    (sum, balance) => sum + balance,
+                    0,
+                );
+
+                if (netResult !== 0) {
+                    const transactionId = createId();
+                    const [transaction] = await db
+                        .insert(transactions)
+                        .values({
+                            id: transactionId,
+                            amount: netResult,
+                            payee: 'Year closing - Net Result',
+                            notes: `Net result for period ${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]}`,
+                            date: closingDate,
+                            accountId: profitAndLossAccountId,
+                            status: transactionStatus,
+                            statusChangedAt: new Date(),
+                            statusChangedBy: auth.userId,
+                            splitGroupId,
+                            splitType: 'child',
+                            closingPeriodId: periodId,
+                        })
+                        .returning();
+
+                    createdTransactions.push(transaction);
+                }
+            }
+
+            return ctx.json({ data: createdTransactions });
+        },
     );
 
 export default app;
