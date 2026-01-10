@@ -21,6 +21,7 @@ const app = new Hono()
                 id: tags.id,
                 name: tags.name,
                 color: tags.color,
+                tagType: tags.tagType,
             })
             .from(tags)
             .where(eq(tags.userId, auth.userId));
@@ -53,6 +54,7 @@ const app = new Hono()
                     id: tags.id,
                     name: tags.name,
                     color: tags.color,
+                    tagType: tags.tagType,
                 })
                 .from(tags)
                 .where(and(eq(tags.userId, auth.userId), eq(tags.id, id)));
@@ -72,6 +74,7 @@ const app = new Hono()
             insertTagSchema.pick({
                 name: true,
                 color: true,
+                tagType: true,
             }),
         ),
         async (ctx) => {
@@ -140,6 +143,7 @@ const app = new Hono()
             insertTagSchema.pick({
                 name: true,
                 color: true,
+                tagType: true,
             }),
         ),
         async (ctx) => {
