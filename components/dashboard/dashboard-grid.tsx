@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/core';
 import {
     arrayMove,
+    rectSortingStrategy,
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
@@ -76,9 +77,9 @@ export function DashboardGrid() {
             {/* New widgets in grid layout */}
             <SortableContext
                 items={newWidgets.map((w) => w.id)}
-                strategy={verticalListSortingStrategy}
+                strategy={rectSortingStrategy}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 grid-flow-row-dense gap-6 mb-8">
                     {newWidgets.map((widget) => {
                         const colSpan = getColSpan(widget);
                         const gridColSpanClasses =
@@ -92,7 +93,7 @@ export function DashboardGrid() {
                         return (
                             <div
                                 key={widget.id}
-                                className={`col-span-1 ${gridColSpanClasses}`}
+                                className={`col-span-1 ${gridColSpanClasses} min-w-0`}
                             >
                                 <DraggableWidget widget={widget} />
                             </div>
