@@ -3,7 +3,12 @@ import type { ComponentType } from 'react';
 /**
  * Widget types supported in the dashboard
  */
-export type WidgetType = 'data-grid' | 'data-charts';
+export type WidgetType =
+    | 'financial-summary'
+    | 'graph'
+    | 'chart'
+    | 'data-grid'
+    | 'data-charts';
 
 /**
  * Base configuration that all widgets share
@@ -36,9 +41,43 @@ export interface DataChartsWidgetConfig extends BaseWidgetConfig {
 }
 
 /**
+ * Configuration for Financial Summary widget
+ */
+export interface FinancialSummaryWidgetConfig extends BaseWidgetConfig {
+    type: 'financial-summary';
+    refreshRate?: number; // in seconds
+    summaryType: 'balance' | 'income' | 'expenses'; // Which summary card to display
+}
+
+/**
+ * Configuration for Graph widget (line, area, bar charts)
+ */
+export interface GraphWidgetConfig extends BaseWidgetConfig {
+    type: 'graph';
+    refreshRate?: number; // in seconds
+    dataSource: 'transactions' | 'tags'; // transactions for daily data, tags for category data
+    chartType: 'area' | 'bar' | 'line'; // Chart type is now defined in config
+}
+
+/**
+ * Configuration for Chart widget (pie, radar, radial charts)
+ */
+export interface ChartWidgetConfig extends BaseWidgetConfig {
+    type: 'chart';
+    refreshRate?: number; // in seconds
+    dataSource: 'transactions' | 'tags'; // Which data to visualize
+    chartType: 'pie' | 'radar' | 'radial'; // Chart type is now defined in config
+}
+
+/**
  * Union type of all widget configurations
  */
-export type WidgetConfig = DataGridWidgetConfig | DataChartsWidgetConfig;
+export type WidgetConfig =
+    | DataGridWidgetConfig
+    | DataChartsWidgetConfig
+    | FinancialSummaryWidgetConfig
+    | GraphWidgetConfig
+    | ChartWidgetConfig;
 
 /**
  * Widget definition in the registry

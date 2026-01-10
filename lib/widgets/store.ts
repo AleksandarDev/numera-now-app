@@ -2,7 +2,14 @@
 
 import { create } from 'zustand';
 import { createWidgetInstance } from './registry';
-import type { DashboardLayout, WidgetConfig, WidgetType } from './types';
+import type {
+    DashboardLayout,
+    WidgetConfig,
+    WidgetType,
+    FinancialSummaryWidgetConfig,
+    GraphWidgetConfig,
+    ChartWidgetConfig,
+} from './types';
 
 interface DashboardStore extends DashboardLayout {
     addWidget: (type: WidgetType) => void;
@@ -16,12 +23,52 @@ interface DashboardStore extends DashboardLayout {
 }
 
 /**
- * Default dashboard layout with existing widgets
+ * Helper function to generate a unique widget ID
+ */
+function generateWidgetId(): string {
+    return `widget-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * Default dashboard layout with new modular widgets
  */
 const defaultLayout: DashboardLayout = {
     widgets: [
-        createWidgetInstance('data-grid'),
-        createWidgetInstance('data-charts'),
+        // Financial Summary Cards - one for each type
+        {
+            id: generateWidgetId(),
+            type: 'financial-summary',
+            refreshRate: 60,
+            summaryType: 'balance',
+        } as FinancialSummaryWidgetConfig,
+        {
+            id: generateWidgetId(),
+            type: 'financial-summary',
+            refreshRate: 60,
+            summaryType: 'income',
+        } as FinancialSummaryWidgetConfig,
+        {
+            id: generateWidgetId(),
+            type: 'financial-summary',
+            refreshRate: 60,
+            summaryType: 'expenses',
+        } as FinancialSummaryWidgetConfig,
+        // Graph Widget - for line/area/bar charts
+        {
+            id: generateWidgetId(),
+            type: 'graph',
+            refreshRate: 60,
+            dataSource: 'transactions',
+            chartType: 'area',
+        } as GraphWidgetConfig,
+        // Chart Widget - for pie/radar/radial charts
+        {
+            id: generateWidgetId(),
+            type: 'chart',
+            refreshRate: 60,
+            dataSource: 'tags',
+            chartType: 'pie',
+        } as ChartWidgetConfig,
     ],
 };
 
@@ -46,7 +93,7 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
 
     addWidget: (type) =>
         set((state) => ({
-            widgets: [...state.widgets, createWidgetInstance(type)],
+            widgets: [...state.widgets, createWidgetInstance(type)] as WidgetConfig[],
         })),
 
     removeWidget: (id) =>
@@ -58,7 +105,7 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
         set((state) => ({
             widgets: state.widgets.map((widget) =>
                 widget.id === id ? { ...widget, ...config } : widget,
-            ),
+            ) as WidgetConfig[],
         })),
 
     reorderWidgets: (newOrder) =>
@@ -69,8 +116,38 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
     resetToDefault: () =>
         set({
             widgets: [
-                createWidgetInstance('data-grid'),
-                createWidgetInstance('data-charts'),
+                {
+                    id: generateWidgetId(),
+                    type: 'financial-summary',
+                    refreshRate: 60,
+                    summaryType: 'balance',
+                } as FinancialSummaryWidgetConfig,
+                {
+                    id: generateWidgetId(),
+                    type: 'financial-summary',
+                    refreshRate: 60,
+                    summaryType: 'income',
+                } as FinancialSummaryWidgetConfig,
+                {
+                    id: generateWidgetId(),
+                    type: 'financial-summary',
+                    refreshRate: 60,
+                    summaryType: 'expenses',
+                } as FinancialSummaryWidgetConfig,
+                {
+                    id: generateWidgetId(),
+                    type: 'graph',
+                    refreshRate: 60,
+                    dataSource: 'transactions',
+                    chartType: 'area',
+                } as GraphWidgetConfig,
+                {
+                    id: generateWidgetId(),
+                    type: 'chart',
+                    refreshRate: 60,
+                    dataSource: 'tags',
+                    chartType: 'pie',
+                } as ChartWidgetConfig,
             ],
         }),
 }));

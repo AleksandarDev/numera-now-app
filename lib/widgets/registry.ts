@@ -1,9 +1,22 @@
-import { BarChart3, Grid3x3 } from 'lucide-react';
+import {
+    BarChart3,
+    Grid3x3,
+    LineChart,
+    PieChart,
+    TrendingDown,
+    TrendingUp,
+} from 'lucide-react';
 import { DataChartsWidget } from '@/components/widgets/data-charts-widget';
 import { DataGridWidget } from '@/components/widgets/data-grid-widget';
+import { GraphWidget } from '@/components/widgets/graph-widget';
+import { ChartWidget } from '@/components/widgets/chart-widget';
+import { FinancialSummaryWidget } from '@/components/widgets/financial-summary-widget';
 import type {
     DataChartsWidgetConfig,
     DataGridWidgetConfig,
+    GraphWidgetConfig,
+    ChartWidgetConfig,
+    FinancialSummaryWidgetConfig,
     WidgetConfig,
     WidgetDefinition,
     WidgetType,
@@ -13,10 +26,144 @@ import type {
  * Registry of all official widgets
  */
 const widgetRegistry: Record<WidgetType, WidgetDefinition> = {
+    'financial-summary': {
+        type: 'financial-summary',
+        name: 'Financial Summary',
+        description:
+            'Displays individual financial summary cards (Balance, Income, or Expenses)',
+        icon: Grid3x3,
+        component: FinancialSummaryWidget as WidgetDefinition['component'],
+        defaultConfig: {
+            type: 'financial-summary',
+            summaryType: 'balance',
+            refreshRate: 60,
+        } as Omit<FinancialSummaryWidgetConfig, 'id'>,
+        configSchema: {
+            fields: [
+                {
+                    name: 'summaryType',
+                    label: 'Summary Type',
+                    type: 'select',
+                    options: [
+                        { label: 'Balance', value: 'balance' },
+                        { label: 'Income', value: 'income' },
+                        { label: 'Expenses', value: 'expenses' },
+                    ],
+                    defaultValue: 'balance',
+                    description:
+                        'Which financial summary to display in this widget',
+                },
+                {
+                    name: 'refreshRate',
+                    label: 'Refresh Rate (seconds)',
+                    type: 'number',
+                    defaultValue: 60,
+                    description: 'How often the widget data should refresh',
+                },
+            ],
+        },
+    },
+    graph: {
+        type: 'graph',
+        name: 'Graph',
+        description:
+            'Displays line, area, or bar charts with configurable data source',
+        icon: LineChart,
+        component: GraphWidget as WidgetDefinition['component'],
+        defaultConfig: {
+            type: 'graph',
+            dataSource: 'transactions',
+            chartType: 'area',
+            refreshRate: 60,
+        } as Omit<GraphWidgetConfig, 'id'>,
+        configSchema: {
+            fields: [
+                {
+                    name: 'dataSource',
+                    label: 'Data Source',
+                    type: 'select',
+                    options: [
+                        { label: 'Transactions', value: 'transactions' },
+                        { label: 'Tags', value: 'tags' },
+                    ],
+                    defaultValue: 'transactions',
+                    description: 'Which data to visualize',
+                },
+                {
+                    name: 'chartType',
+                    label: 'Chart Type',
+                    type: 'select',
+                    options: [
+                        { label: 'Area', value: 'area' },
+                        { label: 'Bar', value: 'bar' },
+                        { label: 'Line', value: 'line' },
+                    ],
+                    defaultValue: 'area',
+                    description: 'The type of chart to display',
+                },
+                {
+                    name: 'refreshRate',
+                    label: 'Refresh Rate (seconds)',
+                    type: 'number',
+                    defaultValue: 60,
+                    description: 'How often the widget data should refresh',
+                },
+            ],
+        },
+    },
+    chart: {
+        type: 'chart',
+        name: 'Chart',
+        description:
+            'Displays pie, radar, or radial charts with configurable data source',
+        icon: PieChart,
+        component: ChartWidget as WidgetDefinition['component'],
+        defaultConfig: {
+            type: 'chart',
+            dataSource: 'tags',
+            chartType: 'pie',
+            refreshRate: 60,
+        } as Omit<ChartWidgetConfig, 'id'>,
+        configSchema: {
+            fields: [
+                {
+                    name: 'dataSource',
+                    label: 'Data Source',
+                    type: 'select',
+                    options: [
+                        { label: 'Transactions', value: 'transactions' },
+                        { label: 'Tags', value: 'tags' },
+                    ],
+                    defaultValue: 'tags',
+                    description: 'Which data to visualize',
+                },
+                {
+                    name: 'chartType',
+                    label: 'Chart Type',
+                    type: 'select',
+                    options: [
+                        { label: 'Pie', value: 'pie' },
+                        { label: 'Radar', value: 'radar' },
+                        { label: 'Radial', value: 'radial' },
+                    ],
+                    defaultValue: 'pie',
+                    description: 'The type of chart to display',
+                },
+                {
+                    name: 'refreshRate',
+                    label: 'Refresh Rate (seconds)',
+                    type: 'number',
+                    defaultValue: 60,
+                    description: 'How often the widget data should refresh',
+                },
+            ],
+        },
+    },
     'data-grid': {
         type: 'data-grid',
-        name: 'Financial Summary',
-        description: 'Displays balance, income, and expenses in summary cards',
+        name: 'Financial Summary (Legacy)',
+        description:
+            'Displays balance, income, and expenses in summary cards (deprecated - use Financial Summary widget instead)',
         icon: Grid3x3,
         component: DataGridWidget as WidgetDefinition['component'],
         defaultConfig: {
@@ -58,8 +205,9 @@ const widgetRegistry: Record<WidgetType, WidgetDefinition> = {
     },
     'data-charts': {
         type: 'data-charts',
-        name: 'Analytics Charts',
-        description: 'Shows line chart and spending pie chart for analytics',
+        name: 'Analytics Charts (Legacy)',
+        description:
+            'Shows line chart and spending pie chart for analytics (deprecated - use Graph and Chart widgets instead)',
         icon: BarChart3,
         component: DataChartsWidget as WidgetDefinition['component'],
         defaultConfig: {

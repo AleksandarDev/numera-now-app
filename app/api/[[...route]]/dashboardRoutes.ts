@@ -10,7 +10,7 @@ import { dashboardLayouts } from '@/db/schema';
 // Widget configuration schemas
 const baseWidgetConfigSchema = z.object({
     id: z.string(),
-    type: z.enum(['data-grid', 'data-charts']),
+    type: z.enum(['data-grid', 'data-charts', 'financial-summary', 'graph', 'chart']),
     title: z.string().optional(),
 });
 
@@ -29,9 +29,32 @@ const dataChartsWidgetConfigSchema = baseWidgetConfigSchema.extend({
     defaultPieType: z.enum(['pie', 'radar', 'radial']).optional(),
 });
 
+const financialSummaryWidgetConfigSchema = baseWidgetConfigSchema.extend({
+    type: z.literal('financial-summary'),
+    refreshRate: z.number().optional(),
+    summaryType: z.enum(['balance', 'income', 'expenses']),
+});
+
+const graphWidgetConfigSchema = baseWidgetConfigSchema.extend({
+    type: z.literal('graph'),
+    refreshRate: z.number().optional(),
+    dataSource: z.enum(['transactions', 'tags']),
+    chartType: z.enum(['area', 'bar', 'line']),
+});
+
+const chartWidgetConfigSchema = baseWidgetConfigSchema.extend({
+    type: z.literal('chart'),
+    refreshRate: z.number().optional(),
+    dataSource: z.enum(['transactions', 'tags']),
+    chartType: z.enum(['pie', 'radar', 'radial']),
+});
+
 const widgetConfigSchema = z.discriminatedUnion('type', [
     dataGridWidgetConfigSchema,
     dataChartsWidgetConfigSchema,
+    financialSummaryWidgetConfigSchema,
+    graphWidgetConfigSchema,
+    chartWidgetConfigSchema,
 ]);
 
 const app = new Hono()
