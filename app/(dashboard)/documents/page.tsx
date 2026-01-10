@@ -1,22 +1,14 @@
 'use client';
 
-import { format } from 'date-fns';
-import {
-    Download,
-    FileText,
-    Link2,
-    Loader2,
-    Plus,
-    Search,
-    Trash2,
-} from 'lucide-react';
-import { useCallback, useState } from 'react';
+import type { Row } from '@tanstack/react-table';
+import { Plus } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { DataTable } from '@/components/data-table';
 import { DatePicker } from '@/components/date-picker';
 import { DocumentDropzone } from '@/components/document-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -32,14 +24,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useCreateStandaloneDocument } from '@/features/documents/api/use-create-standalone-document';
 import { useGetAllDocuments } from '@/features/documents/api/use-get-all-documents';
 import {
@@ -48,12 +33,7 @@ import {
 } from '@/features/transactions/api/use-documents';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { client } from '@/lib/hono';
-
-function formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { getColumns, type ResponseType } from './columns';
 
 export default function DocumentsPage() {
     const [showUploadSheet, setShowUploadSheet] = useState(false);
@@ -61,7 +41,6 @@ export default function DocumentsPage() {
     const [showUnattachedOnly, setShowUnattachedOnly] = useState(false);
     const [dateFrom, setDateFrom] = useState<Date | undefined>();
     const [dateTo, setDateTo] = useState<Date | undefined>();
-    const [searchQuery, setSearchQuery] = useState('');
 
     const { onOpen: openTransaction } = useOpenTransaction();
 
@@ -76,17 +55,9 @@ export default function DocumentsPage() {
     });
 
     const deleteDocument = useDeleteDocument();
-
-    // Filter documents by search query
-    const filteredDocuments = (documentsQuery.data ?? []).filter((doc) => {
-        if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
-        return (
-            doc.fileName.toLowerCase().includes(query) ||
-            doc.documentTypeName?.toLowerCase().includes(query) ||
-            doc.transactionPayee?.toLowerCase().includes(query)
-        );
-    });
+    const documents = documentsQuery.data || [];
+    const isInitialLoading = documentsQuery.isLoading;
+    const isDeleting = deleteDocument.isPending;
 
     const handleDownload = async (documentId: string) => {
         try {
@@ -120,9 +91,22 @@ export default function DocumentsPage() {
         }
     };
 
-    const handleViewTransaction = (transactionId: string) => {
-        openTransaction(transactionId, 'documents');
+    const handleRowClick = (row: Row<ResponseType>) => {
+        const doc = row.original;
+        if (doc.transactionId) {
+            openTransaction(doc.transactionId, 'documents');
+        }
     };
+
+    const columns = useMemo(
+        () =>
+            getColumns({
+                onDownload: handleDownload,
+                onDelete: handleDelete,
+                isDeleting,
+            }),
+        [isDeleting],
+    );
 
     return (
         <div className="mx-auto -mt-24 w-full max-w-screen-2xl pb-10">
@@ -140,21 +124,6 @@ export default function DocumentsPage() {
                     {/* Filters */}
                     <div className="mb-6 space-y-4">
                         <div className="flex flex-wrap gap-4">
-                            <div className="flex-1 min-w-[200px]">
-                                <Label className="sr-only">Search</Label>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Search documents..."
-                                        value={searchQuery}
-                                        onChange={(e) =>
-                                            setSearchQuery(e.target.value)
-                                        }
-                                        className="pl-9"
-                                    />
-                                </div>
-                            </div>
-
                             <div className="w-[180px]">
                                 <Label className="sr-only">Document Type</Label>
                                 <Select
@@ -209,125 +178,27 @@ export default function DocumentsPage() {
                         </div>
                     </div>
 
-                    {/* Documents Table */}
-                    {documentsQuery.isLoading ? (
-                        <div className="flex h-[300px] items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : filteredDocuments.length === 0 ? (
-                        <div className="flex h-[300px] flex-col items-center justify-center text-center">
-                            <FileText className="h-12 w-12 text-muted-foreground/50" />
-                            <p className="mt-4 text-lg font-medium text-muted-foreground">
-                                No documents found
-                            </p>
-                            <p className="text-sm text-muted-foreground/70">
-                                Upload your first document to get started
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>File Name</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Size</TableHead>
-                                        <TableHead>Uploaded</TableHead>
-                                        <TableHead>Transaction</TableHead>
-                                        <TableHead className="text-right">
-                                            Actions
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredDocuments.map((doc) => (
-                                        <TableRow key={doc.id}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-2">
-                                                    <FileText className="h-4 w-4 text-muted-foreground" />
-                                                    <span className="truncate max-w-[200px]">
-                                                        {doc.fileName}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {doc.documentTypeName ||
-                                                    'Unknown'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {formatFileSize(doc.fileSize)}
-                                            </TableCell>
-                                            <TableCell>
-                                                {format(
-                                                    new Date(doc.uploadedAt),
-                                                    'MMM d, yyyy',
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {doc.transactionId ? (
-                                                    <Button
-                                                        variant="link"
-                                                        size="sm"
-                                                        className="h-auto p-0"
-                                                        onClick={() =>
-                                                            handleViewTransaction(
-                                                                doc.transactionId as string,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Link2 className="mr-1 h-3 w-3" />
-                                                        {doc.transactionDate
-                                                            ? format(
-                                                                  new Date(
-                                                                      doc.transactionDate,
-                                                                  ),
-                                                                  'MMM d',
-                                                              )
-                                                            : 'View'}
-                                                        {doc.transactionPayee &&
-                                                            ` - ${doc.transactionPayee.slice(0, 15)}...`}
-                                                    </Button>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-sm">
-                                                        Not attached
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() =>
-                                                            handleDownload(
-                                                                doc.id,
-                                                            )
-                                                        }
-                                                        title="Download"
-                                                    >
-                                                        <Download className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() =>
-                                                            handleDelete(doc.id)
-                                                        }
-                                                        disabled={
-                                                            deleteDocument.isPending
-                                                        }
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
+                    {/* Documents Table with Pagination */}
+                    <DataTable
+                        filterKey="fileName"
+                        filterPlaceholder="Search documents..."
+                        paginationKey="documents"
+                        autoResetPageIndex={false}
+                        columns={
+                            isInitialLoading
+                                ? columns.map((column) => ({
+                                      ...column,
+                                      cell: () => (
+                                          <Skeleton className="h-[14px] w-[100%] rounded-sm" />
+                                      ),
+                                  }))
+                                : columns
+                        }
+                        data={isInitialLoading ? Array(10).fill({}) : documents}
+                        disabled={isInitialLoading || isDeleting}
+                        loading={isDeleting}
+                        onRowClick={handleRowClick}
+                    />
                 </CardContent>
             </Card>
 
