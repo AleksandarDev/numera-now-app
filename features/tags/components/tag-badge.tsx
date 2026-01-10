@@ -1,4 +1,4 @@
-import { cn, getContrastingTextColor } from '@/lib/utils';
+import { cn, getTagBadgeColors } from '@/lib/utils';
 
 type TagBadgeProps = {
     name: string;
@@ -14,15 +14,16 @@ export const TagBadge = ({
     className,
 }: TagBadgeProps) => {
     const baseClasses =
-        'inline-flex items-center rounded-full font-medium max-w-[120px] overflow-hidden';
+        'inline-flex items-center rounded-full font-medium max-w-[100px] overflow-hidden';
     const sizeClasses =
         size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs';
 
-    const style = color
+    const badgeColors = color ? getTagBadgeColors(color) : null;
+
+    const style = badgeColors
         ? {
-              backgroundColor: color,
-              color: getContrastingTextColor(color),
-              borderColor: color,
+              backgroundColor: badgeColors.backgroundColor,
+              color: badgeColors.textColor,
           }
         : {};
 
@@ -31,8 +32,7 @@ export const TagBadge = ({
             className={cn(
                 baseClasses,
                 sizeClasses,
-                'border',
-                !color && 'bg-blue-100 text-blue-800 border-blue-200',
+                !color && 'bg-blue-100 text-blue-800',
                 className,
             )}
             style={style}
