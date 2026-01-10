@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { MultiValue } from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 
-import { getContrastingTextColor } from '@/lib/utils';
+import { getTagBadgeColors } from '@/lib/utils';
 
 type TagOption = {
     label: string;
@@ -56,35 +56,45 @@ export const TagMultiSelect = ({
                         borderColor: '#e2e8f0',
                     },
                 }),
-                multiValue: (base, { data }) => ({
-                    ...base,
-                    backgroundColor: data.color ?? '#3b82f6',
-                    borderColor: data.color ?? '#3b82f6',
-                    border: '1px solid',
-                    padding: '1px 4px',
-                }),
-                multiValueLabel: (base, { data }) => ({
-                    ...base,
-                    color: data.color
-                        ? getContrastingTextColor(data.color)
-                        : '#ffffff',
-                    fontWeight: 500,
-                    fontSize: '11px',
-                    padding: '0 2px',
-                }),
-                multiValueRemove: (base, { data }) => ({
-                    ...base,
-                    color: data.color
-                        ? getContrastingTextColor(data.color)
-                        : '#ffffff',
-                    ':hover': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                        color: data.color
-                            ? getContrastingTextColor(data.color)
-                            : '#ffffff',
-                    },
-                    padding: '0 2px',
-                }),
+                multiValue: (base, { data }) => {
+                    const badgeColors = data.color
+                        ? getTagBadgeColors(data.color)
+                        : null;
+                    return {
+                        ...base,
+                        backgroundColor: badgeColors?.backgroundColor ?? '#dbeafe',
+                        border: 'none',
+                        borderRadius: '9999px',
+                        padding: '0 2px',
+                    };
+                },
+                multiValueLabel: (base, { data }) => {
+                    const badgeColors = data.color
+                        ? getTagBadgeColors(data.color)
+                        : null;
+                    return {
+                        ...base,
+                        color: badgeColors?.textColor ?? '#1e40af',
+                        fontWeight: 500,
+                        fontSize: '10px',
+                        padding: '0 2px',
+                    };
+                },
+                multiValueRemove: (base, { data }) => {
+                    const badgeColors = data.color
+                        ? getTagBadgeColors(data.color)
+                        : null;
+                    return {
+                        ...base,
+                        color: badgeColors?.textColor ?? '#1e40af',
+                        borderRadius: '0 9999px 9999px 0',
+                        ':hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                            color: badgeColors?.textColor ?? '#1e40af',
+                        },
+                        padding: '0 2px',
+                    };
+                },
             }}
             value={formattedValue}
             onChange={onSelect}

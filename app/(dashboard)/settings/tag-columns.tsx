@@ -12,6 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useDeleteTag } from '@/features/tags/api/use-delete-tag';
+import { TagBadge } from '@/features/tags/components/tag-badge';
 import { useOpenTag } from '@/features/tags/hooks/use-open-tag';
 import { useConfirm } from '@/hooks/use-confirm';
 import type { client } from '@/lib/hono';
@@ -109,17 +110,12 @@ export const tagColumns: ColumnDef<ResponseType>[] = [
             );
         },
         cell: ({ row }) => {
-            const color = row.original.color;
             return (
-                <div className="flex items-center gap-2">
-                    {color && (
-                        <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: color }}
-                        />
-                    )}
-                    <span>{row.original.name}</span>
-                </div>
+                <TagBadge
+                    name={row.original.name}
+                    color={row.original.color}
+                    size="sm"
+                />
             );
         },
     },
