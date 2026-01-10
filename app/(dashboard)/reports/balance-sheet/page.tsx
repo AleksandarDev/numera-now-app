@@ -145,7 +145,8 @@ export default function BalanceSheetPage() {
                     <CardTitle>Balance Sheet</CardTitle>
                     {data && (
                         <p className="text-sm text-muted-foreground">
-                            As of {format(new Date(data.asOfDate), 'MMM dd, yyyy')}
+                            As of{' '}
+                            {format(new Date(data.asOfDate), 'MMM dd, yyyy')}
                         </p>
                     )}
                 </CardHeader>
@@ -167,8 +168,9 @@ export default function BalanceSheetPage() {
                                             level="body2"
                                             className="text-yellow-800"
                                         >
-                                            Assets do not equal Liabilities + Equity.
-                                            Difference: {formatCurrency(data.difference)}
+                                            Assets do not equal Liabilities +
+                                            Equity. Difference:{' '}
+                                            {formatCurrency(data.difference)}
                                         </Typography>
                                     </div>
                                 </div>
@@ -248,7 +250,9 @@ export default function BalanceSheetPage() {
                                                     'text-red-600',
                                             )}
                                         >
-                                            {formatCurrency(data.totalLiabilities)}
+                                            {formatCurrency(
+                                                data.totalLiabilities,
+                                            )}
                                         </Typography>
                                     </div>
                                 </div>
@@ -312,7 +316,9 @@ export default function BalanceSheetPage() {
                                                 'text-red-600',
                                         )}
                                     >
-                                        {formatCurrency(data.liabilitiesAndEquity)}
+                                        {formatCurrency(
+                                            data.liabilitiesAndEquity,
+                                        )}
                                     </Typography>
                                 </div>
                             </div>
