@@ -136,7 +136,12 @@ export function validateTransaction(
 
     // Smart double-entry validation: Check if operations match account classes
     const isDraft = transaction.status === 'draft';
-    const isClosingOrAdjustment = false; // TODO: Detect closing entries based on tags or notes
+    // Detect closing or adjustment entries based on tags or specific patterns
+    // For now, this is disabled but can be enhanced in the future to check for:
+    // - Tags like "closing-entry", "adjustment", "year-end"
+    // - Transaction dates at fiscal year-end
+    // - Specific account patterns (closing to equity accounts)
+    const isClosingOrAdjustment = detectClosingEntry(transaction);
 
     // Validate credit account operation
     if (transaction.creditAccount && transaction.creditAccountId) {
@@ -289,4 +294,21 @@ export function getDocumentRequirementStatus(transaction: ResponseType): {
     }
 
     return { isBlocked, attachedCount, requiredCount, minRequired, message };
+}
+
+/**
+ * Detect if a transaction is a closing entry or adjustment.
+ * This can be enhanced in the future to check for specific patterns.
+ *
+ * @param transaction - The transaction to check
+ * @returns true if this appears to be a closing entry or adjustment
+ */
+function detectClosingEntry(_transaction: ResponseType): boolean {
+    // Future enhancement: Check for specific tags like "closing-entry", "adjustment"
+    // Future enhancement: Check for year-end dates
+    // Future enhancement: Check for specific account patterns (e.g., closing to retained earnings)
+
+    // For now, we don't auto-detect closing entries
+    // This allows unusual operations to be flagged, and users can understand they're unusual
+    return false;
 }

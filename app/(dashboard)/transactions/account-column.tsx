@@ -7,6 +7,17 @@ import { formatCurrency } from '@/lib/utils';
 import type { ValidationIssue } from './validation';
 import { ValidationIndicator } from './validation-indicator';
 
+// Helper function to generate unique keys for validation indicators
+const generateValidationKey = (
+    issue: ValidationIssue,
+    operation: 'credit' | 'debit',
+    suffix?: string,
+): string => {
+    const accountId = issue.doubleEntryIssue?.accountId ?? 'unknown';
+    const suffixPart = suffix ? `-${suffix}` : '';
+    return `${issue.type}-${accountId}-${operation}${suffixPart}`;
+};
+
 type AccountColumnProps = {
     account?: string | null;
     accountCode?: string | null;
@@ -94,7 +105,7 @@ export const AccountColumn = ({
                     )}
                     {creditIssues.map((issue) => (
                         <ValidationIndicator
-                            key={`${issue.type}-${issue.doubleEntryIssue?.accountId}-credit`}
+                            key={generateValidationKey(issue, 'credit')}
                             message={issue.message}
                             severity={issue.severity}
                             explanation={issue.explanation}
@@ -128,7 +139,7 @@ export const AccountColumn = ({
                     )}
                     {debitIssues.map((issue) => (
                         <ValidationIndicator
-                            key={`${issue.type}-${issue.doubleEntryIssue?.accountId}-debit`}
+                            key={generateValidationKey(issue, 'debit')}
                             message={issue.message}
                             severity={issue.severity}
                             explanation={issue.explanation}
@@ -166,7 +177,11 @@ export const AccountColumn = ({
                         )}
                         {creditIssues.map((issue) => (
                             <ValidationIndicator
-                                key={`${issue.type}-${issue.doubleEntryIssue?.accountId}-credit-single`}
+                                key={generateValidationKey(
+                                    issue,
+                                    'credit',
+                                    'single',
+                                )}
                                 message={issue.message}
                                 severity={issue.severity}
                                 explanation={issue.explanation}
@@ -210,7 +225,11 @@ export const AccountColumn = ({
                         )}
                         {debitIssues.map((issue) => (
                             <ValidationIndicator
-                                key={`${issue.type}-${issue.doubleEntryIssue?.accountId}-debit-single`}
+                                key={generateValidationKey(
+                                    issue,
+                                    'debit',
+                                    'single',
+                                )}
                                 message={issue.message}
                                 severity={issue.severity}
                                 explanation={issue.explanation}
