@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 type MetricConfig = {
     enabled: boolean;
     label: string;
-    value?: string;
+    value: string; // Now always provided by the API
 };
 
 type ExposedMetrics = {
@@ -23,8 +23,6 @@ type PublicFinanceData = {
     pageTitle: string | null;
     pageDescription: string | null;
     metrics: ExposedMetrics;
-    dateFrom: string | null;
-    dateTo: string | null;
     allowEmbedding: boolean;
 };
 
@@ -62,14 +60,14 @@ export default function OpenFinancesPage() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <Card className="p-8">
+                <div className="p-8">
                     <div className="flex items-center space-x-3">
                         <Loader2 className="size-6 animate-spin text-slate-600" />
                         <span className="text-slate-600">
                             Loading financial data...
                         </span>
                     </div>
-                </Card>
+                </div>
             </div>
         );
     }
@@ -77,7 +75,7 @@ export default function OpenFinancesPage() {
     if (error) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
-                <Card className="p-8 max-w-md w-full">
+                <div className="p-8 max-w-md w-full">
                     <div className="text-center space-y-3">
                         <div className="text-6xl">🔒</div>
                         <h1 className="text-2xl font-bold text-slate-800">
@@ -85,7 +83,7 @@ export default function OpenFinancesPage() {
                         </h1>
                         <p className="text-slate-600">{error}</p>
                     </div>
-                </Card>
+                </div>
             </div>
         );
     }
@@ -140,29 +138,11 @@ export default function OpenFinancesPage() {
                     </Card>
                 )}
 
-                {/* Date Range */}
-                {(data.dateFrom || data.dateTo) && (
-                    <div className="text-center text-sm text-slate-500">
-                        {data.dateFrom && data.dateTo ? (
-                            <span>
-                                Data from{' '}
-                                {new Date(data.dateFrom).toLocaleDateString()}{' '}
-                                to {new Date(data.dateTo).toLocaleDateString()}
-                            </span>
-                        ) : data.dateFrom ? (
-                            <span>
-                                Data from{' '}
-                                {new Date(data.dateFrom).toLocaleDateString()}
-                            </span>
-                        ) : (
-                            <span>
-                                Data until{' '}
-                                {data.dateTo &&
-                                    new Date(data.dateTo).toLocaleDateString()}
-                            </span>
-                        )}
-                    </div>
-                )}
+                {/* Real-time data notice */}
+                <div className="text-center text-xs text-slate-400 italic">
+                    Real-time data calculated from transactions as of{' '}
+                    {new Date().toLocaleString()}.
+                </div>
 
                 {/* Footer */}
                 <a

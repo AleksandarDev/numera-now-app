@@ -178,7 +178,7 @@ function hslToHex(h: number, s: number, l: number): string {
 
     const toHex = (n: number) => {
         const hex = Math.round((n + m) * 255).toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
+        return hex.length === 1 ? `0${hex}` : hex;
     };
 
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
