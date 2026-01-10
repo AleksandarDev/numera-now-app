@@ -140,11 +140,12 @@ export const DateFilter = () => {
     };
 
     return (
-        <Row className="dark">
+        <Row>
             <IconButton
                 title="Previous date range"
+                variant="outlined"
                 onClick={handlePreviousDateRangeClick}
-                className="w-6 px-0 rounded-r-none"
+                className="w-6 px-0 rounded-r-none border-r-0"
             >
                 <ChevronLeft className="size-4" />
             </IconButton>
@@ -154,7 +155,7 @@ export const DateFilter = () => {
                         disabled={false}
                         size="sm"
                         variant="outlined"
-                        className="h-9 w-full rounded-none border-none bg-white/10 px-3 font-normal text-white outline-none transition hover:bg-white/30 hover:text-white focus:bg-white/30 focus:ring-transparent focus:ring-offset-0 lg:w-auto"
+                        className="h-9 w-full rounded-none px-3 transition lg:w-auto border-x-0"
                     >
                         <span>{formatDateRange(paramState)}</span>
 
@@ -277,7 +278,8 @@ export const DateFilter = () => {
             <IconButton
                 title="Next date range"
                 onClick={handleNextDateRangeClick}
-                className="w-6 px-0 rounded-l-none"
+                variant="outlined"
+                className="w-6 px-0 rounded-l-none border-l-0"
             >
                 <ChevronRight className="size-4" />
             </IconButton>

@@ -10,7 +10,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { format } from 'date-fns';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-
+import { DateFilter } from '@/components/date-filter';
 import { useGetBalanceSheet } from '@/features/reports/api/use-get-balance-sheet';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -150,7 +150,8 @@ export default function BalanceSheetPage() {
                         </p>
                     )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    <DateFilter />
                     {data && (
                         <Stack spacing={4}>
                             {/* Warning if unbalanced */}
