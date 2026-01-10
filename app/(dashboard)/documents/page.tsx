@@ -108,18 +108,21 @@ export default function DocumentsPage() {
         [isDeleting],
     );
 
-    const tableColumns = useMemo(
+    const skeletonColumns = useMemo(
         () =>
-            isInitialLoading
-                ? columns.map((column) => ({
-                      ...column,
-                      cell: () => (
-                          <Skeleton className="h-[14px] w-[100%] rounded-sm" />
-                      ),
-                  }))
-                : columns,
-        [isInitialLoading, columns],
+            columns.map((column) => ({
+                ...column,
+                cell: () => (
+                    <Skeleton className="h-[14px] w-[100%] rounded-sm" />
+                ),
+            })),
+        [columns],
     );
+
+    const tableColumns = isInitialLoading ? skeletonColumns : columns;
+    const tableData = isInitialLoading
+        ? Array.from({ length: 10 }, () => ({}))
+        : documents;
 
     return (
         <div className="mx-auto -mt-24 w-full max-w-screen-2xl pb-10">
@@ -198,7 +201,7 @@ export default function DocumentsPage() {
                         paginationKey="documents"
                         autoResetPageIndex={false}
                         columns={tableColumns}
-                        data={isInitialLoading ? Array(10).fill({}) : documents}
+                        data={tableData}
                         disabled={isInitialLoading || isDeleting}
                         loading={isDeleting}
                         onRowClick={handleRowClick}
