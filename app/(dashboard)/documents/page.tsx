@@ -108,6 +108,19 @@ export default function DocumentsPage() {
         [isDeleting],
     );
 
+    const tableColumns = useMemo(
+        () =>
+            isInitialLoading
+                ? columns.map((column) => ({
+                      ...column,
+                      cell: () => (
+                          <Skeleton className="h-[14px] w-[100%] rounded-sm" />
+                      ),
+                  }))
+                : columns,
+        [isInitialLoading, columns],
+    );
+
     return (
         <div className="mx-auto -mt-24 w-full max-w-screen-2xl pb-10">
             <Card className="border-none drop-shadow-sm">
@@ -184,16 +197,7 @@ export default function DocumentsPage() {
                         filterPlaceholder="Search documents..."
                         paginationKey="documents"
                         autoResetPageIndex={false}
-                        columns={
-                            isInitialLoading
-                                ? columns.map((column) => ({
-                                      ...column,
-                                      cell: () => (
-                                          <Skeleton className="h-[14px] w-[100%] rounded-sm" />
-                                      ),
-                                  }))
-                                : columns
-                        }
+                        columns={tableColumns}
                         data={isInitialLoading ? Array(10).fill({}) : documents}
                         disabled={isInitialLoading || isDeleting}
                         loading={isDeleting}

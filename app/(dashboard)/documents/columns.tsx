@@ -19,6 +19,8 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const MAX_PAYEE_LENGTH = 15;
+
 interface GetColumnsProps {
     onDownload: (documentId: string) => void;
     onDelete: (documentId: string) => void;
@@ -127,7 +129,7 @@ export const getColumns = ({
                                 ? format(new Date(doc.transactionDate), 'MMM d')
                                 : 'View'}
                             {doc.transactionPayee &&
-                                ` - ${doc.transactionPayee.slice(0, 15)}...`}
+                                ` - ${doc.transactionPayee.slice(0, MAX_PAYEE_LENGTH)}...`}
                         </div>
                     ) : (
                         <span className="text-muted-foreground text-sm">
