@@ -19,6 +19,7 @@ import { TagForm } from './tag-form';
 const formSchema = insertTagSchema.pick({
     name: true,
     color: true,
+    tagType: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -51,10 +52,12 @@ export const EditTagSheet = () => {
         ? {
               name: tagQuery.data.name,
               color: tagQuery.data.color,
+              tagType: tagQuery.data.tagType || 'general',
           }
         : {
               name: '',
               color: '#3b82f6',
+              tagType: 'general' as const,
           };
 
     const onDelete = async () => {
