@@ -17,6 +17,8 @@ const formSchema = insertAccountSchema.pick({
     isOpen: true,
     isReadOnly: true,
     accountType: true,
+    accountClass: true,
+    openingBalance: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -55,6 +57,8 @@ export const NewAccountSheet = () => {
                             isOpen: true,
                             isReadOnly: false,
                             accountType: 'neutral',
+                            accountClass: undefined,
+                            openingBalance: 0,
                         }}
                     />
                 </div>

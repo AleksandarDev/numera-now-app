@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Trash } from 'lucide-react';
+import CurrencyInput from 'react-currency-input-field';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,6 +27,10 @@ import { SheetFooter } from '@/components/ui/sheet';
 import { insertAccountSchema } from '@/db/schema';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { ACCOUNT_CLASS_LABELS } from '@/lib/accounting';
+import {
+    convertAmountFromMiliunits,
+    convertAmountToMiliunits,
+} from '@/lib/utils';
 
 const formSchema = insertAccountSchema.pick({
     name: true,
@@ -235,26 +240,36 @@ export const AccountForm = ({
                                 <FormItem>
                                     <FormLabel>Opening Balance</FormLabel>
                                     <FormControl>
-                                        <Input
-                                            type="number"
+                                        <CurrencyInput
+                                            prefix="€"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            placeholder="0.00"
                                             disabled={disabled}
-                                            placeholder="0"
-                                            value={field.value ?? 0}
-                                            onChange={(e) => {
-                                                const numValue = Number(
-                                                    e.target.value,
-                                                );
+                                            value={
+                                                field.value
+                                                    ? convertAmountFromMiliunits(
+                                                          field.value,
+                                                      )
+                                                    : ''
+                                            }
+                                            decimalScale={2}
+                                            decimalsLimit={2}
+                                            onValueChange={(value) => {
+                                                const numValue = value
+                                                    ? parseFloat(value)
+                                                    : 0;
                                                 field.onChange(
                                                     Number.isNaN(numValue)
                                                         ? 0
-                                                        : numValue,
+                                                        : convertAmountToMiliunits(
+                                                              numValue,
+                                                          ),
                                                 );
                                             }}
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        Initial balance for this account (enter
-                                        as a decimal amount, e.g., 1.00)
+                                        Initial balance for this account
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
