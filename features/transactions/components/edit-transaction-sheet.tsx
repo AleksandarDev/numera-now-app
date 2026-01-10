@@ -28,6 +28,7 @@ import { useGetSplitGroup } from '@/features/transactions/api/use-get-split-grou
 import { useGetStatusHistory } from '@/features/transactions/api/use-get-status-history';
 import { useGetTransaction } from '@/features/transactions/api/use-get-transaction';
 import { useUnreconcileTransaction } from '@/features/transactions/api/use-unreconcile-transaction';
+import { useUncompleteTransaction } from '@/features/transactions/api/use-uncomplete-transaction';
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -65,6 +66,7 @@ export const EditTransactionSheet = () => {
     const editMutation = useEditTransaction(id);
     const deleteMutation = useDeleteTransaction(id);
     const unreconcileMutation = useUnreconcileTransaction(id);
+    const uncompleteMutation = useUncompleteTransaction(id);
 
     // Document validation queries
     const documentsQuery = useGetDocuments(id ?? '');
@@ -95,6 +97,7 @@ export const EditTransactionSheet = () => {
         editMutation.isPending ||
         deleteMutation.isPending ||
         unreconcileMutation.isPending ||
+        uncompleteMutation.isPending ||
         transactionQuery.isLoading ||
         tagMutation.isPending ||
         accountMutation.isPending ||
@@ -156,6 +159,11 @@ export const EditTransactionSheet = () => {
     const onUnreconcile = async (reason: string) => {
         if (!transactionQuery.data) return;
         await unreconcileMutation.mutateAsync({ reason });
+    };
+
+    const onUncomplete = async (reason: string) => {
+        if (!transactionQuery.data) return;
+        await uncompleteMutation.mutateAsync({ reason });
     };
 
     const defaultValuesForForm: Partial<UnifiedEditTransactionFormValues> =
@@ -353,6 +361,7 @@ export const EditTransactionSheet = () => {
                             currentStatus={currentStatus}
                             onAdvance={onAdvanceStatus}
                             onUnreconcile={onUnreconcile}
+                            onUncomplete={onUncomplete}
                             disabled={isPending}
                             autoDraftToPendingEnabled={
                                 settingsQuery.data?.autoDraftToPending ?? false

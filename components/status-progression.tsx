@@ -56,6 +56,7 @@ interface StatusProgressionProps {
     currentStatus: TransactionStatus;
     onAdvance: (nextStatus: TransactionStatus) => Promise<void>;
     onUnreconcile?: (reason: string) => Promise<void>;
+    onUncomplete?: (reason: string) => Promise<void>;
     disabled?: boolean;
     autoDraftToPendingEnabled?: boolean;
     canReconcile?: boolean;
@@ -71,6 +72,7 @@ export function StatusProgression({
     currentStatus,
     onAdvance,
     onUnreconcile,
+    onUncomplete,
     disabled = false,
     autoDraftToPendingEnabled = false,
     canReconcile = true,
@@ -82,8 +84,11 @@ export function StatusProgression({
 }: StatusProgressionProps) {
     const [isAdvancing, setIsAdvancing] = useState(false);
     const [isUnreconciling, setIsUnreconciling] = useState(false);
+    const [isUncompleting, setIsUncompleting] = useState(false);
     const [showUnreconcileDialog, setShowUnreconcileDialog] = useState(false);
+    const [showUncompleteDialog, setShowUncompleteDialog] = useState(false);
     const [unreconcileReason, setUnreconcileReason] = useState('');
+    const [uncompleteReason, setUncompleteReason] = useState('');
 
     const currentIndex = STATUS_ORDER.indexOf(currentStatus);
     const nextStatus =
@@ -161,6 +166,19 @@ export function StatusProgression({
         }
     };
 
+    const handleUncomplete = async () => {
+        if (!onUncomplete || !uncompleteReason.trim()) return;
+
+        setIsUncompleting(true);
+        try {
+            await onUncomplete(uncompleteReason.trim());
+            setShowUncompleteDialog(false);
+            setUncompleteReason('');
+        } finally {
+            setIsUncompleting(false);
+        }
+    };
+
     const isReconcileBlocked = nextStatus === 'reconciled' && !canReconcile;
 
     return (
@@ -215,6 +233,61 @@ export function StatusProgression({
                             {isUnreconciling
                                 ? 'Unreconciling...'
                                 : 'Unreconcile'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={showUncompleteDialog}
+                onOpenChange={setShowUncompleteDialog}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Uncomplete Transaction</DialogTitle>
+                        <DialogDescription>
+                            This will change the transaction status from
+                            Completed to Pending. Please provide a reason for
+                            this action.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="uncomplete-reason">
+                                Reason for uncompleting
+                            </Label>
+                            <Textarea
+                                id="uncomplete-reason"
+                                placeholder="Enter the reason for uncompleting this transaction..."
+                                value={uncompleteReason}
+                                onChange={(e) =>
+                                    setUncompleteReason(e.target.value)
+                                }
+                                className="min-h-[100px]"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowUncompleteDialog(false);
+                                setUncompleteReason('');
+                            }}
+                            disabled={isUncompleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleUncomplete}
+                            disabled={
+                                isUncompleting || !uncompleteReason.trim()
+                            }
+                        >
+                            {isUncompleting
+                                ? 'Uncompleting...'
+                                : 'Uncomplete'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -347,32 +420,49 @@ export function StatusProgression({
                                             }
                                         </p>
                                     </div>
-                                    {nextStatus &&
-                                        !isAutoDraftToPendingBlocked && (
+                                    <div className="flex items-center gap-2">
+                                        {/* Uncomplete button for completed status */}
+                                        {currentStatus === 'completed' && onUncomplete && (
                                             <Button
-                                                onClick={handleAdvance}
-                                                disabled={
-                                                    disabled ||
-                                                    isAdvancing ||
-                                                    isReconcileBlocked ||
-                                                    isDocumentBlocked
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setShowUncompleteDialog(true)
                                                 }
-                                                className="gap-2"
+                                                disabled={disabled}
+                                                className="gap-1"
                                             >
-                                                {isAdvancing ? (
-                                                    <>Processing...</>
-                                                ) : (
-                                                    <>
-                                                        {
-                                                            STATUS_INFO[
-                                                                nextStatus
-                                                            ].label
-                                                        }
-                                                        <ArrowRight className="size-4" />
-                                                    </>
-                                                )}
+                                                <Undo2 className="w-4 h-4" />
+                                                Uncomplete
                                             </Button>
                                         )}
+                                        {nextStatus &&
+                                            !isAutoDraftToPendingBlocked && (
+                                                <Button
+                                                    onClick={handleAdvance}
+                                                    disabled={
+                                                        disabled ||
+                                                        isAdvancing ||
+                                                        isReconcileBlocked ||
+                                                        isDocumentBlocked
+                                                    }
+                                                    className="gap-2"
+                                                >
+                                                    {isAdvancing ? (
+                                                        <>Processing...</>
+                                                    ) : (
+                                                        <>
+                                                            {
+                                                                STATUS_INFO[
+                                                                    nextStatus
+                                                                ].label
+                                                            }
+                                                            <ArrowRight className="size-4" />
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
+                                    </div>
                                 </div>
                                 {isAutoDraftToPendingBlocked && (
                                     <p className="mt-2 text-xs text-muted-foreground">

@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { and, desc, eq, gte, ilike, inArray, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -253,6 +253,171 @@ const app = new Hono()
                     entries: ledgerEntries,
                 },
             });
+        },
+    )
+    .get(
+        '/balances/open',
+        clerkMiddleware(),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Get all open accounts for this user
+            const openAccounts = await db
+                .select({
+                    id: accounts.id,
+                    code: accounts.code,
+                    isReadOnly: accounts.isReadOnly,
+                    openingBalance: accounts.openingBalance,
+                    accountClass: accounts.accountClass,
+                })
+                .from(accounts)
+                .where(
+                    and(
+                        eq(accounts.userId, auth.userId),
+                        eq(accounts.isOpen, true),
+                    ),
+                );
+
+            // Get non-read-only account IDs (these have transactions)
+            const nonReadOnlyAccountIds = openAccounts
+                .filter((a) => !a.isReadOnly)
+                .map((a) => a.id);
+
+            // If no non-read-only accounts, skip transaction query
+            const transactionTotals: Record<
+                string,
+                { debitTotal: number; creditTotal: number }
+            > = {};
+
+            if (nonReadOnlyAccountIds.length > 0) {
+                // Aggregate transaction totals per account using SQL
+                // This is much more efficient than fetching all transactions
+                const debitTotals = await db
+                    .select({
+                        accountId: transactions.debitAccountId,
+                        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`.as(
+                            'total',
+                        ),
+                    })
+                    .from(transactions)
+                    .where(
+                        inArray(
+                            transactions.debitAccountId,
+                            nonReadOnlyAccountIds,
+                        ),
+                    )
+                    .groupBy(transactions.debitAccountId);
+
+                const creditTotals = await db
+                    .select({
+                        accountId: transactions.creditAccountId,
+                        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`.as(
+                            'total',
+                        ),
+                    })
+                    .from(transactions)
+                    .where(
+                        inArray(
+                            transactions.creditAccountId,
+                            nonReadOnlyAccountIds,
+                        ),
+                    )
+                    .groupBy(transactions.creditAccountId);
+
+                // Build transaction totals map
+                for (const row of debitTotals) {
+                    if (row.accountId) {
+                        if (!transactionTotals[row.accountId]) {
+                            transactionTotals[row.accountId] = {
+                                debitTotal: 0,
+                                creditTotal: 0,
+                            };
+                        }
+                        transactionTotals[row.accountId].debitTotal = Number(
+                            row.total,
+                        );
+                    }
+                }
+
+                for (const row of creditTotals) {
+                    if (row.accountId) {
+                        if (!transactionTotals[row.accountId]) {
+                            transactionTotals[row.accountId] = {
+                                debitTotal: 0,
+                                creditTotal: 0,
+                            };
+                        }
+                        transactionTotals[row.accountId].creditTotal = Number(
+                            row.total,
+                        );
+                    }
+                }
+            }
+
+            // Calculate balances for non-read-only accounts
+            const balances: Record<string, number> = {};
+
+            for (const account of openAccounts) {
+                if (account.isReadOnly) continue;
+
+                const totals = transactionTotals[account.id] || {
+                    debitTotal: 0,
+                    creditTotal: 0,
+                };
+
+                // Calculate balance based on account class
+                // Default to debit normal if no class set
+                const accountClass = account.accountClass || 'asset';
+                const normalBalance =
+                    accountClass === 'asset' || accountClass === 'expense'
+                        ? 'debit'
+                        : 'credit';
+
+                if (normalBalance === 'debit') {
+                    // Debit normal: Opening + Debits - Credits
+                    balances[account.id] =
+                        account.openingBalance +
+                        totals.debitTotal -
+                        totals.creditTotal;
+                } else {
+                    // Credit normal: Opening + Credits - Debits
+                    balances[account.id] =
+                        account.openingBalance +
+                        totals.creditTotal -
+                        totals.debitTotal;
+                }
+            }
+
+            // Calculate balances for read-only accounts (sum of children)
+            // Sort by code length descending so we process children before parents
+            const readOnlyAccounts = openAccounts
+                .filter((a) => a.isReadOnly && a.code)
+                .sort((a, b) => (b.code?.length ?? 0) - (a.code?.length ?? 0));
+
+            for (const account of readOnlyAccounts) {
+                const parentCode = account.code;
+                if (!parentCode) continue;
+                let childrenSum = 0;
+
+                // Find all direct and indirect children (accounts whose code starts with this code)
+                for (const otherAccount of openAccounts) {
+                    if (
+                        otherAccount.code?.startsWith(parentCode) &&
+                        otherAccount.code !== parentCode &&
+                        balances[otherAccount.id] !== undefined
+                    ) {
+                        childrenSum += balances[otherAccount.id];
+                    }
+                }
+
+                balances[account.id] = childrenSum;
+            }
+
+            return ctx.json({ data: balances });
         },
     )
     .post(

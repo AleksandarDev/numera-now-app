@@ -2449,6 +2449,112 @@ const app = new Hono()
 
             return ctx.json({ data: updatedTransaction });
         },
+    )
+    // Uncomplete a transaction (move from completed back to pending)
+    .post(
+        '/:id/uncomplete',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                reason: z
+                    .string()
+                    .min(1, 'Reason is required')
+                    .max(500, 'Reason must be less than 500 characters'),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+            const { reason } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Get the existing transaction to check its status
+            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+            const [existingTransaction] = await db
+                .select({
+                    id: transactions.id,
+                    status: transactions.status,
+                })
+                .from(transactions)
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    creditAccounts,
+                    eq(transactions.creditAccountId, creditAccounts.id),
+                )
+                .leftJoin(
+                    debitAccounts,
+                    eq(transactions.debitAccountId, debitAccounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        or(
+                            eq(accounts.userId, auth.userId),
+                            eq(creditAccounts.userId, auth.userId),
+                            eq(debitAccounts.userId, auth.userId),
+                            and(
+                                isNull(transactions.accountId),
+                                isNull(transactions.creditAccountId),
+                                isNull(transactions.debitAccountId),
+                                eq(transactions.statusChangedBy, auth.userId),
+                            ),
+                        ),
+                    ),
+                );
+
+            if (!existingTransaction) {
+                return ctx.json({ error: 'Transaction not found.' }, 404);
+            }
+
+            // Only completed transactions can be uncompleted
+            if (existingTransaction.status !== 'completed') {
+                return ctx.json(
+                    {
+                        error: 'Only completed transactions can be uncompleted.',
+                    },
+                    400,
+                );
+            }
+
+            // Update transaction status to pending (one step back from completed)
+            const [updatedTransaction] = await db
+                .update(transactions)
+                .set({
+                    status: 'pending',
+                    statusChangedAt: new UTCDate(),
+                    statusChangedBy: auth.userId,
+                })
+                .where(eq(transactions.id, id))
+                .returning();
+
+            // Record the uncomplete action in history with the reason
+            await recordStatusChange(
+                id,
+                'completed',
+                'pending',
+                auth.userId,
+                `Uncompleted: ${reason}`,
+            );
+
+            logDebug('[POST /transactions/:id/uncomplete] Success:', {
+                id,
+                reason,
+                newStatus: 'pending',
+            });
+
+            return ctx.json({ data: updatedTransaction });
+        },
     );
 
 export default app;
