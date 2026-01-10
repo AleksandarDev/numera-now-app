@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Trash } from 'lucide-react';
+import { AlertCircle, Info, Trash } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
@@ -27,6 +27,7 @@ import { SheetFooter } from '@/components/ui/sheet';
 import { insertAccountSchema } from '@/db/schema';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { ACCOUNT_CLASS_LABELS } from '@/lib/accounting';
+import { getNormalBalanceExplanation } from '@/lib/double-entry-validation';
 import {
     convertAmountFromMiliunits,
     convertAmountToMiliunits,
@@ -233,6 +234,14 @@ export const AccountForm = ({
                                 </FormItem>
                             )}
                         />
+                        {accountClass && (
+                            <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertDescription>
+                                    {getNormalBalanceExplanation(accountClass)}
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <FormField
                             name="openingBalance"
                             control={form.control}
