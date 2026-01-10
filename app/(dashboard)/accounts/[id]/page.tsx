@@ -11,7 +11,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { format } from 'date-fns';
 import { ArrowLeft, Calendar, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGetAccountLedger } from '@/features/accounts/api/use-get-account-ledger';
@@ -23,13 +23,13 @@ import { cn, formatCurrency } from '@/lib/utils';
 const LEDGER_GRID_COLS = 'grid-cols-[140px_1fr_120px_120px_120px]';
 
 type Props = {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 };
 
 export default function AccountLedgerPage({ params }: Props) {
-    const { id } = params;
+    const { id } = use(params);
     const [search, setSearch] = useState('');
     const ledgerQuery = useGetAccountLedger(id);
     const settingsQuery = useGetSettings();
@@ -53,16 +53,11 @@ export default function AccountLedgerPage({ params }: Props) {
 
     // Calculate running balance
     const entriesWithBalance = useMemo(() => {
-        if (!account?.accountClass)
-            return filteredEntries.map((entry) => ({
-                ...entry,
-                balance: 0,
-                debitAmount: 0,
-                creditAmount: 0,
-            }));
-
-        let runningBalance = account.openingBalance || 0;
-        const normalBalance = NORMAL_BALANCES[account.accountClass];
+        let runningBalance = account?.openingBalance || 0;
+        // Default to debit normal balance if accountClass is not set
+        const normalBalance = account?.accountClass
+            ? NORMAL_BALANCES[account.accountClass]
+            : 'debit';
 
         // Reverse the entries to calculate balance from oldest to newest
         const reversed = [...filteredEntries].reverse();
@@ -228,11 +223,11 @@ export default function AccountLedgerPage({ params }: Props) {
                                 )}
                             >
                                 <div>Date</div>
-                                <div>Description</div>
+                                <div>Customer (status)</div>
                                 {doubleEntryMode && (
                                     <>
-                                        <div className="text-right">Debit</div>
                                         <div className="text-right">Credit</div>
+                                        <div className="text-right">Debit</div>
                                     </>
                                 )}
                                 {!doubleEntryMode && (
@@ -283,14 +278,14 @@ export default function AccountLedgerPage({ params }: Props) {
                                 <div
                                     key={entry.id}
                                     className={cn(
-                                        'grid gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors',
+                                        'grid gap-4 px-4 py-2 border-b last:border-b-0 hover:bg-muted/50 transition-colors',
                                         LEDGER_GRID_COLS,
                                     )}
                                 >
                                     <div className="text-sm">
                                         {format(
                                             new Date(entry.date),
-                                            'MMM dd, yyyy',
+                                            'dd.MM.yyyy',
                                         )}
                                     </div>
                                     <div>
@@ -299,11 +294,6 @@ export default function AccountLedgerPage({ params }: Props) {
                                                 entry.payee ||
                                                 'N/A'}
                                         </div>
-                                        {entry.notes && (
-                                            <div className="text-xs text-muted-foreground">
-                                                {entry.notes}
-                                            </div>
-                                        )}
                                         <div className="text-xs text-muted-foreground">
                                             {entry.status}
                                         </div>
@@ -311,16 +301,16 @@ export default function AccountLedgerPage({ params }: Props) {
                                     {doubleEntryMode && (
                                         <>
                                             <div className="text-right text-sm">
-                                                {entry.debitAmount > 0
+                                                {entry.creditAmount > 0
                                                     ? formatCurrency(
-                                                          entry.debitAmount,
+                                                          entry.creditAmount,
                                                       )
                                                     : '-'}
                                             </div>
                                             <div className="text-right text-sm">
-                                                {entry.creditAmount > 0
+                                                {entry.debitAmount > 0
                                                     ? formatCurrency(
-                                                          entry.creditAmount,
+                                                          entry.debitAmount,
                                                       )
                                                     : '-'}
                                             </div>
