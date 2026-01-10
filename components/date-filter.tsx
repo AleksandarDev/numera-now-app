@@ -6,6 +6,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     addDays,
+    endOfYear,
     format,
     startOfMonth,
     startOfWeek,
@@ -95,6 +96,12 @@ export const DateFilter = () => {
                 newFrom = subDays(new Date(), 365);
                 newTo = new Date();
                 break;
+            case 'Last year': {
+                const lastYear = new Date().getFullYear() - 1;
+                newFrom = startOfYear(new Date(lastYear, 0, 1));
+                newTo = endOfYear(new Date(lastYear, 0, 1));
+                break;
+            }
             default:
                 break;
         }
@@ -219,6 +226,14 @@ export const DateFilter = () => {
                                 }
                             >
                                 Last 365 days
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={() =>
+                                    handleDateRangeClick('Last year')
+                                }
+                            >
+                                Last year
                             </Button>
                         </Stack>
                         <Stack>
