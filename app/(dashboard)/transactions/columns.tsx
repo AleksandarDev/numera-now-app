@@ -14,6 +14,7 @@ import { CustomerColumn } from './customer-column';
 import { DocumentsColumn } from './documents-column';
 import { StatusColumn } from './status-column';
 import { TagsColumn } from './tags-column';
+import { validateTransaction } from './validation';
 
 export type ResponseType = InferResponseType<
     typeof client.api.transactions.$get,
@@ -157,6 +158,11 @@ export const columns: ColumnDef<ResponseType>[] = [
         enableSorting: false,
         cell: ({ row }) => {
             const amount = row.original.amount;
+            // Get double-entry validation issues for this transaction
+            const validationIssues = validateTransaction(row.original).filter(
+                (issue) => issue.type === 'double-entry',
+            );
+
             return (
                 <AccountColumn
                     account={row.original.account}
@@ -171,6 +177,7 @@ export const columns: ColumnDef<ResponseType>[] = [
                     debitAccountCode={row.original.debitAccountCode}
                     debitAccountIsOpen={row.original.debitAccountIsOpen}
                     debitAccountType={row.original.debitAccountType}
+                    validationIssues={validationIssues}
                 />
             );
         },

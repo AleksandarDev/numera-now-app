@@ -4,7 +4,19 @@ import { ChevronRight } from 'lucide-react';
 import { AccountName } from '@/components/account-name';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
+import type { ValidationIssue } from './validation';
 import { ValidationIndicator } from './validation-indicator';
+
+// Helper function to generate unique keys for validation indicators
+const generateValidationKey = (
+    issue: ValidationIssue,
+    operation: 'credit' | 'debit',
+    suffix?: string,
+): string => {
+    const accountId = issue.doubleEntryIssue?.accountId ?? 'unknown';
+    const suffixPart = suffix ? `-${suffix}` : '';
+    return `${issue.type}-${accountId}-${operation}${suffixPart}`;
+};
 
 type AccountColumnProps = {
     account?: string | null;
@@ -19,6 +31,7 @@ type AccountColumnProps = {
     debitAccountCode?: string | null;
     debitAccountIsOpen?: boolean | null;
     debitAccountType?: string | null;
+    validationIssues?: ValidationIssue[];
 };
 
 export const AccountColumn = ({
@@ -34,7 +47,25 @@ export const AccountColumn = ({
     debitAccountCode,
     debitAccountIsOpen,
     debitAccountType,
+    validationIssues = [],
 }: AccountColumnProps) => {
+    // Helper function to find validation issues for specific account
+    const getCreditAccountIssues = () => {
+        return validationIssues.filter(
+            (issue) =>
+                issue.doubleEntryIssue?.operation === 'credit' &&
+                issue.type === 'double-entry',
+        );
+    };
+
+    const getDebitAccountIssues = () => {
+        return validationIssues.filter(
+            (issue) =>
+                issue.doubleEntryIssue?.operation === 'debit' &&
+                issue.type === 'double-entry',
+        );
+    };
+
     if (account)
         return (
             <Row spacing={1}>
@@ -53,7 +84,10 @@ export const AccountColumn = ({
             </Row>
         );
 
-    if (creditAccount && debitAccount)
+    if (creditAccount && debitAccount) {
+        const creditIssues = getCreditAccountIssues();
+        const debitIssues = getDebitAccountIssues();
+
         return (
             <div className="grid grid-cols-[1fr_12px_auto_12px_1fr] gap-2 items-center">
                 <Row spacing={1}>
@@ -69,6 +103,14 @@ export const AccountColumn = ({
                             severity="error"
                         />
                     )}
+                    {creditIssues.map((issue) => (
+                        <ValidationIndicator
+                            key={generateValidationKey(issue, 'credit')}
+                            message={issue.message}
+                            severity={issue.severity}
+                            explanation={issue.explanation}
+                        />
+                    ))}
                     <AccountName
                         account={creditAccount}
                         accountCode={creditAccountCode}
@@ -95,6 +137,14 @@ export const AccountColumn = ({
                             severity="error"
                         />
                     )}
+                    {debitIssues.map((issue) => (
+                        <ValidationIndicator
+                            key={generateValidationKey(issue, 'debit')}
+                            message={issue.message}
+                            severity={issue.severity}
+                            explanation={issue.explanation}
+                        />
+                    ))}
                     <AccountName
                         account={debitAccount}
                         accountCode={debitAccountCode}
@@ -102,9 +152,13 @@ export const AccountColumn = ({
                 </Row>
             </div>
         );
+    }
 
     // Handle case where only one account is present (credit OR debit but not both)
     if (creditAccount || debitAccount) {
+        const creditIssues = getCreditAccountIssues();
+        const debitIssues = getDebitAccountIssues();
+
         return (
             <div className="grid grid-cols-[1fr_12px_auto_12px_1fr] gap-2 items-center">
                 {creditAccount ? (
@@ -121,6 +175,18 @@ export const AccountColumn = ({
                                 severity="error"
                             />
                         )}
+                        {creditIssues.map((issue) => (
+                            <ValidationIndicator
+                                key={generateValidationKey(
+                                    issue,
+                                    'credit',
+                                    'single',
+                                )}
+                                message={issue.message}
+                                severity={issue.severity}
+                                explanation={issue.explanation}
+                            />
+                        ))}
                         <AccountName
                             account={creditAccount}
                             accountCode={creditAccountCode}
@@ -157,6 +223,18 @@ export const AccountColumn = ({
                                 severity="error"
                             />
                         )}
+                        {debitIssues.map((issue) => (
+                            <ValidationIndicator
+                                key={generateValidationKey(
+                                    issue,
+                                    'debit',
+                                    'single',
+                                )}
+                                message={issue.message}
+                                severity={issue.severity}
+                                explanation={issue.explanation}
+                            />
+                        ))}
                         <AccountName
                             account={debitAccount}
                             accountCode={debitAccountCode}
