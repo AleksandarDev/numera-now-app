@@ -189,39 +189,44 @@ const app = new Hono().get(
             accountBalances[account.id] = childrenSum;
         }
 
-        // Separate income and expense accounts
+        // Separate income and expense accounts - only readonly accounts for hierarchy display
         const incomeAccounts = allAccounts
-            .filter((a) => a.accountClass === 'income' && a.isOpen)
+            .filter(
+                (a) => a.accountClass === 'income' && a.isOpen && a.isReadOnly,
+            )
             .map((a) => ({
                 id: a.id,
                 name: a.name,
                 code: a.code,
                 balance: accountBalances[a.id] || 0,
+                isReadOnly: a.isReadOnly,
             }))
             .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
 
         const expenseAccounts = allAccounts
-            .filter((a) => a.accountClass === 'expense' && a.isOpen)
+            .filter(
+                (a) => a.accountClass === 'expense' && a.isOpen && a.isReadOnly,
+            )
             .map((a) => ({
                 id: a.id,
                 name: a.name,
                 code: a.code,
                 balance: accountBalances[a.id] || 0,
+                isReadOnly: a.isReadOnly,
             }))
             .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
 
-        // Calculate totals
+        // Calculate totals - only sum top-level parent accounts (code length 1)
+        // to avoid double-counting since readonly accounts contain sums of their children
         // For income accounts (credit normal), positive balance means income
-        const totalIncome = incomeAccounts.reduce(
-            (sum, account) => sum + account.balance,
-            0,
-        );
+        const totalIncome = incomeAccounts
+            .filter((account) => account.code?.length === 1)
+            .reduce((sum, account) => sum + account.balance, 0);
 
         // For expense accounts (debit normal), positive balance means expense
-        const totalExpenses = expenseAccounts.reduce(
-            (sum, account) => sum + account.balance,
-            0,
-        );
+        const totalExpenses = expenseAccounts
+            .filter((account) => account.code?.length === 1)
+            .reduce((sum, account) => sum + account.balance, 0);
 
         // Net income = Income - Expenses
         const netIncome = totalIncome - totalExpenses;

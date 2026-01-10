@@ -510,9 +510,6 @@ export const openFinancesSettings = pgTable(
         pageTitle: text('page_title'),
         // Optional custom description
         pageDescription: text('page_description'),
-        // Date range for displaying data
-        dateFrom: timestamp('date_from', { mode: 'date' }),
-        dateTo: timestamp('date_to', { mode: 'date' }),
         // Whether to allow embedding in iframes
         allowEmbedding: boolean('allow_embedding').notNull().default(true),
         createdAt: timestamp('created_at', { mode: 'date' })
