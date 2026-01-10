@@ -127,8 +127,8 @@ const app = new Hono()
                 .insert(accountingPeriods)
                 .values({
                     id: createId(),
-                    userId: auth.userId,
                     ...values,
+                    userId: auth.userId,
                 })
                 .returning();
 

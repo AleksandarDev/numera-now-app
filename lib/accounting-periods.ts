@@ -23,8 +23,8 @@ export async function getClosedPeriodForDate(
             and(
                 eq(accountingPeriods.userId, userId),
                 eq(accountingPeriods.status, 'closed'),
-                gte(date, accountingPeriods.startDate),
-                lte(date, accountingPeriods.endDate),
+                lte(accountingPeriods.startDate, date),
+                gte(accountingPeriods.endDate, date),
             ),
         )
         .limit(1);
