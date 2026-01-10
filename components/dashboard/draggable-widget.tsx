@@ -53,17 +53,17 @@ export function DraggableWidget({ widget }: DraggableWidgetProps) {
                 )}
             >
                 {/* Widget Control Bar */}
-                <div className="absolute -top-10 left-0 right-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute -top-10 left-0 right-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm px-2 py-1">
                     <div className="flex items-center gap-2">
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 cursor-grab active:cursor-grabbing"
+                            className="h-8 cursor-grab active:cursor-grabbing text-foreground"
                             {...attributes}
                             {...listeners}
                         >
                             <GripVertical className="h-4 w-4" />
-                            <span className="ml-2 text-xs">
+                            <span className="ml-2 text-xs text-foreground">
                                 {definition.name}
                             </span>
                         </Button>
@@ -72,7 +72,7 @@ export function DraggableWidget({ widget }: DraggableWidgetProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8"
+                            className="h-8 text-foreground"
                             onClick={() => setIsConfigOpen(true)}
                         >
                             <Settings className="h-4 w-4" />
