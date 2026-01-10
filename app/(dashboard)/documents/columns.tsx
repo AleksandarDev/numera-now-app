@@ -21,6 +21,11 @@ function formatFileSize(bytes: number): string {
 
 const MAX_PAYEE_LENGTH = 15;
 
+function truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength)}...`;
+}
+
 interface GetColumnsProps {
     onDownload: (documentId: string) => void;
     onDelete: (documentId: string) => void;
@@ -129,7 +134,7 @@ export const getColumns = ({
                                 ? format(new Date(doc.transactionDate), 'MMM d')
                                 : 'View'}
                             {doc.transactionPayee &&
-                                ` - ${doc.transactionPayee.length > MAX_PAYEE_LENGTH ? doc.transactionPayee.slice(0, MAX_PAYEE_LENGTH) + '...' : doc.transactionPayee}`}
+                                ` - ${truncateText(doc.transactionPayee, MAX_PAYEE_LENGTH)}`}
                         </div>
                     ) : (
                         <span className="text-muted-foreground text-sm">
