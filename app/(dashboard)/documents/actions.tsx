@@ -17,7 +17,10 @@ export function DocumentActions({
     isDeleting,
 }: DocumentActionsProps) {
     return (
-        <div className="flex items-center justify-end gap-1" data-row-interactive>
+        <div
+            className="flex items-center justify-end gap-1"
+            data-row-interactive
+        >
             <Button
                 size="sm"
                 variant="ghost"

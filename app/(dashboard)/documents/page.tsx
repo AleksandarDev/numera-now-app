@@ -2,7 +2,7 @@
 
 import type { Row } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table';
 import { DatePicker } from '@/components/date-picker';
@@ -59,7 +59,7 @@ export default function DocumentsPage() {
     const isInitialLoading = documentsQuery.isLoading;
     const isDeleting = deleteDocument.isPending;
 
-    const handleDownload = async (documentId: string) => {
+    const handleDownload = useCallback(async (documentId: string) => {
         try {
             const response = await client.api.documents[':id'][
                 'download-url'
@@ -77,19 +77,23 @@ export default function DocumentsPage() {
             console.error('Download error:', error);
             toast.error('Failed to download document');
         }
-    };
+    }, []);
 
-    const handleDelete = async (documentId: string) => {
-        if (!confirm('Are you sure you want to delete this document?')) return;
+    const handleDelete = useCallback(
+        async (documentId: string) => {
+            if (!confirm('Are you sure you want to delete this document?'))
+                return;
 
-        try {
-            await deleteDocument.mutateAsync(documentId);
-            toast.success('Document deleted successfully');
-        } catch (error) {
-            console.error('Delete error:', error);
-            toast.error('Failed to delete document');
-        }
-    };
+            try {
+                await deleteDocument.mutateAsync(documentId);
+                toast.success('Document deleted successfully');
+            } catch (error) {
+                console.error('Delete error:', error);
+                toast.error('Failed to delete document');
+            }
+        },
+        [deleteDocument],
+    );
 
     const handleRowClick = (row: Row<ResponseType>) => {
         const doc = row.original;
@@ -105,7 +109,7 @@ export default function DocumentsPage() {
                 onDelete: handleDelete,
                 isDeleting,
             }),
-        [isDeleting],
+        [isDeleting, handleDownload, handleDelete],
     );
 
     const skeletonColumns = useMemo(
@@ -118,6 +122,11 @@ export default function DocumentsPage() {
             })),
         [columns],
     );
+
+    const tableColumns = isInitialLoading ? skeletonColumns : columns;
+    const tableData = isInitialLoading
+        ? (Array.from({ length: 10 }, () => ({})) as ResponseType[])
+        : documents;
 
     const tableColumns = isInitialLoading ? skeletonColumns : columns;
     const tableData = isInitialLoading
