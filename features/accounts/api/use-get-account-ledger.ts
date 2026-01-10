@@ -17,6 +17,8 @@ export const useGetAccountLedger = (id?: string) => {
         queryKey: ['account-ledger', { id, from: queryFrom, to: queryTo }],
         placeholderData: keepPreviousData,
         queryFn: async () => {
+            if (!id) throw new Error('Account ID is required');
+
             const response = await client.api.accounts[':id'].ledger.$get({
                 param: { id },
                 query: {

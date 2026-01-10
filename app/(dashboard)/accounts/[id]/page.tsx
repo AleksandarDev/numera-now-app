@@ -16,10 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGetAccountLedger } from '@/features/accounts/api/use-get-account-ledger';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
-import {
-    ACCOUNT_CLASS_LABELS,
-    NORMAL_BALANCES,
-} from '@/lib/accounting';
+import { ACCOUNT_CLASS_LABELS, NORMAL_BALANCES } from '@/lib/accounting';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type Props = {
@@ -54,7 +51,12 @@ export default function AccountLedgerPage({ params }: Props) {
     // Calculate running balance
     const entriesWithBalance = useMemo(() => {
         if (!account?.accountClass)
-            return filteredEntries.map((entry) => ({ ...entry, balance: 0 }));
+            return filteredEntries.map((entry) => ({
+                ...entry,
+                balance: 0,
+                debitAmount: 0,
+                creditAmount: 0,
+            }));
 
         let runningBalance = account.openingBalance || 0;
         const normalBalance = NORMAL_BALANCES[account.accountClass];
