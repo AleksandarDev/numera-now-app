@@ -12,7 +12,6 @@ import {
     ne,
     or,
     sql,
-    sum,
 } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -67,6 +66,10 @@ const app = new Hono().get(
             //
             // For filtered account view, we look at the specific account
             // For total view, we aggregate from all income/expense accounts
+            //
+            // Balance calculation:
+            // - For total view: Balance = Income - |Expenses| (Income minus absolute expenses)
+            // - For filtered account: Calculate based on account's normal balance
 
             return await db
                 .select({
@@ -106,7 +109,27 @@ const app = new Hono().get(
                             END
                         )
                     `.mapWith(Number),
-                    remaining: sum(transactions.amount).mapWith(Number),
+                    // Calculate balance properly based on whether we're filtering by account or not
+                    // For total view: calculate debits to accounts vs credits to accounts
+                    // For filtered account view: calculate based on that account's perspective
+                    debitTotal: sql`
+                        SUM(
+                            CASE 
+                                WHEN ${accountId ? sql`${transactions.debitAccountId} = ${accountId}` : sql`${transactions.debitAccountId} IS NOT NULL`}
+                                THEN ${transactions.amount}
+                                ELSE 0 
+                            END
+                        )
+                    `.mapWith(Number),
+                    creditTotal: sql`
+                        SUM(
+                            CASE 
+                                WHEN ${accountId ? sql`${transactions.creditAccountId} = ${accountId}` : sql`${transactions.creditAccountId} IS NOT NULL`}
+                                THEN ${transactions.amount}
+                                ELSE 0 
+                            END
+                        )
+                    `.mapWith(Number),
                 })
                 .from(transactions)
                 .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -139,6 +162,48 @@ const app = new Hono().get(
                 );
         }
 
+        // Helper function to calculate balance
+        // For total view: Balance = Income - |Expenses|
+        // For account view: Need to consider account class (fetched separately if needed)
+        async function calculateBalance(
+            income: number,
+            expenses: number,
+            debitTotal: number,
+            creditTotal: number,
+        ): Promise<number> {
+            if (!accountId) {
+                // Total view: Balance = Income - absolute value of Expenses
+                // (expenses is typically negative, so we use Math.abs)
+                return income - Math.abs(expenses);
+            }
+
+            // Account-filtered view: Calculate based on account's normal balance
+            // Fetch the account to get its class
+            const [account] = await db
+                .select({ accountClass: accounts.accountClass })
+                .from(accounts)
+                .where(eq(accounts.id, accountId));
+
+            if (!account || !account.accountClass) {
+                // Default to debit-normal (asset-like) if no class
+                return debitTotal - creditTotal;
+            }
+
+            const accountClass = account.accountClass as
+                | 'asset'
+                | 'liability'
+                | 'equity'
+                | 'income'
+                | 'expense';
+
+            // For debit-normal accounts (asset, expense): Debits increase, Credits decrease
+            // For credit-normal accounts (liability, equity, income): Credits increase, Debits decrease
+            if (accountClass === 'asset' || accountClass === 'expense') {
+                return debitTotal - creditTotal;
+            }
+            return creditTotal - debitTotal;
+        }
+
         const [currentPeriod] = await fetchFinancialData(
             auth.userId,
             startDate,
@@ -148,6 +213,20 @@ const app = new Hono().get(
             auth.userId,
             lastPeriodStart,
             lastPeriodEnd,
+        );
+
+        // Calculate balance for current and last period
+        const currentRemaining = await calculateBalance(
+            currentPeriod.income,
+            currentPeriod.expenses,
+            currentPeriod.debitTotal,
+            currentPeriod.creditTotal,
+        );
+        const lastRemaining = await calculateBalance(
+            lastPeriod.income,
+            lastPeriod.expenses,
+            lastPeriod.debitTotal,
+            lastPeriod.creditTotal,
         );
 
         const incomeChange = calculatePercentageChange(
@@ -161,8 +240,8 @@ const app = new Hono().get(
         );
 
         const remainingChange = calculatePercentageChange(
-            currentPeriod.remaining,
-            lastPeriod.remaining,
+            currentRemaining,
+            lastRemaining,
         );
 
         const creditAccounts = aliasedTable(accounts, 'creditAccounts');
@@ -333,7 +412,7 @@ const app = new Hono().get(
 
         return ctx.json({
             data: {
-                remainingAmount: currentPeriod.remaining,
+                remainingAmount: currentRemaining,
                 remainingChange,
                 incomeAmount: currentPeriod.income,
                 incomeChange,
