@@ -125,12 +125,12 @@ export default function AccountLedgerPage({ params }: Props) {
 
                 // If month or year changes, we need a separator after this entry
                 if (month !== nextMonth || year !== nextYear) {
-                    // Store the separator info - the balance at the end of this month (current entry's balance)
-                    const key = `${year}-${month}`;
+                    // Store the separator info - the balance at the end of the older month (next entry's balance)
+                    const key = `${nextYear}-${nextMonth}`;
                     separators[key] = {
-                        month,
-                        year,
-                        endBalance: entry.balance,
+                        month: nextMonth,
+                        year: nextYear,
+                        endBalance: nextEntry.balance,
                     };
                 }
             }
