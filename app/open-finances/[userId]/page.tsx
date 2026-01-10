@@ -1,6 +1,12 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import {
+    ArrowDownIcon,
+    ArrowUpIcon,
+    Loader2,
+    TrendingUpIcon,
+    WalletIcon,
+} from 'lucide-react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -96,6 +102,14 @@ export default function OpenFinancesPage() {
         ([_, config]) => config.enabled,
     );
 
+    // Icon mapping for each metric
+    const metricIcons: Record<string, React.ReactNode> = {
+        revenue: <ArrowUpIcon className="size-8 text-slate-400" />,
+        expenses: <ArrowDownIcon className="size-8 text-slate-400" />,
+        profit: <TrendingUpIcon className="size-8 text-slate-400" />,
+        balance: <WalletIcon className="size-8 text-slate-400" />,
+    };
+
     return (
         <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto space-y-8">
@@ -119,13 +133,18 @@ export default function OpenFinancesPage() {
                                 key={key}
                                 className="p-6 bg-white hover:shadow-lg transition-shadow"
                             >
-                                <div className="space-y-2">
-                                    <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
-                                        {config.label}
-                                    </h3>
-                                    <p className="text-3xl font-bold text-slate-900">
-                                        {config.value || 'N/A'}
-                                    </p>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 space-y-2">
+                                        <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+                                            {config.label}
+                                        </h3>
+                                        <p className="text-3xl font-bold text-slate-900">
+                                            {config.value || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="flex-shrink-0">
+                                        {metricIcons[key]}
+                                    </div>
                                 </div>
                             </Card>
                         ))}

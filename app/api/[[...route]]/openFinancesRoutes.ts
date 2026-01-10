@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '@/db/drizzle';
 import { accounts, openFinancesSettings, transactions } from '@/db/schema';
-import { formatCurrency } from '@/lib/utils';
+import { convertAmountFromMiliunits, formatCurrency } from '@/lib/utils';
 
 const app = new Hono()
     // Get open finances settings
@@ -181,8 +181,9 @@ const app = new Hono()
             );
 
         // Calculate profit (revenue - expenses)
-        const revenue = financialData?.revenue || 0;
-        const expenses = Math.abs(financialData?.expenses || 0); // Make expenses positive for display
+        // Convert from milliunits to units
+        const revenue = convertAmountFromMiliunits(financialData?.revenue || 0);
+        const expenses = Math.abs(convertAmountFromMiliunits(financialData?.expenses || 0)); // Make expenses positive for display
         const profit = revenue - expenses;
 
         // Calculate balance (sum of all asset accounts minus liabilities)
@@ -241,9 +242,11 @@ const app = new Hono()
         const balanceData = balanceDataResult[0] as
             | { balance: number; transactionBalance: number }
             | undefined;
-        const balance =
+        // Convert from milliunits to units
+        const balance = convertAmountFromMiliunits(
             (balanceData?.balance || 0) +
-            (balanceData?.transactionBalance || 0);
+            (balanceData?.transactionBalance || 0)
+        );
 
         // Build the metrics object with calculated values
         const metricsWithValues: Record<
