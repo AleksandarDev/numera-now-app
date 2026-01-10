@@ -1,6 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
@@ -60,7 +61,7 @@ export default function OpenFinancesPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+            <div className="min-h-screen flex items-center justify-center">
                 <Card className="p-8">
                     <div className="flex items-center space-x-3">
                         <Loader2 className="size-6 animate-spin text-slate-600" />
@@ -75,7 +76,7 @@ export default function OpenFinancesPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+            <div className="min-h-screen flex items-center justify-center p-4">
                 <Card className="p-8 max-w-md w-full">
                     <div className="text-center space-y-3">
                         <div className="text-6xl">🔒</div>
@@ -98,7 +99,7 @@ export default function OpenFinancesPage() {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="text-center space-y-4">
@@ -164,11 +165,19 @@ export default function OpenFinancesPage() {
                 )}
 
                 {/* Footer */}
-                <div className="text-center text-xs text-slate-400 pt-8">
-                    <p>
-                        Powered by Numera - Financial Transparency Made Simple
-                    </p>
-                </div>
+                <a
+                    href="https://www.numera.now"
+                    className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-8"
+                >
+                    <span>Powered by</span>
+                    <Image
+                        alt="Numera Now"
+                        src="/NumeraNowLogomarkDark.svg"
+                        className="bg-black object-cover"
+                        width={20}
+                        height={20}
+                    />
+                </a>
             </div>
         </div>
     );

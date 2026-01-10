@@ -285,9 +285,7 @@ export function StatusProgression({
                                 isUncompleting || !uncompleteReason.trim()
                             }
                         >
-                            {isUncompleting
-                                ? 'Uncompleting...'
-                                : 'Uncomplete'}
+                            {isUncompleting ? 'Uncompleting...' : 'Uncomplete'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -422,20 +420,23 @@ export function StatusProgression({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {/* Uncomplete button for completed status */}
-                                        {currentStatus === 'completed' && onUncomplete && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                    setShowUncompleteDialog(true)
-                                                }
-                                                disabled={disabled}
-                                                className="gap-1"
-                                            >
-                                                <Undo2 className="w-4 h-4" />
-                                                Uncomplete
-                                            </Button>
-                                        )}
+                                        {currentStatus === 'completed' &&
+                                            onUncomplete && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setShowUncompleteDialog(
+                                                            true,
+                                                        )
+                                                    }
+                                                    disabled={disabled}
+                                                    className="gap-1"
+                                                >
+                                                    <Undo2 className="w-4 h-4" />
+                                                    Uncomplete
+                                                </Button>
+                                            )}
                                         {nextStatus &&
                                             !isAutoDraftToPendingBlocked && (
                                                 <Button

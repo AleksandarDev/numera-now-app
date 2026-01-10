@@ -50,7 +50,11 @@ type ActionsProps = {
         debitAccountId?: string | null;
         splitGroupId?: string | null;
         splitType?: string | null;
-        tags?: Array<{ id: string; name: string; color?: string | null }> | null;
+        tags?: Array<{
+            id: string;
+            name: string;
+            color?: string | null;
+        }> | null;
     };
 };
 

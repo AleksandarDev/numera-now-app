@@ -39,6 +39,7 @@ const financialSummaryWidgetConfigSchema = baseWidgetConfigSchema.extend({
     type: z.literal('financial-summary'),
     refreshRate: z.number().optional(),
     summaryType: z.enum(['balance', 'income', 'expenses']),
+    accountId: z.string().optional(),
 });
 
 const graphWidgetConfigSchema = baseWidgetConfigSchema.extend({
@@ -46,6 +47,7 @@ const graphWidgetConfigSchema = baseWidgetConfigSchema.extend({
     refreshRate: z.number().optional(),
     dataSource: z.enum(['transactions', 'tags']),
     chartType: z.enum(['area', 'bar', 'line']),
+    accumulation: z.enum(['none', 'week', 'month']).optional(),
 });
 
 const chartWidgetConfigSchema = baseWidgetConfigSchema.extend({

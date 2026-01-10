@@ -4,7 +4,7 @@ import { parseAsString, useQueryStates } from 'nuqs';
 import { client } from '@/lib/hono';
 import { convertAmountFromMiliunits } from '@/lib/utils';
 
-export const useGetSummary = () => {
+export const useGetSummary = (overrideAccountId?: string) => {
     const [{ from, to, accountId }] = useQueryStates({
         from: parseAsString,
         to: parseAsString,
@@ -12,7 +12,8 @@ export const useGetSummary = () => {
     });
     const queryFrom = from ?? '';
     const queryTo = to ?? '';
-    const queryAccountId = accountId ?? '';
+    // Use overrideAccountId if provided, otherwise use accountId from query state
+    const queryAccountId = overrideAccountId ?? accountId ?? '';
 
     const query = useQuery({
         queryKey: [

@@ -228,3 +228,84 @@ export function getContrastingTextColor(hexColor: string): string {
     // Return black for light backgrounds, white for dark backgrounds
     return L > 0.5 ? '#000000' : '#FFFFFF';
 }
+
+/**
+ * Accumulate transaction data over time periods
+ * @param data - Array of daily transaction data
+ * @param period - Accumulation period ('none', 'week', or 'month')
+ * @returns Accumulated data
+ */
+export function accumulateData(
+    data: { date: string; income: number; expenses: number }[],
+    period: 'none' | 'week' | 'month' = 'none',
+): { date: string; income: number; expenses: number }[] {
+    if (period === 'none' || data.length === 0) {
+        return data;
+    }
+
+    const accumulated: { date: string; income: number; expenses: number }[] =
+        [];
+    let currentPeriod: Date | null = null;
+    let periodIncome = 0;
+    let periodExpenses = 0;
+    let periodStartDate = '';
+
+    for (let i = 0; i < data.length; i++) {
+        const entry = data[i];
+        const entryDate = new Date(entry.date);
+
+        // Determine if we're in a new period
+        let isNewPeriod = false;
+        if (!currentPeriod) {
+            isNewPeriod = true;
+        } else if (period === 'week') {
+            // New week starts on Monday
+            const currentWeek = Math.floor(
+                (entryDate.getTime() -
+                    new Date(entryDate.getFullYear(), 0, 1).getTime()) /
+                    (7 * 24 * 60 * 60 * 1000),
+            );
+            const lastWeek = Math.floor(
+                (currentPeriod.getTime() -
+                    new Date(currentPeriod.getFullYear(), 0, 1).getTime()) /
+                    (7 * 24 * 60 * 60 * 1000),
+            );
+            isNewPeriod = currentWeek !== lastWeek;
+        } else if (period === 'month') {
+            isNewPeriod =
+                entryDate.getMonth() !== currentPeriod.getMonth() ||
+                entryDate.getFullYear() !== currentPeriod.getFullYear();
+        }
+
+        if (isNewPeriod && currentPeriod) {
+            // Save previous period
+            accumulated.push({
+                date: periodStartDate,
+                income: periodIncome,
+                expenses: periodExpenses,
+            });
+            periodIncome = 0;
+            periodExpenses = 0;
+        }
+
+        if (isNewPeriod) {
+            currentPeriod = entryDate;
+            periodStartDate = entry.date;
+        }
+
+        // Accumulate values
+        periodIncome += entry.income;
+        periodExpenses += entry.expenses;
+    }
+
+    // Don't forget the last period
+    if (currentPeriod) {
+        accumulated.push({
+            date: periodStartDate,
+            income: periodIncome,
+            expenses: periodExpenses,
+        });
+    }
+
+    return accumulated;
+}
