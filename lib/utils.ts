@@ -1,5 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
-import { eachDayOfInterval, format, isSameDay, subDays } from 'date-fns';
+import { eachDayOfInterval, format, isSameDay, startOfYear } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
@@ -69,7 +69,7 @@ type Period = {
 
 export function formatDateRange(period?: Period) {
     const defaultTo = new Date();
-    const defaultFrom = subDays(defaultTo, 30);
+    const defaultFrom = startOfYear(defaultTo);
 
     if (!period?.from) {
         return `${format(defaultFrom, 'LLL dd')} - ${format(

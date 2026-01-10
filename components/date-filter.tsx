@@ -32,7 +32,7 @@ export const DateFilter = () => {
     });
 
     const defaultTo = useMemo(() => new Date(), []);
-    const defaultFrom = useMemo(() => subDays(defaultTo, 30), [defaultTo]);
+    const defaultFrom = useMemo(() => startOfYear(defaultTo), [defaultTo]);
 
     const paramState = useMemo(
         () => ({
