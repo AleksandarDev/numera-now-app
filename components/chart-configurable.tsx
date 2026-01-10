@@ -56,7 +56,7 @@ export const ChartConfigurable = ({
     );
 };
 
-export const ChartConfigurableLoading = ({ title }: { title: string }) => {
+export const ChartConfigurableLoading = () => {
     return (
         <Card>
             <CardHeader className="flex justify-between space-y-2 lg:flex-row lg:items-center lg:space-y-0">

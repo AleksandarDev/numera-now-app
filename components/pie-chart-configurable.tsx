@@ -58,7 +58,7 @@ export const PieChartConfigurable = ({
     );
 };
 
-export const PieChartConfigurableLoading = ({ title }: { title: string }) => {
+export const PieChartConfigurableLoading = () => {
     return (
         <Card>
             <CardHeader className="flex justify-between space-y-2 lg:flex-row lg:items-center lg:space-y-0">

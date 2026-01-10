@@ -7,9 +7,9 @@ import {
     FaBalanceScaleRight,
 } from 'react-icons/fa';
 import { FaArrowTrendDown, FaArrowTrendUp } from 'react-icons/fa6';
+import { DataCard, DataCardLoading } from '@/components/data-card';
 import { useGetSummary } from '@/features/summary/api/use-get-summary';
 import { formatDateRange } from '@/lib/utils';
-import { DataCard, DataCardLoading } from '@/components/data-card';
 import type { FinancialSummaryWidgetConfig } from '@/lib/widgets/types';
 
 interface FinancialSummaryWidgetProps {
