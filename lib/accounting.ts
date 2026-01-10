@@ -23,34 +23,36 @@ export type AccountClass = keyof typeof NORMAL_BALANCES;
 export type NormalBalance = (typeof NORMAL_BALANCES)[AccountClass];
 
 /**
- * Calculate account balance based on its class and transaction totals
+ * Calculate account balance based on its class, opening balance, and transaction totals
  *
  * @param accountClass - The accounting class of the account
  * @param debitTotal - Total of all debit transactions (in miliunits)
  * @param creditTotal - Total of all credit transactions (in miliunits)
+ * @param openingBalance - The account's opening balance (in miliunits), in the direction of its normal balance
  * @returns The account balance (in miliunits)
  *
  * @example
- * // For an asset account (debit normal)
+ * // For an asset account (debit normal) with no opening balance
  * calculateAccountBalance('asset', 10000, 3000) // Returns 7000
  *
  * @example
- * // For a liability account (credit normal)
- * calculateAccountBalance('liability', 2000, 5000) // Returns 3000
+ * // For a liability account (credit normal) with an opening balance of 1000
+ * calculateAccountBalance('liability', 2000, 5000, 1000) // Returns 4000
  */
 export function calculateAccountBalance(
     accountClass: AccountClass,
     debitTotal: number,
     creditTotal: number,
+    openingBalance: number = 0,
 ): number {
     const normalBalance = NORMAL_BALANCES[accountClass];
 
     if (normalBalance === 'debit') {
-        // Debit normal: Debits increase, Credits decrease
-        return debitTotal - creditTotal;
+        // Debit normal: Opening balance and debits increase, Credits decrease
+        return openingBalance + debitTotal - creditTotal;
     }
-    // Credit normal: Credits increase, Debits decrease
-    return creditTotal - debitTotal;
+    // Credit normal: Opening balance and credits increase, Debits decrease
+    return openingBalance + creditTotal - debitTotal;
 }
 
 /**
