@@ -34,7 +34,7 @@ export function WidgetStoreButton() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className='bg-white/10 text-white border-neutral-800 hover:bg-white/20'>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Widget
                 </Button>

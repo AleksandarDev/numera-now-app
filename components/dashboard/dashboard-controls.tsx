@@ -1,7 +1,7 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { RefreshCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useDashboardStore } from '@/lib/widgets/store';
 import { WidgetStoreButton } from './widget-store-button';
 
@@ -13,12 +13,7 @@ export function DashboardControls() {
             <div className="flex items-center gap-2">
                 <WidgetStoreButton />
             </div>
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetToDefault}
-                className="text-muted-foreground"
-            >
+            <Button variant="plain" onClick={resetToDefault} className="text-white/70">
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Reset Layout
             </Button>
