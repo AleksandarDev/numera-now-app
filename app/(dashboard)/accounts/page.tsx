@@ -144,7 +144,7 @@ function AccountsDataTable() {
     const rowVirtualizer = useVirtualizer({
         count: visibleAccounts.length,
         getScrollElement: () => parentRef.current,
-        estimateSize: () => 56,
+        estimateSize: () => 56.5,
     });
 
     return (
@@ -247,7 +247,7 @@ function AccountsDataTable() {
                     </div>{' '}
                     <div
                         ref={parentRef}
-                        className="overflow-auto max-h-[680px] border rounded-md"
+                        className="overflow-auto flex-1 border rounded-md"
                     >
                         <div
                             className="relative w-full"
@@ -594,9 +594,9 @@ export default function AccountsPage() {
     }
 
     return (
-        <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
-            <Card>
-                <CardHeader className="gap-y-2 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10 flex flex-col h-[calc(100vh-150px)]">
+            <Card className="flex-1 flex flex-col min-h-0">
+                <CardHeader className="gap-y-2 md:flex-row md:items-center md:justify-between flex-shrink-0">
                     <CardTitle>Accounts</CardTitle>
                     <div className="flex flex-col items-center gap-x-2 gap-y-2 md:flex-row">
                         <Button
@@ -642,10 +642,10 @@ export default function AccountsPage() {
                         </DropdownMenu>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 flex flex-col min-h-0">
                     <Suspense
                         fallback={
-                            <div className="flex h-[500px] w-full items-center justify-center">
+                            <div className="flex h-full w-full items-center justify-center">
                                 <Loader2 className="size-6 animate-spin text-slate-300" />
                             </div>
                         }

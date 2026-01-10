@@ -103,6 +103,7 @@ export const EditAccountSheet = () => {
                     ) : (
                         <div className="flex-1 overflow-y-auto px-6">
                             <AccountForm
+                                key={id}
                                 id={id}
                                 onSubmit={onSubmit}
                                 disabled={isPending}

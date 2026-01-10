@@ -26,7 +26,6 @@ import { useDeleteTransaction } from '@/features/transactions/api/use-delete-tra
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { useConfirm } from '@/hooks/use-confirm';
-import { convertAmountFromMiliunits } from '@/lib/utils';
 
 type TransactionStatus = 'draft' | 'pending' | 'completed' | 'reconciled';
 
@@ -51,6 +50,7 @@ type ActionsProps = {
         debitAccountId?: string | null;
         splitGroupId?: string | null;
         splitType?: string | null;
+        tags?: Array<{ id: string; name: string; color?: string | null }> | null;
     };
 };
 
@@ -66,10 +66,9 @@ export const Actions = ({ transaction }: ActionsProps) => {
     );
 
     const handleDuplicate = () => {
+        // Amount is already converted from milliunits by useGetTransactions
         const amount = transaction.amount
-            ? convertAmountFromMiliunits(
-                  Math.abs(transaction.amount),
-              ).toString()
+            ? Math.abs(transaction.amount).toString()
             : '0';
 
         // Prepare default values for the new transaction form
@@ -77,6 +76,7 @@ export const Actions = ({ transaction }: ActionsProps) => {
             date: new Date(),
             payeeCustomerId: transaction.payeeCustomerId ?? '',
             notes: transaction.notes ?? '',
+            tagIds: transaction.tags?.map((t) => t.id) ?? [],
             creditEntries: transaction.creditAccountId
                 ? [
                       {

@@ -403,11 +403,11 @@ const app = new Hono()
                 if (!parentCode) continue;
                 let childrenSum = 0;
 
-                // Find all direct and indirect children (accounts whose code starts with this code)
+                // Find only direct children (accounts whose code is exactly one level deeper)
                 for (const otherAccount of openAccounts) {
                     if (
                         otherAccount.code?.startsWith(parentCode) &&
-                        otherAccount.code !== parentCode &&
+                        otherAccount.code.length === parentCode.length + 1 &&
                         balances[otherAccount.id] !== undefined
                     ) {
                         childrenSum += balances[otherAccount.id];
