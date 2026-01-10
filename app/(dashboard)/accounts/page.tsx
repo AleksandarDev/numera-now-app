@@ -12,6 +12,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
     ChevronDown,
     ChevronRight,
+    Download,
     Expand,
     Loader2,
     Minimize2,
@@ -420,6 +421,60 @@ export default function AccountsPage() {
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const newAccount = useNewAccount();
     const createAccounts = useBulkCreateAccounts();
+    const accountsQuery = useGetAccounts({
+        pageSize: 9999,
+        showClosed: true,
+    });
+
+    const exportAccountsToCSV = useCallback(() => {
+        const accounts = accountsQuery.data;
+        if (!accounts || accounts.length === 0) {
+            toast.error('No accounts to export');
+            return;
+        }
+
+        // Sort accounts by code (string sort: 0, 01, 010, 0100, 1, 10, 100, ...)
+        const sortedAccounts = [...accounts].sort((a, b) => {
+            const codeA = a.code ?? '';
+            const codeB = b.code ?? '';
+            return codeA.localeCompare(codeB);
+        });
+
+        // CSV header
+        const headers = ['Code', 'Name', 'Status', 'OpeningBalance', 'AccountClass'];
+        
+        // Convert accounts to CSV rows
+        const rows = sortedAccounts.map((account) => {
+            // Force code to be treated as text in Excel by using ="value" format to preserve leading zeros
+            const code = account.code ? `="${account.code}"` : '';
+            const name = account.name.includes(',') || account.name.includes('"') 
+                ? `"${account.name.replace(/"/g, '""')}"` 
+                : account.name;
+            const status = account.isOpen ? 'Open' : 'Closed';
+            // Convert milliunits to units (divide by 1000)
+            const openingBalance = (account.openingBalance / 1000).toFixed(2);
+            const accountClass = account.accountClass ?? '';
+            return [code, name, status, openingBalance, accountClass].join(',');
+        });
+
+        // Combine header and rows
+        const csvContent = [headers.join(','), ...rows].join('\n');
+
+        // Create and download the file with UTF-8 BOM for proper encoding
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `accounts-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success(`Exported ${accounts.length} accounts to CSV`);
+    }, [accountsQuery.data]);
 
     const onImport = useCallback((results: CSVResult) => {
         if (!results || !results.data || results.data.length === 0) {
@@ -525,6 +580,13 @@ export default function AccountsPage() {
                                     onUpload={onImport}
                                     variant="menu"
                                 />
+                                <DropdownMenuItem
+                                    onClick={exportAccountsToCSV}
+                                    disabled={accountsQuery.isLoading || !accountsQuery.data?.length}
+                                >
+                                    <Download className="mr-2 size-4" />
+                                    Export CSV
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={() =>
