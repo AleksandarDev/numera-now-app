@@ -19,6 +19,9 @@ import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { ACCOUNT_CLASS_LABELS, NORMAL_BALANCES } from '@/lib/accounting';
 import { cn, formatCurrency } from '@/lib/utils';
 
+// Grid layout for ledger table
+const LEDGER_GRID_COLS = 'grid-cols-[140px_1fr_120px_120px_120px]';
+
 type Props = {
     params: {
         id: string;
@@ -218,7 +221,12 @@ export default function AccountLedgerPage({ params }: Props) {
                     ) : (
                         <div className="border rounded-md overflow-hidden">
                             {/* Table Header */}
-                            <div className="grid grid-cols-[140px_1fr_120px_120px_120px] gap-4 px-4 py-3 bg-muted/50 border-b font-medium text-sm">
+                            <div
+                                className={cn(
+                                    'grid gap-4 px-4 py-3 bg-muted/50 border-b font-medium text-sm',
+                                    LEDGER_GRID_COLS,
+                                )}
+                            >
                                 <div>Date</div>
                                 <div>Description</div>
                                 {doubleEntryMode && (
@@ -237,7 +245,12 @@ export default function AccountLedgerPage({ params }: Props) {
 
                             {/* Opening Balance Row */}
                             {account.openingBalance !== 0 && (
-                                <div className="grid grid-cols-[140px_1fr_120px_120px_120px] gap-4 px-4 py-3 bg-purple-50/50 border-b">
+                                <div
+                                    className={cn(
+                                        'grid gap-4 px-4 py-3 bg-purple-50/50 border-b',
+                                        LEDGER_GRID_COLS,
+                                    )}
+                                >
                                     <div className="text-sm text-muted-foreground">
                                         Opening
                                     </div>
@@ -269,7 +282,10 @@ export default function AccountLedgerPage({ params }: Props) {
                             {entriesWithBalance.map((entry) => (
                                 <div
                                     key={entry.id}
-                                    className="grid grid-cols-[140px_1fr_120px_120px_120px] gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
+                                    className={cn(
+                                        'grid gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors',
+                                        LEDGER_GRID_COLS,
+                                    )}
                                 >
                                     <div className="text-sm">
                                         {format(

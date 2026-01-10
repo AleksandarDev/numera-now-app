@@ -214,6 +214,17 @@ const app = new Hono()
                 conditions.push(lte(transactions.date, new Date(to)));
             }
 
+            // Add search filter to database query
+            if (search) {
+                conditions.push(
+                    or(
+                        ilike(transactions.payee, `%${search}%`),
+                        ilike(customers.name, `%${search}%`),
+                        ilike(transactions.notes, `%${search}%`),
+                    ),
+                );
+            }
+
             // Get all transactions for this account
             const ledgerEntries = await db
                 .select({
@@ -238,24 +249,10 @@ const app = new Hono()
                 .where(and(...conditions))
                 .orderBy(desc(transactions.date), desc(transactions.id));
 
-            // Filter by search if provided
-            let filteredEntries = ledgerEntries;
-            if (search) {
-                const searchLower = search.toLowerCase();
-                filteredEntries = ledgerEntries.filter(
-                    (entry) =>
-                        entry.payee?.toLowerCase().includes(searchLower) ||
-                        entry.customerName
-                            ?.toLowerCase()
-                            .includes(searchLower) ||
-                        entry.notes?.toLowerCase().includes(searchLower),
-                );
-            }
-
             return ctx.json({
                 data: {
                     account,
-                    entries: filteredEntries,
+                    entries: ledgerEntries,
                 },
             });
         },
