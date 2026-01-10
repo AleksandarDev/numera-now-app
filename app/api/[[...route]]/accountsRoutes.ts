@@ -392,7 +392,7 @@ const app = new Hono()
                 }
             }
 
-            // Calculate balances for read-only accounts (sum of children)
+            // Calculate balances for read-only accounts (sum of children + own opening balance)
             // Sort by code length descending so we process children before parents
             const readOnlyAccounts = openAccounts
                 .filter((a) => a.isReadOnly && a.code)
@@ -414,7 +414,8 @@ const app = new Hono()
                     }
                 }
 
-                balances[account.id] = childrenSum;
+                // Include the read-only account's own opening balance
+                balances[account.id] = childrenSum + account.openingBalance;
             }
 
             return ctx.json({ data: balances });

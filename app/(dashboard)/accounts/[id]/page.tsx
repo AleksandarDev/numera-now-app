@@ -8,10 +8,10 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { format } from 'date-fns';
+import { format, getMonth, getYear } from 'date-fns';
 import { ArrowLeft, Calendar, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
-import { use, useMemo, useState } from 'react';
+import { use, useMemo, useState, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGetAccountLedger } from '@/features/accounts/api/use-get-account-ledger';
@@ -101,6 +101,43 @@ export default function AccountLedgerPage({ params }: Props) {
         // Return in original order (newest first)
         return withBalance.reverse();
     }, [filteredEntries, account, id]);
+
+    // Compute month separators - find entries where month changes and track end-of-month balances
+    const monthSeparators = useMemo(() => {
+        const separators: Record<
+            string,
+            { month: number; year: number; endBalance: number }
+        > = {};
+
+        // Entries are newest first, so we iterate and when month changes, we record the previous entry's balance
+        for (let i = 0; i < entriesWithBalance.length; i++) {
+            const entry = entriesWithBalance[i];
+            const entryDate = new Date(entry.date);
+            const month = getMonth(entryDate);
+            const year = getYear(entryDate);
+
+            // Look at next entry (older) to see if month is different
+            if (i < entriesWithBalance.length - 1) {
+                const nextEntry = entriesWithBalance[i + 1];
+                const nextDate = new Date(nextEntry.date);
+                const nextMonth = getMonth(nextDate);
+                const nextYear = getYear(nextDate);
+
+                // If month or year changes, we need a separator after this entry
+                if (month !== nextMonth || year !== nextYear) {
+                    // Store the separator info - the balance at the end of this month (current entry's balance)
+                    const key = `${year}-${month}`;
+                    separators[key] = {
+                        month,
+                        year,
+                        endBalance: entry.balance,
+                    };
+                }
+            }
+        }
+
+        return separators;
+    }, [entriesWithBalance]);
 
     if (isLoading) {
         return (
@@ -238,11 +275,129 @@ export default function AccountLedgerPage({ params }: Props) {
                                 <div className="text-right">Balance</div>
                             </div>
 
-                            {/* Opening Balance Row */}
+                            {/* Transaction Rows with Month Separators */}
+                            {entriesWithBalance.map((entry, index) => {
+                                const entryDate = new Date(entry.date);
+                                const month = getMonth(entryDate);
+                                const year = getYear(entryDate);
+                                const separatorKey = `${year}-${month}`;
+                                const separator = monthSeparators[separatorKey];
+
+                                // Check if we need to show a separator after this entry
+                                const showSeparator =
+                                    separator &&
+                                    index < entriesWithBalance.length - 1;
+                                const nextEntry = entriesWithBalance[index + 1];
+                                const shouldShowSeparator =
+                                    showSeparator &&
+                                    nextEntry &&
+                                    (getMonth(new Date(nextEntry.date)) !==
+                                        month ||
+                                        getYear(new Date(nextEntry.date)) !==
+                                            year);
+
+                                return (
+                                    <Fragment key={entry.id}>
+                                        <div
+                                            className={cn(
+                                                'grid gap-4 px-4 py-2 border-b hover:bg-muted/50 transition-colors',
+                                                LEDGER_GRID_COLS,
+                                            )}
+                                        >
+                                            <div className="text-sm">
+                                                {format(
+                                                    entryDate,
+                                                    'dd.MM.yyyy',
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium">
+                                                    {entry.customerName ||
+                                                        entry.payee ||
+                                                        'N/A'}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {entry.status}
+                                                </div>
+                                            </div>
+                                            {doubleEntryMode && (
+                                                <>
+                                                    <div className="text-right text-sm">
+                                                        {entry.creditAmount > 0
+                                                            ? formatCurrency(
+                                                                  entry.creditAmount,
+                                                              )
+                                                            : '-'}
+                                                    </div>
+                                                    <div className="text-right text-sm">
+                                                        {entry.debitAmount > 0
+                                                            ? formatCurrency(
+                                                                  entry.debitAmount,
+                                                              )
+                                                            : '-'}
+                                                    </div>
+                                                </>
+                                            )}
+                                            {!doubleEntryMode && (
+                                                <div
+                                                    className={cn(
+                                                        'text-right text-sm col-span-2',
+                                                        entry.amount >= 0
+                                                            ? 'text-emerald-600'
+                                                            : 'text-red-600',
+                                                    )}
+                                                >
+                                                    {formatCurrency(
+                                                        entry.amount,
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div
+                                                className={cn(
+                                                    'text-right text-sm font-medium',
+                                                    entry.balance < 0 &&
+                                                        'text-red-600',
+                                                )}
+                                            >
+                                                {formatCurrency(entry.balance)}
+                                            </div>
+                                        </div>
+
+                                        {/* Month/Year Separator */}
+                                        {shouldShowSeparator && (
+                                            <div
+                                                className={cn(
+                                                    'grid gap-4 px-4 py-1.5 bg-muted/30 border-b',
+                                                    LEDGER_GRID_COLS,
+                                                )}
+                                            >
+                                                <div
+                                                    className="col-span-4 text-xs text-muted-foreground"
+                                                    style={{
+                                                        gridColumn: 'span 4',
+                                                    }}
+                                                >
+                                                    {format(
+                                                        entryDate,
+                                                        'MMMM yyyy',
+                                                    )}
+                                                </div>
+                                                <div className="text-right text-xs text-muted-foreground">
+                                                    {formatCurrency(
+                                                        separator.endBalance,
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Fragment>
+                                );
+                            })}
+
+                            {/* Opening Balance Row - displayed at the bottom (before first transaction chronologically) */}
                             {account.openingBalance !== 0 && (
                                 <div
                                     className={cn(
-                                        'grid gap-4 px-4 py-3 bg-purple-50/50 border-b',
+                                        'grid gap-4 px-4 py-3 bg-purple-50/50',
                                         LEDGER_GRID_COLS,
                                     )}
                                 >
@@ -272,72 +427,6 @@ export default function AccountLedgerPage({ params }: Props) {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Transaction Rows */}
-                            {entriesWithBalance.map((entry) => (
-                                <div
-                                    key={entry.id}
-                                    className={cn(
-                                        'grid gap-4 px-4 py-2 border-b last:border-b-0 hover:bg-muted/50 transition-colors',
-                                        LEDGER_GRID_COLS,
-                                    )}
-                                >
-                                    <div className="text-sm">
-                                        {format(
-                                            new Date(entry.date),
-                                            'dd.MM.yyyy',
-                                        )}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-medium">
-                                            {entry.customerName ||
-                                                entry.payee ||
-                                                'N/A'}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {entry.status}
-                                        </div>
-                                    </div>
-                                    {doubleEntryMode && (
-                                        <>
-                                            <div className="text-right text-sm">
-                                                {entry.creditAmount > 0
-                                                    ? formatCurrency(
-                                                          entry.creditAmount,
-                                                      )
-                                                    : '-'}
-                                            </div>
-                                            <div className="text-right text-sm">
-                                                {entry.debitAmount > 0
-                                                    ? formatCurrency(
-                                                          entry.debitAmount,
-                                                      )
-                                                    : '-'}
-                                            </div>
-                                        </>
-                                    )}
-                                    {!doubleEntryMode && (
-                                        <div
-                                            className={cn(
-                                                'text-right text-sm col-span-2',
-                                                entry.amount >= 0
-                                                    ? 'text-emerald-600'
-                                                    : 'text-red-600',
-                                            )}
-                                        >
-                                            {formatCurrency(entry.amount)}
-                                        </div>
-                                    )}
-                                    <div
-                                        className={cn(
-                                            'text-right text-sm font-medium',
-                                            entry.balance < 0 && 'text-red-600',
-                                        )}
-                                    >
-                                        {formatCurrency(entry.balance)}
-                                    </div>
-                                </div>
-                            ))}
                         </div>
                     )}
                 </CardContent>
