@@ -10,7 +10,13 @@ import { dashboardLayouts } from '@/db/schema';
 // Widget configuration schemas
 const baseWidgetConfigSchema = z.object({
     id: z.string(),
-    type: z.enum(['data-grid', 'data-charts', 'financial-summary', 'graph', 'chart']),
+    type: z.enum([
+        'data-grid',
+        'data-charts',
+        'financial-summary',
+        'graph',
+        'chart',
+    ]),
     title: z.string().optional(),
 });
 

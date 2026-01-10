@@ -17,6 +17,9 @@ export interface BaseWidgetConfig {
     id: string;
     type: WidgetType;
     title?: string;
+    // Grid layout options (1-4 columns on desktop)
+    colSpan?: number; // 1-4, defaults to 1
+    isCollapsed?: boolean; // For accordion/collapse
 }
 
 /**

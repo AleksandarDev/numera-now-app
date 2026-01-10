@@ -1,10 +1,10 @@
 'use client';
 
-import { useGetSummary } from '@/features/summary/api/use-get-summary';
 import {
     ChartConfigurable,
     ChartConfigurableLoading,
 } from '@/components/chart-configurable';
+import { useGetSummary } from '@/features/summary/api/use-get-summary';
 import type { GraphWidgetConfig } from '@/lib/widgets/types';
 
 interface GraphWidgetProps {
@@ -17,15 +17,7 @@ export function GraphWidget({ config }: GraphWidgetProps) {
     const chartData = config.dataSource === 'transactions' ? data?.days : [];
 
     if (isLoading) {
-        return (
-            <ChartConfigurableLoading
-                title={
-                    config.dataSource === 'transactions'
-                        ? 'Transactions Over Time'
-                        : 'Tags Over Time'
-                }
-            />
-        );
+        return <ChartConfigurableLoading />;
     }
 
     return (

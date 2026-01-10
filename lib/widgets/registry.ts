@@ -1,22 +1,15 @@
-import {
-    BarChart3,
-    Grid3x3,
-    LineChart,
-    PieChart,
-    TrendingDown,
-    TrendingUp,
-} from 'lucide-react';
+import { BarChart3, Grid3x3, LineChart, PieChart } from 'lucide-react';
+import { ChartWidget } from '@/components/widgets/chart-widget';
 import { DataChartsWidget } from '@/components/widgets/data-charts-widget';
 import { DataGridWidget } from '@/components/widgets/data-grid-widget';
-import { GraphWidget } from '@/components/widgets/graph-widget';
-import { ChartWidget } from '@/components/widgets/chart-widget';
 import { FinancialSummaryWidget } from '@/components/widgets/financial-summary-widget';
+import { GraphWidget } from '@/components/widgets/graph-widget';
 import type {
+    ChartWidgetConfig,
     DataChartsWidgetConfig,
     DataGridWidgetConfig,
-    GraphWidgetConfig,
-    ChartWidgetConfig,
     FinancialSummaryWidgetConfig,
+    GraphWidgetConfig,
     WidgetConfig,
     WidgetDefinition,
     WidgetType,
@@ -75,6 +68,7 @@ const widgetRegistry: Record<WidgetType, WidgetDefinition> = {
             dataSource: 'transactions',
             chartType: 'area',
             refreshRate: 60,
+            colSpan: 2,
         } as Omit<GraphWidgetConfig, 'id'>,
         configSchema: {
             fields: [
@@ -123,6 +117,7 @@ const widgetRegistry: Record<WidgetType, WidgetDefinition> = {
             dataSource: 'tags',
             chartType: 'pie',
             refreshRate: 60,
+            colSpan: 2,
         } as Omit<ChartWidgetConfig, 'id'>,
         configSchema: {
             fields: [

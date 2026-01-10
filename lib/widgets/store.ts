@@ -3,12 +3,12 @@
 import { create } from 'zustand';
 import { createWidgetInstance } from './registry';
 import type {
+    ChartWidgetConfig,
     DashboardLayout,
-    WidgetConfig,
-    WidgetType,
     FinancialSummaryWidgetConfig,
     GraphWidgetConfig,
-    ChartWidgetConfig,
+    WidgetConfig,
+    WidgetType,
 } from './types';
 
 interface DashboardStore extends DashboardLayout {
@@ -60,6 +60,7 @@ const defaultLayout: DashboardLayout = {
             refreshRate: 60,
             dataSource: 'transactions',
             chartType: 'area',
+            colSpan: 2,
         } as GraphWidgetConfig,
         // Chart Widget - for pie/radar/radial charts
         {
@@ -68,6 +69,7 @@ const defaultLayout: DashboardLayout = {
             refreshRate: 60,
             dataSource: 'tags',
             chartType: 'pie',
+            colSpan: 2,
         } as ChartWidgetConfig,
     ],
 };
@@ -93,7 +95,10 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
 
     addWidget: (type) =>
         set((state) => ({
-            widgets: [...state.widgets, createWidgetInstance(type)] as WidgetConfig[],
+            widgets: [
+                ...state.widgets,
+                createWidgetInstance(type),
+            ] as WidgetConfig[],
         })),
 
     removeWidget: (id) =>
@@ -140,6 +145,7 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
                     refreshRate: 60,
                     dataSource: 'transactions',
                     chartType: 'area',
+                    colSpan: 2,
                 } as GraphWidgetConfig,
                 {
                     id: generateWidgetId(),
@@ -147,6 +153,7 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
                     refreshRate: 60,
                     dataSource: 'tags',
                     chartType: 'pie',
+                    colSpan: 2,
                 } as ChartWidgetConfig,
             ],
         }),

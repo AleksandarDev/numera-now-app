@@ -13,9 +13,10 @@ import { WidgetConfigDialog } from './widget-config-dialog';
 
 interface DraggableWidgetProps {
     widget: WidgetConfig;
+    isLegacy?: boolean;
 }
 
-export function DraggableWidget({ widget }: DraggableWidgetProps) {
+export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const { removeWidget } = useDashboardStore();
     const definition = getWidgetDefinition(widget.type);
@@ -50,6 +51,7 @@ export function DraggableWidget({ widget }: DraggableWidgetProps) {
                 className={cn(
                     'relative group',
                     isDragging && 'opacity-50 z-50',
+                    isLegacy && 'opacity-75',
                 )}
             >
                 {/* Widget Control Bar */}
@@ -66,6 +68,11 @@ export function DraggableWidget({ widget }: DraggableWidgetProps) {
                             <span className="ml-2 text-xs">
                                 {definition.name}
                             </span>
+                            {isLegacy && (
+                                <span className="ml-2 text-xs bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded">
+                                    Deprecated
+                                </span>
+                            )}
                         </Button>
                     </div>
                     <div className="flex items-center gap-2">

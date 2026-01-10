@@ -77,6 +77,43 @@ export function WidgetConfigDialog({
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
+                    {/* Grid Width Option - shown for new widgets */}
+                    {(config.type === 'graph' ||
+                        config.type === 'chart' ||
+                        config.type === 'financial-summary') && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="colSpan">Grid Width</Label>
+                            <Select
+                                value={String(config.colSpan ?? 1)}
+                                onValueChange={(val) =>
+                                    handleFieldChange('colSpan', Number(val))
+                                }
+                            >
+                                <SelectTrigger id="colSpan">
+                                    <SelectValue placeholder="Select width" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">
+                                        1 Column (Small)
+                                    </SelectItem>
+                                    <SelectItem value="2">
+                                        2 Columns (Medium)
+                                    </SelectItem>
+                                    <SelectItem value="3">
+                                        3 Columns (Large)
+                                    </SelectItem>
+                                    <SelectItem value="4">
+                                        4 Columns (Full Width)
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Adjust how much space this widget takes in the
+                                grid
+                            </p>
+                        </div>
+                    )}
+
                     {definition.configSchema.fields.map((field) => {
                         const value = getConfigValue(field.name);
 

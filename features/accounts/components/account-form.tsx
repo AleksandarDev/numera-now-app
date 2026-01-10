@@ -253,8 +253,8 @@ export const AccountForm = ({
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        Initial balance for this account (enter as a
-                                        decimal amount, e.g., 1.00)
+                                        Initial balance for this account (enter
+                                        as a decimal amount, e.g., 1.00)
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
