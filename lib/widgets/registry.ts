@@ -47,6 +47,13 @@ const widgetRegistry: Record<WidgetType, WidgetDefinition> = {
                         'Which financial summary to display in this widget',
                 },
                 {
+                    name: 'accountId',
+                    label: 'Account',
+                    type: 'account',
+                    description:
+                        'Optional account to filter. Leave empty for total.',
+                },
+                {
                     name: 'refreshRate',
                     label: 'Refresh Rate (seconds)',
                     type: 'number',
@@ -94,6 +101,18 @@ const widgetRegistry: Record<WidgetType, WidgetDefinition> = {
                     ],
                     defaultValue: 'area',
                     description: 'The type of chart to display',
+                },
+                {
+                    name: 'accumulation',
+                    label: 'Accumulation',
+                    type: 'select',
+                    options: [
+                        { label: 'None (Daily)', value: 'none' },
+                        { label: 'Weekly', value: 'week' },
+                        { label: 'Monthly', value: 'month' },
+                    ],
+                    defaultValue: 'none',
+                    description: 'How to accumulate values over time',
                 },
                 {
                     name: 'refreshRate',

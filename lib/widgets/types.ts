@@ -50,6 +50,7 @@ export interface FinancialSummaryWidgetConfig extends BaseWidgetConfig {
     type: 'financial-summary';
     refreshRate?: number; // in seconds
     summaryType: 'balance' | 'income' | 'expenses'; // Which summary card to display
+    accountId?: string; // Optional account filter - if not set, shows total
 }
 
 /**
@@ -60,6 +61,7 @@ export interface GraphWidgetConfig extends BaseWidgetConfig {
     refreshRate?: number; // in seconds
     dataSource: 'transactions' | 'tags'; // transactions for daily data, tags for category data
     chartType: 'area' | 'bar' | 'line'; // Chart type is now defined in config
+    accumulation?: 'none' | 'week' | 'month'; // Accumulation period
 }
 
 /**
@@ -103,7 +105,7 @@ export interface WidgetDefinition<T extends WidgetConfig = WidgetConfig> {
 export interface WidgetConfigField {
     name: string;
     label: string;
-    type: 'text' | 'number' | 'boolean' | 'select';
+    type: 'text' | 'number' | 'boolean' | 'select' | 'account';
     options?: { label: string; value: string | number | boolean }[];
     defaultValue?: string | number | boolean;
     description?: string;

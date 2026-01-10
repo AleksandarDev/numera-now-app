@@ -1,6 +1,5 @@
 'use client';
 
-import { parseAsString, useQueryStates } from 'nuqs';
 import {
     FaBalanceScale,
     FaBalanceScaleLeft,
@@ -8,8 +7,8 @@ import {
 } from 'react-icons/fa';
 import { FaArrowTrendDown, FaArrowTrendUp } from 'react-icons/fa6';
 import { DataCard, DataCardLoading } from '@/components/data-card';
+import { useGetAccount } from '@/features/accounts/api/use-get-account';
 import { useGetSummary } from '@/features/summary/api/use-get-summary';
-import { formatDateRange } from '@/lib/utils';
 import type { FinancialSummaryWidgetConfig } from '@/lib/widgets/types';
 
 interface FinancialSummaryWidgetProps {
@@ -19,16 +18,17 @@ interface FinancialSummaryWidgetProps {
 export function FinancialSummaryWidget({
     config,
 }: FinancialSummaryWidgetProps) {
-    const { data, isLoading } = useGetSummary();
-    const [{ from, to }] = useQueryStates({
-        from: parseAsString,
-        to: parseAsString,
-    });
+    // Fetch summary data with optional account filter
+    const { data, isLoading } = useGetSummary(config.accountId);
 
-    const dateRangeLabel = formatDateRange({
-        to: to ?? undefined,
-        from: from ?? undefined,
-    });
+    // Fetch account data if accountId is provided
+    const { data: accountData } = useGetAccount(config.accountId);
+
+    // Determine source label (account name/code or "Total")
+    const sourceLabel =
+        config.accountId && accountData
+            ? `${accountData.code ? `${accountData.code} - ` : ''}${accountData.name}`
+            : 'Total';
 
     if (isLoading) {
         return <DataCardLoading />;
@@ -58,7 +58,7 @@ export function FinancialSummaryWidget({
                           ? 'success'
                           : 'danger'
                 }
-                dateRange={dateRangeLabel}
+                dateRange={sourceLabel}
             />
         );
     }
@@ -71,7 +71,7 @@ export function FinancialSummaryWidget({
                 percentageChange={data?.incomeChange}
                 icon={FaArrowTrendUp}
                 variant="success"
-                dateRange={dateRangeLabel}
+                dateRange={sourceLabel}
             />
         );
     }
@@ -84,7 +84,7 @@ export function FinancialSummaryWidget({
                 percentageChange={data?.expensesChange}
                 icon={FaArrowTrendDown}
                 variant="danger"
-                dateRange={dateRangeLabel}
+                dateRange={sourceLabel}
             />
         );
     }

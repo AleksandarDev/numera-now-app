@@ -57,15 +57,55 @@ const app = new Hono().get(
         ) {
             const creditAccounts = aliasedTable(accounts, 'creditAccounts');
             const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+
+            // For double-entry accounting, we need to determine income/expense based on:
+            // 1. Account class and normal balance
+            // 2. Whether transaction is credit or debit to that account
+            //
+            // Income accounts (credit normal): Credits increase (income), Debits decrease
+            // Expense accounts (debit normal): Debits increase (expense), Credits decrease
+            //
+            // For filtered account view, we look at the specific account
+            // For total view, we aggregate from all income/expense accounts
+
             return await db
                 .select({
-                    income: sql`SUM(CASE WHEN ${transactions.amount} >= 0 THEN ${transactions.amount} ELSE 0 END)`.mapWith(
-                        Number,
-                    ),
-                    expenses:
-                        sql`SUM(CASE WHEN ${transactions.amount} < 0 THEN ${transactions.amount} ELSE 0 END)`.mapWith(
-                            Number,
-                        ),
+                    income: sql`
+                        SUM(
+                            CASE 
+                                -- Legacy transactions with amount >= 0
+                                WHEN ${transactions.creditAccountId} IS NULL 
+                                    AND ${transactions.debitAccountId} IS NULL 
+                                    AND ${transactions.amount} >= 0 
+                                THEN ${transactions.amount}
+                                -- For filtered account: credits to income accounts or debits to liability/equity
+                                WHEN ${accountId ? sql`${transactions.creditAccountId} = ${accountId} AND ${creditAccounts.accountClass} = 'income'` : sql`${creditAccounts.accountClass} = 'income'`}
+                                THEN ${transactions.amount}
+                                -- For filtered account: debits to income accounts (returns/decreases) count as negative
+                                WHEN ${accountId ? sql`${transactions.debitAccountId} = ${accountId} AND ${debitAccounts.accountClass} = 'income'` : sql`false`}
+                                THEN -${transactions.amount}
+                                ELSE 0 
+                            END
+                        )
+                    `.mapWith(Number),
+                    expenses: sql`
+                        SUM(
+                            CASE 
+                                -- Legacy transactions with amount < 0
+                                WHEN ${transactions.creditAccountId} IS NULL 
+                                    AND ${transactions.debitAccountId} IS NULL 
+                                    AND ${transactions.amount} < 0 
+                                THEN ${transactions.amount}
+                                -- For filtered account: debits to expense accounts
+                                WHEN ${accountId ? sql`${transactions.debitAccountId} = ${accountId} AND ${debitAccounts.accountClass} = 'expense'` : sql`${debitAccounts.accountClass} = 'expense'`}
+                                THEN ${transactions.amount}
+                                -- For filtered account: credits to expense accounts (returns) count as negative
+                                WHEN ${accountId ? sql`${transactions.creditAccountId} = ${accountId} AND ${creditAccounts.accountClass} = 'expense'` : sql`false`}
+                                THEN -${transactions.amount}
+                                ELSE 0 
+                            END
+                        )
+                    `.mapWith(Number),
                     remaining: sum(transactions.amount).mapWith(Number),
                 })
                 .from(transactions)
@@ -130,10 +170,27 @@ const app = new Hono().get(
 
         // Get tag-based spending breakdown
         // A transaction can have multiple tags, so we join through transactionTags
+        // Calculate based on account class and transaction direction
         const tagData = await db
             .select({
                 name: tags.name,
-                value: sql`SUM(ABS(${transactions.amount}))`.mapWith(Number),
+                value: sql`
+                    SUM(
+                        CASE 
+                            -- Legacy transactions: use absolute value
+                            WHEN ${transactions.creditAccountId} IS NULL 
+                                AND ${transactions.debitAccountId} IS NULL 
+                            THEN ABS(${transactions.amount})
+                            -- Double-entry: sum debits to expense accounts (expenses)
+                            WHEN ${debitAccounts.accountClass} = 'expense'
+                            THEN ${transactions.amount}
+                            -- Double-entry: sum credits to income accounts (income)
+                            WHEN ${creditAccounts.accountClass} = 'income'
+                            THEN ${transactions.amount}
+                            ELSE 0
+                        END
+                    )
+                `.mapWith(Number),
             })
             .from(transactions)
             .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -171,7 +228,22 @@ const app = new Hono().get(
                 ),
             )
             .groupBy(tags.name)
-            .orderBy(desc(sql`SUM(ABS(${transactions.amount}))`));
+            .orderBy(
+                desc(sql`
+                SUM(
+                    CASE 
+                        WHEN ${transactions.creditAccountId} IS NULL 
+                            AND ${transactions.debitAccountId} IS NULL 
+                        THEN ABS(${transactions.amount})
+                        WHEN ${debitAccounts.accountClass} = 'expense'
+                        THEN ${transactions.amount}
+                        WHEN ${creditAccounts.accountClass} = 'income'
+                        THEN ${transactions.amount}
+                        ELSE 0
+                    END
+                )
+            `),
+            );
 
         const topTags = tagData.slice(0, 3);
         const otherTags = tagData.slice(3);
@@ -188,13 +260,42 @@ const app = new Hono().get(
         const activeDays = await db
             .select({
                 date: transactions.date,
-                income: sql`SUM(CASE WHEN ${transactions.amount} >= 0 THEN ${transactions.amount} ELSE 0 END)`.mapWith(
-                    Number,
-                ),
-                expenses:
-                    sql`SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END)`.mapWith(
-                        Number,
-                    ),
+                income: sql`
+                    SUM(
+                        CASE 
+                            -- Legacy transactions with amount >= 0
+                            WHEN ${transactions.creditAccountId} IS NULL 
+                                AND ${transactions.debitAccountId} IS NULL 
+                                AND ${transactions.amount} >= 0 
+                            THEN ${transactions.amount}
+                            -- Credits to income accounts
+                            WHEN ${creditAccounts.accountClass} = 'income'
+                            THEN ${transactions.amount}
+                            -- Debits to income accounts (returns) - negative income
+                            WHEN ${debitAccounts.accountClass} = 'income'
+                            THEN -${transactions.amount}
+                            ELSE 0 
+                        END
+                    )
+                `.mapWith(Number),
+                expenses: sql`
+                    SUM(
+                        CASE 
+                            -- Legacy transactions with amount < 0
+                            WHEN ${transactions.creditAccountId} IS NULL 
+                                AND ${transactions.debitAccountId} IS NULL 
+                                AND ${transactions.amount} < 0 
+                            THEN ABS(${transactions.amount})
+                            -- Debits to expense accounts
+                            WHEN ${debitAccounts.accountClass} = 'expense'
+                            THEN ${transactions.amount}
+                            -- Credits to expense accounts (returns) - negative expense
+                            WHEN ${creditAccounts.accountClass} = 'expense'
+                            THEN -${transactions.amount}
+                            ELSE 0 
+                        END
+                    )
+                `.mapWith(Number),
             })
             .from(transactions)
             .leftJoin(accounts, eq(transactions.accountId, accounts.id))

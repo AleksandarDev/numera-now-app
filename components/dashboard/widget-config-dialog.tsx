@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AccountSelect } from '@/components/account-select';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -206,6 +207,20 @@ export function WidgetConfigDialog({
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                )}
+
+                                {field.type === 'account' && (
+                                    <AccountSelect
+                                        value={(value as string) || ''}
+                                        onChange={(val) =>
+                                            handleFieldChange(
+                                                field.name,
+                                                val === 'all' ? '' : val,
+                                            )
+                                        }
+                                        selectAll={true}
+                                        placeholder="Select account (optional)"
+                                    />
                                 )}
 
                                 {field.description && (
