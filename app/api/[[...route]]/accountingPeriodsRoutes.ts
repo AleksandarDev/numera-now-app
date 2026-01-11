@@ -65,7 +65,10 @@ const app = new Hono()
     .post(
         '/',
         clerkMiddleware(),
-        zValidator('json', insertAccountingPeriodSchema.omit({ id: true })),
+        zValidator(
+            'json',
+            insertAccountingPeriodSchema.omit({ id: true, userId: true }),
+        ),
         async (ctx) => {
             const auth = getAuth(ctx);
             const values = ctx.req.valid('json');
