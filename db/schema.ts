@@ -336,6 +336,8 @@ export const transactions = pgTable(
         // Stripe integration fields
         stripePaymentId: text('stripe_payment_id'), // Stripe payment intent or charge ID
         stripePaymentUrl: text('stripe_payment_url'), // URL to Stripe dashboard for this payment
+        // GoCardless integration fields
+        gocardlessTransactionId: text('gocardless_transaction_id'), // GoCardless internal transaction ID
         // Closing period tracking
         closingPeriodId: text('closing_period_id'), // Links closing entries to accounting periods
     },
@@ -349,6 +351,9 @@ export const transactions = pgTable(
         index('transactions_splitgroupid_idx').on(table.splitGroupId),
         index('transactions_splittype_idx').on(table.splitType),
         index('transactions_stripepaymentid_idx').on(table.stripePaymentId),
+        index('transactions_gocardlesstransactionid_idx').on(
+            table.gocardlessTransactionId,
+        ),
         index('transactions_closingperiodid_idx').on(table.closingPeriodId),
     ],
 );
@@ -602,3 +607,197 @@ export const insertAccountingPeriodSchema = createInsertSchema(
         status: z.enum(['open', 'closed']).default('open').optional(),
     },
 );
+
+// GoCardless Bank Account Data integration settings table
+export const gocardlessSettings = pgTable(
+    'gocardless_settings',
+    {
+        userId: text('user_id').primaryKey(),
+        // GoCardless API credentials (encrypted)
+        secretId: text('secret_id'),
+        secretKey: text('secret_key'),
+        // Access token for API calls (encrypted, temporary)
+        accessToken: text('access_token'),
+        accessTokenExpiresAt: timestamp('access_token_expires_at', {
+            mode: 'date',
+        }),
+        // Refresh token for renewing access (encrypted)
+        refreshToken: text('refresh_token'),
+        refreshTokenExpiresAt: timestamp('refresh_token_expires_at', {
+            mode: 'date',
+        }),
+        // Default accounts for bank transactions
+        defaultCreditAccountId: text('default_credit_account_id').references(
+            () => accounts.id,
+            { onDelete: 'set null' },
+        ),
+        defaultDebitAccountId: text('default_debit_account_id').references(
+            () => accounts.id,
+            { onDelete: 'set null' },
+        ),
+        // Default tag for bank transactions
+        defaultTagId: text('default_tag_id').references(() => tags.id, {
+            onDelete: 'set null',
+        }),
+        // Whether the integration is enabled
+        isEnabled: boolean('is_enabled').notNull().default(false),
+        // Sync start date for initial transaction import
+        syncFromDate: timestamp('sync_from_date', { mode: 'date' }),
+        // Last sync timestamp
+        lastSyncAt: timestamp('last_sync_at', { mode: 'date' }),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [index('gocardless_settings_userid_idx').on(table.userId)],
+);
+
+export const gocardlessSettingsRelations = relations(
+    gocardlessSettings,
+    ({ one, many }) => ({
+        defaultCreditAccount: one(accounts, {
+            fields: [gocardlessSettings.defaultCreditAccountId],
+            references: [accounts.id],
+            relationName: 'gocardlessCreditAccount',
+        }),
+        defaultDebitAccount: one(accounts, {
+            fields: [gocardlessSettings.defaultDebitAccountId],
+            references: [accounts.id],
+            relationName: 'gocardlessDebitAccount',
+        }),
+        defaultTag: one(tags, {
+            fields: [gocardlessSettings.defaultTagId],
+            references: [tags.id],
+        }),
+        bankConnections: many(bankConnections),
+    }),
+);
+
+export const insertGocardlessSettingsSchema =
+    createInsertSchema(gocardlessSettings);
+
+// Bank connections table - stores connected bank accounts via GoCardless
+export const bankConnections = pgTable(
+    'bank_connections',
+    {
+        id: text('id').primaryKey(),
+        userId: text('user_id').notNull(),
+        // GoCardless identifiers
+        requisitionId: text('requisition_id').notNull(), // The requisition ID from GoCardless
+        institutionId: text('institution_id').notNull(), // Bank identifier (e.g., "ZAGREBACKA_ZABAHR2X")
+        institutionName: text('institution_name').notNull(), // Display name of the bank
+        institutionLogo: text('institution_logo'), // URL to bank logo
+        // Agreement details
+        agreementId: text('agreement_id'), // End-user agreement ID
+        agreementExpiresAt: timestamp('agreement_expires_at', { mode: 'date' }),
+        // Connection status
+        status: text('status', {
+            enum: [
+                'pending',
+                'linked',
+                'expired',
+                'revoked',
+                'suspended',
+                'error',
+            ],
+        })
+            .notNull()
+            .default('pending'),
+        // Last error message if any
+        lastError: text('last_error'),
+        // Timestamps
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        index('bank_connections_userid_idx').on(table.userId),
+        index('bank_connections_requisitionid_idx').on(table.requisitionId),
+        index('bank_connections_institutionid_idx').on(table.institutionId),
+        index('bank_connections_status_idx').on(table.status),
+    ],
+);
+
+export const bankConnectionsRelations = relations(
+    bankConnections,
+    ({ one, many }) => ({
+        settings: one(gocardlessSettings, {
+            fields: [bankConnections.userId],
+            references: [gocardlessSettings.userId],
+        }),
+        accounts: many(bankAccounts),
+    }),
+);
+
+export const insertBankConnectionSchema = createInsertSchema(bankConnections, {
+    status: z
+        .enum(['pending', 'linked', 'expired', 'revoked', 'suspended', 'error'])
+        .default('pending')
+        .optional(),
+});
+
+// Bank accounts table - individual accounts within a bank connection
+export const bankAccounts = pgTable(
+    'bank_accounts',
+    {
+        id: text('id').primaryKey(),
+        connectionId: text('connection_id')
+            .notNull()
+            .references(() => bankConnections.id, { onDelete: 'cascade' }),
+        userId: text('user_id').notNull(),
+        // GoCardless account ID
+        gocardlessAccountId: text('gocardless_account_id').notNull(),
+        // Account details
+        iban: text('iban'),
+        name: text('name'), // Account name/label
+        ownerName: text('owner_name'),
+        currency: text('currency').default('EUR'),
+        // Linked local account for auto-mapping transactions
+        linkedAccountId: text('linked_account_id').references(
+            () => accounts.id,
+            { onDelete: 'set null' },
+        ),
+        // Sync settings
+        lastSyncAt: timestamp('last_sync_at', { mode: 'date' }),
+        lastTransactionDate: timestamp('last_transaction_date', {
+            mode: 'date',
+        }),
+        // Whether to sync this account
+        isActive: boolean('is_active').notNull().default(true),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        index('bank_accounts_connectionid_idx').on(table.connectionId),
+        index('bank_accounts_userid_idx').on(table.userId),
+        index('bank_accounts_gocardlessaccountid_idx').on(
+            table.gocardlessAccountId,
+        ),
+        index('bank_accounts_linkedaccountid_idx').on(table.linkedAccountId),
+        index('bank_accounts_isactive_idx').on(table.isActive),
+    ],
+);
+
+export const bankAccountsRelations = relations(bankAccounts, ({ one }) => ({
+    connection: one(bankConnections, {
+        fields: [bankAccounts.connectionId],
+        references: [bankConnections.id],
+    }),
+    linkedAccount: one(accounts, {
+        fields: [bankAccounts.linkedAccountId],
+        references: [accounts.id],
+        relationName: 'linkedBankAccount',
+    }),
+}));
+
+export const insertBankAccountSchema = createInsertSchema(bankAccounts);

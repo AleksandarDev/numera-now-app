@@ -1,0 +1,27 @@
+export const bankingProviderConfig = {
+    id: 'enablebanking',
+    name: 'Enable Banking',
+    portalName: 'Enable Banking',
+    portalUrl: 'https://enablebanking.com',
+    docsUrl: 'https://enablebanking.com/docs',
+    credentials: {
+        idLabel: 'Application ID',
+        idPlaceholder: 'Enter Application ID...',
+        idHelp: 'Issued after uploading your certificate in the Enable Banking dashboard.',
+        keyLabel: 'Private Key',
+        keyPlaceholder: 'Paste your RSA private key...',
+        keyHelp: 'Used to sign JWTs for API requests.',
+    },
+    supportedCountries: [
+        { code: 'HR', name: 'Croatia' },
+        { code: 'SI', name: 'Slovenia' },
+        { code: 'AT', name: 'Austria' },
+        { code: 'DE', name: 'Germany' },
+        { code: 'GB', name: 'United Kingdom' },
+        { code: 'NL', name: 'Netherlands' },
+        { code: 'BE', name: 'Belgium' },
+        { code: 'FR', name: 'France' },
+        { code: 'ES', name: 'Spain' },
+        { code: 'IT', name: 'Italy' },
+    ],
+};
