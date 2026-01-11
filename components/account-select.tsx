@@ -27,6 +27,19 @@ export type AccountSelectProps = {
     allowedTypes?: Array<'credit' | 'debit' | 'neutral'>;
     suggestedAccountIds?: string[];
     onOpenChange?: (open: boolean) => void;
+    accounts?: AccountOption[];
+};
+
+type AccountOption = {
+    id: string;
+    name: string;
+    code: string | null;
+    isOpen?: boolean;
+    isReadOnly?: boolean;
+    accountType?: 'credit' | 'debit' | 'neutral';
+    accountClass?: string | null;
+    openingBalance?: number;
+    hasInvalidConfig?: boolean;
 };
 
 export const AccountSelect = ({
@@ -41,6 +54,7 @@ export const AccountSelect = ({
     allowedTypes,
     suggestedAccountIds,
     onOpenChange,
+    accounts: providedAccounts,
 }: AccountSelectProps) => {
     const [open, setOpen] = useState(false);
     const [accountsFilter, setAccountsFilter] = useState('');
@@ -56,11 +70,15 @@ export const AccountSelect = ({
     );
 
     // TODO: Don't load all accounts if filter is not open, load only the selected one
-    const { data: accounts, isLoading: isLoadingAccounts } = useGetAccounts({
-        pageSize: 9999,
-        accountId: null,
-        showClosed,
-    });
+    const { data: fetchedAccounts, isLoading: isLoadingAccounts } =
+        useGetAccounts({
+            pageSize: 9999,
+            accountId: null,
+            showClosed,
+        });
+
+    const accounts = providedAccounts ?? fetchedAccounts;
+    const isLoading = providedAccounts ? false : isLoadingAccounts;
 
     const selectedAccountId = value && value !== 'all' ? value : '';
     const selectedAccountFromList = useMemo(() => {
@@ -198,7 +216,7 @@ export const AccountSelect = ({
         count: (filteredAccounts ?? []).length,
         getScrollElement: () => parentRef.current,
         estimateSize: () => 45,
-        enabled: !isLoadingAccounts && open,
+        enabled: !isLoading && open,
         initialOffset:
             (filteredAccounts?.findIndex((account) => account.id === value) ??
                 0) * 45,
@@ -224,7 +242,7 @@ export const AccountSelect = ({
         <Select
             value={value || ''}
             onValueChange={handleValueChange}
-            disabled={isLoadingAccounts || disabled}
+            disabled={isLoading || disabled}
             open={open}
             onOpenChange={handleOpenChange}
         >

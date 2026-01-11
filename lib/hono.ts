@@ -4,11 +4,12 @@ import type { AppType } from '@/app/api/[[...route]]/route';
 
 const getAppUrl = () => {
     const url =
-        process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
-        process.env.NEXT_PUBLIC_VERCEL_URL;
+        process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL ||
+        process.env.NEXT_PUBLIC_VERCEL_URL ||
+        process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
     if (!url) {
         throw new Error(
-            'NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL or NEXT_PUBLIC_VERCEL_URL is not set',
+            'NEXT_PUBLIC_VERCEL_URL or NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL is not set',
         );
     }
 

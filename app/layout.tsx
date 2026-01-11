@@ -20,7 +20,10 @@ export default function RootLayout({ children }: PropsWithChildren) {
             <html lang="en">
                 <Head>
                     <meta name="apple-mobile-web-app-title" content="Numera" />
-                    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                    <meta
+                        name="apple-mobile-web-app-status-bar-style"
+                        content="black-translucent"
+                    />
                     <meta name="theme-color" content="#000000" />
                 </Head>
                 <body className={inter.className}>

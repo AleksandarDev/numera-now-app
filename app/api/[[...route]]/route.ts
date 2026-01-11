@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 import { type Context, Hono } from 'hono';
 import { handle } from 'hono/vercel';
 
+import accountingPeriodsRoutes from './accountingPeriodsRoutes';
 import accountsRoutes from './accountsRoutes';
 import customersRoutes from './customersRoutes';
 import dashboardRoutes from './dashboardRoutes';
@@ -84,6 +85,7 @@ app.use('*', async (ctx, next) => {
 });
 
 const routes = app
+    .route('/accounting-periods', accountingPeriodsRoutes)
     .route('/accounts', accountsRoutes)
     .route('/customers', customersRoutes)
     .route('/dashboard', dashboardRoutes)

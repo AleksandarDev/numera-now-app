@@ -16,6 +16,8 @@ import { StripeIntegrationCard } from '@/components/stripe-integration-card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { AccountingPeriodsSettingsCard } from '@/features/accounting-periods/components/accounting-periods-settings-card';
+import { YearClosingWizard } from '@/features/accounting-periods/components/year-closing-wizard';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useUpdateSettings } from '@/features/settings/api/use-update-settings';
 import { useBulkDeleteTags } from '@/features/tags/api/use-bulk-delete-tags';
@@ -154,12 +156,14 @@ export default function SettingsPage() {
             >
                 <DoubleEntrySettings />
                 <TransactionStatusAutomationSettings />
+                <AccountingPeriodsSettingsCard />
                 <StripeIntegrationCard />
                 <OpenFinancesSettingsCard />
                 <DocumentTypesSettingsCard />
                 <ReconciliationSettingsCard />
                 <TagsSection />
             </Suspense>
+            <YearClosingWizard />
         </div>
     );
 }
