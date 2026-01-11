@@ -89,7 +89,10 @@ export const YearClosingWizard = () => {
     };
 
     const handleStep3Next = () => {
-        if (!createdPeriodId || !profitAndLossAccountId || !closingDate) return;
+        if (!createdPeriodId || !profitAndLossAccountId) return;
+
+        const finalClosingDate = closingDate || endDate;
+        if (!finalClosingDate) return;
 
         createEntriesMutation.mutate(
             {
@@ -97,7 +100,7 @@ export const YearClosingWizard = () => {
                 profitAndLossAccountId,
                 retainedEarningsAccountId:
                     retainedEarningsAccountId || undefined,
-                closingDate,
+                closingDate: finalClosingDate,
                 transactionStatus: 'completed',
             },
             {
