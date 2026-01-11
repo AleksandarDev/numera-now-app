@@ -70,11 +70,12 @@ export const AccountSelect = ({
     );
 
     // TODO: Don't load all accounts if filter is not open, load only the selected one
-    const { data: fetchedAccounts, isLoading: isLoadingAccounts } = useGetAccounts({
-        pageSize: 9999,
-        accountId: null,
-        showClosed,
-    });
+    const { data: fetchedAccounts, isLoading: isLoadingAccounts } =
+        useGetAccounts({
+            pageSize: 9999,
+            accountId: null,
+            showClosed,
+        });
 
     const accounts = providedAccounts ?? fetchedAccounts;
     const isLoading = providedAccounts ? false : isLoadingAccounts;

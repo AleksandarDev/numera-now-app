@@ -18,7 +18,12 @@ type DatePickerProps = {
     placeholder?: string;
 };
 
-export const DatePicker = ({ value, onChange, disabled, placeholder }: DatePickerProps) => {
+export const DatePicker = ({
+    value,
+    onChange,
+    disabled,
+    placeholder,
+}: DatePickerProps) => {
     const placeholderText = placeholder ?? 'Pick a date';
 
     return (

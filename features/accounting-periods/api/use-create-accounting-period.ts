@@ -24,9 +24,10 @@ export const useCreateAccountingPeriod = () => {
             const result: ResponseType = await response.json();
 
             if (!response.ok || !('data' in result)) {
-                const message = 'error' in result
-                    ? result.error
-                    : 'Failed to create accounting period';
+                const message =
+                    'error' in result
+                        ? result.error
+                        : 'Failed to create accounting period';
 
                 throw new Error(message);
             }
