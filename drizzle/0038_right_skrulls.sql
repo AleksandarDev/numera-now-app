@@ -1,0 +1,1 @@
+ALTER TABLE "gocardless_settings" ADD COLUMN "sync_from_date" timestamp;

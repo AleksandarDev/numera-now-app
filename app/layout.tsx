@@ -1,7 +1,7 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Head from 'next/head';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { type PropsWithChildren, Suspense } from 'react';
@@ -13,6 +13,9 @@ import { SheetProvider } from '@/providers/sheet-provider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = siteConfig;
+export const viewport: Viewport = {
+    themeColor: '#000000',
+};
 
 export default function RootLayout({ children }: PropsWithChildren) {
     return (
@@ -24,7 +27,6 @@ export default function RootLayout({ children }: PropsWithChildren) {
                         name="apple-mobile-web-app-status-bar-style"
                         content="black-translucent"
                     />
-                    <meta name="theme-color" content="#000000" />
                 </Head>
                 <body className={inter.className}>
                     <QueryProvider>

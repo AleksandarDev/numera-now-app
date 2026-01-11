@@ -8,6 +8,7 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Loader2, Plus } from 'lucide-react';
 import { Suspense } from 'react';
+import { BankIntegrationCard } from '@/components/bank-integration-card';
 import { DataTable } from '@/components/data-table';
 import { DocumentTypesSettingsCard } from '@/components/document-types-settings-card';
 import { OpenFinancesSettingsCard } from '@/components/open-finances-settings-card';
@@ -158,6 +159,7 @@ export default function SettingsPage() {
                 <TransactionStatusAutomationSettings />
                 <AccountingPeriodsSettingsCard />
                 <StripeIntegrationCard />
+                <BankIntegrationCard />
                 <OpenFinancesSettingsCard />
                 <DocumentTypesSettingsCard />
                 <ReconciliationSettingsCard />

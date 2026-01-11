@@ -4,6 +4,7 @@ import { handle } from 'hono/vercel';
 
 import accountingPeriodsRoutes from './accountingPeriodsRoutes';
 import accountsRoutes from './accountsRoutes';
+import bankingRoutes from './bankingRoutes';
 import customersRoutes from './customersRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import documentsRoutes from './documentsRoutes';
@@ -95,6 +96,7 @@ const routes = app
     .route('/documents', documentsRoutes)
     .route('/document-types', documentTypesRoutes)
     .route('/stripe', stripeRoutes)
+    .route('/banking', bankingRoutes)
     .route('/tags', tagsRoutes)
     .route('/reports', reportsRoutes)
     .route('/open-finances', openFinancesRoutes);

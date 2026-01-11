@@ -260,6 +260,20 @@
             "when": 1768088985481,
             "tag": "0036_short_warlock",
             "breakpoints": true
+        },
+        {
+            "idx": 37,
+            "version": "7",
+            "when": 1768098623826,
+            "tag": "0037_fixed_lady_mastermind",
+            "breakpoints": true
+        },
+        {
+            "idx": 38,
+            "version": "7",
+            "when": 1768172913697,
+            "tag": "0038_right_skrulls",
+            "breakpoints": true
         }
     ]
 }
