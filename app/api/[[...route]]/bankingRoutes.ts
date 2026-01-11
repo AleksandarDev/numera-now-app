@@ -1174,9 +1174,30 @@ const app = new Hono()
         const errors: string[] = [];
         const shouldUpdateSyncFromDate = !settings.syncFromDate;
         let syncFromDateToPersist: Date | null = null;
+        const now = new Date();
 
         for (const { bankAccount, connection } of activeBankAccounts) {
             try {
+                if (
+                    connection.agreementExpiresAt &&
+                    new Date(connection.agreementExpiresAt) <= now
+                ) {
+                    await db
+                        .update(bankConnections)
+                        .set({
+                            status: 'expired',
+                            lastError:
+                                'Authorization expired. Please reconnect.',
+                            updatedAt: new Date(),
+                        })
+                        .where(eq(bankConnections.id, connection.id));
+
+                    errors.push(
+                        `Authorization expired for ${connection.institutionName}. Please reconnect.`,
+                    );
+                    continue;
+                }
+
                 // Calculate date range for fetching transactions
                 // Fetch since last sync, or from configured syncFromDate, or default to 30 days
                 let dateFrom: Date;
@@ -1217,9 +1238,42 @@ const app = new Hono()
 
                 if (!transactionsResponse.ok) {
                     const errorText = await transactionsResponse.text();
-                    errors.push(
-                        `Failed to fetch transactions for ${bankAccount.name}: ${errorText}`,
-                    );
+                    let parsedError:
+                        | {
+                              error?: string;
+                              message?: string;
+                              detail?: string | null;
+                          }
+                        | undefined;
+                    try {
+                        parsedError = JSON.parse(errorText);
+                    } catch {
+                        parsedError = undefined;
+                    }
+
+                    const isExpiredSession =
+                        transactionsResponse.status === 401 ||
+                        parsedError?.error === 'EXPIRED_SESSION';
+
+                    if (isExpiredSession) {
+                        await db
+                            .update(bankConnections)
+                            .set({
+                                status: 'expired',
+                                lastError:
+                                    'Authorization expired. Please reconnect.',
+                                updatedAt: new Date(),
+                            })
+                            .where(eq(bankConnections.id, connection.id));
+
+                        errors.push(
+                            `Authorization expired for ${connection.institutionName}. Please reconnect.`,
+                        );
+                    } else {
+                        errors.push(
+                            `Failed to fetch transactions for ${bankAccount.name}: ${errorText}`,
+                        );
+                    }
                     continue;
                 }
 
