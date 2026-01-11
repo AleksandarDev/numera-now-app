@@ -15,9 +15,12 @@ type DatePickerProps = {
     value?: Date;
     onChange?: SelectSingleEventHandler;
     disabled?: boolean;
+    placeholder?: string;
 };
 
-export const DatePicker = ({ value, onChange, disabled }: DatePickerProps) => {
+export const DatePicker = ({ value, onChange, disabled, placeholder }: DatePickerProps) => {
+    const placeholderText = placeholder ?? 'Pick a date';
+
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -30,7 +33,11 @@ export const DatePicker = ({ value, onChange, disabled }: DatePickerProps) => {
                     )}
                 >
                     <CalendarIcon className="mr-2 size-4" />
-                    {value ? format(value, 'PPP') : <span>Pick a date</span>}
+                    {value ? (
+                        format(value, 'PPP')
+                    ) : (
+                        <span>{placeholderText}</span>
+                    )}
                 </Button>
             </PopoverTrigger>
 
