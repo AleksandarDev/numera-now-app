@@ -354,6 +354,13 @@ export function BankIntegrationCard() {
     const pendingConnections = (connections as BankConnection[]).filter(
         (c) => c.status === 'pending',
     );
+    const reconnectConnections = (connections as BankConnection[]).filter(
+        (c) =>
+            c.status === 'expired' ||
+            c.status === 'revoked' ||
+            c.status === 'suspended' ||
+            c.status === 'error',
+    );
 
     return (
         <>
@@ -745,6 +752,78 @@ export function BankIntegrationCard() {
                                     </div>
                                 )}
 
+                                {/* Connections Needing Reauthorization */}
+                                {reconnectConnections.length > 0 && (
+                                    <div className="space-y-2">
+                                        <h5 className="text-sm font-medium text-muted-foreground">
+                                            Needs Reauthorization
+                                        </h5>
+                                        {reconnectConnections.map(
+                                            (connection) => (
+                                                <div
+                                                    key={connection.id}
+                                                    className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {connection.institutionLogo && (
+                                                            <Image
+                                                                src={
+                                                                    connection.institutionLogo
+                                                                }
+                                                                alt={
+                                                                    connection.institutionName
+                                                                }
+                                                                width={32}
+                                                                height={32}
+                                                                className="rounded"
+                                                            />
+                                                        )}
+                                                        <div>
+                                                            <p className="font-medium">
+                                                                {
+                                                                    connection.institutionName
+                                                                }
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {connection.status ===
+                                                                'expired'
+                                                                    ? 'Authorization expired'
+                                                                    : connection.status ===
+                                                                        'revoked'
+                                                                      ? 'Authorization revoked'
+                                                                      : connection.status ===
+                                                                          'suspended'
+                                                                        ? 'Authorization suspended'
+                                                                        : 'Connection error'}
+                                                            </p>
+                                                            {connection.lastError && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        connection.lastError
+                                                                    }
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                handleDeleteConnection(
+                                                                    connection.id,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Linked Connections */}
                                 {linkedConnections.length > 0 ? (
                                     <div className="space-y-3">
@@ -875,7 +954,8 @@ export function BankIntegrationCard() {
                                         ))}
                                     </div>
                                 ) : (
-                                    pendingConnections.length === 0 && (
+                                    pendingConnections.length === 0 &&
+                                    reconnectConnections.length === 0 && (
                                         <div className="text-center py-8 text-muted-foreground">
                                             <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
                                             <p>No banks connected yet</p>
