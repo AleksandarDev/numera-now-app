@@ -34,7 +34,10 @@ export const YearClosingWizard = () => {
     const createEntriesMutation = useCreateClosingEntries();
     const closePeriodMutation = useCloseAccountingPeriod();
 
-    const previewData = previewMutation.data?.data;
+    const previewData =
+        previewMutation.data && 'data' in previewMutation.data
+            ? previewMutation.data.data
+            : undefined;
 
     const handleClose = () => {
         onClose();
