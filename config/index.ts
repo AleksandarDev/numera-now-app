@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 export const siteConfig: Metadata = {
     title: 'Numera',
     description: 'Your numbers, now.',
+    themeColor: '#000000',
     keywords: [
         'finance',
         'accounting',
