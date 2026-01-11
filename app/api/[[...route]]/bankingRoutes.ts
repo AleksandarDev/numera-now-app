@@ -807,10 +807,126 @@ const app = new Hono()
             return ctx.json({ error: 'Unauthorized.' }, 401);
         }
 
+        const [settings] = await db
+            .select()
+            .from(gocardlessSettings)
+            .where(eq(gocardlessSettings.userId, auth.userId));
+
+        const authHeaders = settings
+            ? getEnableBankingAuthHeaders(settings)
+            : null;
+
         const connections = await db
             .select()
             .from(bankConnections)
             .where(eq(bankConnections.userId, auth.userId));
+
+        let existingAccountIds: Set<string> | null = null;
+
+        if (authHeaders) {
+            const existingAccounts = await db
+                .select({
+                    gocardlessAccountId: bankAccounts.gocardlessAccountId,
+                })
+                .from(bankAccounts)
+                .where(eq(bankAccounts.userId, auth.userId));
+
+            existingAccountIds = new Set(
+                existingAccounts.map((acc) => acc.gocardlessAccountId),
+            );
+
+            for (const connection of connections) {
+                if (
+                    connection.status !== 'linked' ||
+                    !connection.agreementId
+                ) {
+                    continue;
+                }
+
+                try {
+                    const sessionResponse = await fetch(
+                        `${ENABLE_BANKING_API_BASE}/sessions/${connection.agreementId}`,
+                        {
+                            headers: authHeaders,
+                        },
+                    );
+
+                    if (!sessionResponse.ok) {
+                        const errorText = await sessionResponse.text();
+                        let parsedError:
+                            | {
+                                  error?: string;
+                                  message?: string;
+                                  detail?: string | null;
+                              }
+                            | undefined;
+                        try {
+                            parsedError = JSON.parse(errorText);
+                        } catch {
+                            parsedError = undefined;
+                        }
+
+                        const isExpiredSession =
+                            sessionResponse.status === 401 ||
+                            parsedError?.error === 'EXPIRED_SESSION';
+
+                        if (isExpiredSession) {
+                            await db
+                                .update(bankConnections)
+                                .set({
+                                    status: 'expired',
+                                    lastError:
+                                        'Authorization expired. Please reconnect.',
+                                    updatedAt: new Date(),
+                                })
+                                .where(eq(bankConnections.id, connection.id));
+                            connection.status = 'expired';
+                            connection.lastError =
+                                'Authorization expired. Please reconnect.';
+                        }
+
+                        continue;
+                    }
+
+                    const session =
+                        (await sessionResponse.json()) as EnableBankingSessionResponse;
+
+                    for (const account of session.accounts) {
+                        if (
+                            !account.uid ||
+                            existingAccountIds?.has(account.uid)
+                        ) {
+                            continue;
+                        }
+
+                        const bankAccountId = createId();
+                        const iban = account.account_id?.iban || null;
+                        const accountName =
+                            account.name ||
+                            (iban ? `Account ending ${iban.slice(-4)}` : null);
+
+                        await db.insert(bankAccounts).values({
+                            id: bankAccountId,
+                            connectionId: connection.id,
+                            userId: auth.userId,
+                            gocardlessAccountId: account.uid,
+                            iban: iban,
+                            name: accountName || 'Bank Account',
+                            ownerName: account.name || null,
+                            currency: account.currency || 'EUR',
+                            isActive: true,
+                        });
+
+                        existingAccountIds?.add(account.uid);
+                    }
+                } catch (error) {
+                    console.error(
+                        '[Enable Banking] Failed to refresh accounts:',
+                        error,
+                    );
+                }
+            }
+        }
 
         // Get accounts for each connection
         const connectionsWithAccounts = await Promise.all(
