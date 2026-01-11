@@ -4,6 +4,7 @@ import type { AppType } from '@/app/api/[[...route]]/route';
 
 const getAppUrl = () => {
     const url =
+        process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL ||
         process.env.NEXT_PUBLIC_VERCEL_URL ||
         process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
     if (!url) {
