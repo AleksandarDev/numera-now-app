@@ -10,6 +10,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
+    CalendarClock,
     ChevronDown,
     ChevronRight,
     Download,
@@ -40,6 +41,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import type { accounts as accountsSchema } from '@/db/schema';
+import { YearClosingWizard } from '@/features/accounting-periods/components/year-closing-wizard';
+import { useYearClosingWizard } from '@/features/accounting-periods/hooks/use-year-closing-wizard';
 import { useBulkCreateAccounts } from '@/features/accounts/api/use-bulk-create-accounts';
 import { useGetAccountBalances } from '@/features/accounts/api/use-get-account-balances';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
@@ -461,6 +464,7 @@ export default function AccountsPage() {
     );
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const newAccount = useNewAccount();
+    const yearClosingWizard = useYearClosingWizard();
     const createAccounts = useBulkCreateAccounts();
     const accountsQuery = useGetAccounts({
         pageSize: 9999,
@@ -645,6 +649,13 @@ export default function AccountsPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
+                                    onClick={yearClosingWizard.onOpen}
+                                >
+                                    <CalendarClock className="mr-2 size-4" />
+                                    Close Year
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
                                     onClick={() =>
                                         setBulkDeleteMode(!bulkDeleteMode)
                                     }
@@ -669,6 +680,7 @@ export default function AccountsPage() {
                     </Suspense>
                 </CardContent>
             </Card>
+            <YearClosingWizard />
         </div>
     );
 }
