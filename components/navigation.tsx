@@ -125,10 +125,12 @@ export const Navigation = () => {
                                         className="w-full justify-start"
                                     >
                                         <span className="flex items-center gap-2">
-                                            <route.icon
-                                                className="size-4"
-                                                aria-hidden="true"
-                                            />
+                                            {route.icon && (
+                                                <route.icon
+                                                    className="size-4"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
                                             {route.label}
                                             {route.href === '/customers' &&
                                                 incompleteCount !== undefined &&
