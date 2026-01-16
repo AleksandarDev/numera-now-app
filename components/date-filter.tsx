@@ -6,6 +6,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     addDays,
+    endOfMonth,
     endOfYear,
     format,
     startOfMonth,
@@ -66,18 +67,8 @@ export const DateFilter = () => {
         let newTo = defaultTo;
 
         switch (range) {
-            case 'Today':
-                newFrom = newTo = new Date();
-                break;
-            case 'Yesterday':
-                newFrom = newTo = subDays(new Date(), 1);
-                break;
             case 'This week':
                 newFrom = startOfWeek(new Date(), { weekStartsOn: 1 });
-                newTo = new Date();
-                break;
-            case 'Last 7 days':
-                newFrom = subDays(new Date(), 7);
                 newTo = new Date();
                 break;
             case 'This month':
@@ -87,6 +78,10 @@ export const DateFilter = () => {
             case 'Last 30 days':
                 newFrom = subDays(new Date(), 30);
                 newTo = new Date();
+                break;
+            case 'Last month':
+                newFrom = startOfMonth(subDays(startOfMonth(new Date()), 1));
+                newTo = endOfMonth(subDays(startOfMonth(new Date()), 1));
                 break;
             case 'This year':
                 newFrom = startOfYear(new Date());
@@ -168,33 +163,11 @@ export const DateFilter = () => {
                         <Stack spacing={1} className="p-2">
                             <Button
                                 variant="outlined"
-                                onClick={() => handleDateRangeClick('Today')}
-                            >
-                                Today
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                onClick={() =>
-                                    handleDateRangeClick('Yesterday')
-                                }
-                            >
-                                Yesterday
-                            </Button>
-                            <Button
-                                variant="outlined"
                                 onClick={() =>
                                     handleDateRangeClick('This week')
                                 }
                             >
                                 This week
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                onClick={() =>
-                                    handleDateRangeClick('Last 7 days')
-                                }
-                            >
-                                Last 7 days
                             </Button>
                             <Button
                                 variant="outlined"
@@ -211,6 +184,14 @@ export const DateFilter = () => {
                                 }
                             >
                                 Last 30 days
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={() =>
+                                    handleDateRangeClick('Last month')
+                                }
+                            >
+                                Last month
                             </Button>
                             <Button
                                 variant="outlined"
