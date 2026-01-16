@@ -18,6 +18,7 @@ const baseWidgetConfigSchema = z.object({
         'chart',
     ]),
     title: z.string().optional(),
+    colSpan: z.number().min(1).max(4).optional(),
 });
 
 const dataGridWidgetConfigSchema = baseWidgetConfigSchema.extend({
