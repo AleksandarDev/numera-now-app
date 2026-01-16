@@ -47,6 +47,7 @@ import { useBulkCreateAccounts } from '@/features/accounts/api/use-bulk-create-a
 import { useGetAccountBalances } from '@/features/accounts/api/use-get-account-balances';
 import { useGetAccounts } from '@/features/accounts/api/use-get-accounts';
 import { useNewAccount } from '@/features/accounts/hooks/use-new-accounts';
+import { useOpenAccount } from '@/features/accounts/hooks/use-open-account';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { ACCOUNT_CLASS_LABELS } from '@/lib/accounting';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -82,6 +83,7 @@ function AccountsDataTable() {
     const allAccounts = accountsQuery.data || [];
     const balances = balancesQuery.data || {};
     const newAccount = useNewAccount();
+    const { onOpen } = useOpenAccount();
 
     const isDisabled = accountsQuery.isLoading;
 
@@ -282,7 +284,7 @@ function AccountsDataTable() {
                                             }}
                                         >
                                             <div
-                                                className="border-b group hover:bg-neutral-100"
+                                                className="border-b group hover:bg-neutral-100 cursor-pointer"
                                                 style={{
                                                     paddingLeft:
                                                         depth * 24 +
@@ -290,16 +292,27 @@ function AccountsDataTable() {
                                                             ? 0
                                                             : 24), // Add indent for leaf nodes
                                                 }}
+                                                onClick={(e) => {
+                                                    // Don't trigger row click if clicking on a button or action
+                                                    const target = e.target as HTMLElement;
+                                                    if (
+                                                        target.closest('button') ||
+                                                        target.closest('[role="menuitem"]')
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    onOpen(account.id);
+                                                }}
                                             >
                                                 <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-4 py-2 gap-1">
                                                     {/* Expand/Collapse Button */}
-                                                    <div className="w-6 flex justify-center">
+                                                    <div className="w-8 flex justify-center">
                                                         {accountHasChildren &&
                                                             code && (
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-6 w-6 p-0 hover:bg-neutral-200"
+                                                                    className="h-8 w-8 p-0 hover:bg-neutral-200"
                                                                     onClick={() =>
                                                                         toggleExpand(
                                                                             code,
@@ -307,9 +320,9 @@ function AccountsDataTable() {
                                                                     }
                                                                 >
                                                                     {isExpanded ? (
-                                                                        <ChevronDown className="h-4 w-4" />
+                                                                        <ChevronDown className="h-5 w-5" />
                                                                     ) : (
-                                                                        <ChevronRight className="h-4 w-4" />
+                                                                        <ChevronRight className="h-5 w-5" />
                                                                     )}
                                                                 </Button>
                                                             )}
