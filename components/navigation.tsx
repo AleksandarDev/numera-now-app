@@ -15,6 +15,7 @@ import {
     SheetTrigger,
 } from '@/components/ui/sheet';
 import { useGetIncompleteCustomersCount } from '@/features/customers/api/use-get-incomplete-count';
+import { useGetUnattachedDocuments } from '@/features/documents/api/use-get-unattached-documents';
 import { NavButton } from './nav-button';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -61,6 +62,8 @@ export const Navigation = () => {
     const searchParams = useSearchParams();
 
     const { data: incompleteCount } = useGetIncompleteCustomersCount();
+    const { data: unattachedDocuments } = useGetUnattachedDocuments();
+    const unattachedCount = unattachedDocuments?.length ?? 0;
 
     if (isMobile) {
         return (
@@ -117,6 +120,15 @@ export const Navigation = () => {
                                                         {incompleteCount}
                                                     </Badge>
                                                 )}
+                                            {route.href === '/documents' &&
+                                                unattachedCount > 0 && (
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="ml-1 h-5 min-w-5 flex items-center justify-center px-1.5"
+                                                    >
+                                                        {unattachedCount}
+                                                    </Badge>
+                                                )}
                                         </span>
                                     </Button>
                                 </Link>
@@ -134,6 +146,8 @@ export const Navigation = () => {
                         badge={
                             route.href === '/customers'
                                 ? incompleteCount
+                                : route.href === '/documents'
+                                  ? unattachedCount
                                 : undefined
                         }
                     />
@@ -154,6 +168,8 @@ export const Navigation = () => {
                     badge={
                         route.href === '/customers'
                             ? incompleteCount
+                            : route.href === '/documents'
+                              ? unattachedCount
                             : undefined
                     }
                 />
