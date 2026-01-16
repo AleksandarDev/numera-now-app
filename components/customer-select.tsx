@@ -209,7 +209,7 @@ export const CustomerSelect = ({
             onValueChange={handleValueChange}
             disabled={disabled}
         >
-            <SelectTrigger className={clsx('h-9 pl-3 pr-2', className)}>
+            <SelectTrigger className={clsx('pl-3 pr-2', className)}>
                 <div className="flex items-center justify-between w-full">
                     <span
                         className={clsx(

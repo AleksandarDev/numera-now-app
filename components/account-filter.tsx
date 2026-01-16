@@ -18,7 +18,7 @@ export const AccountFilter = () => {
             value={accountId}
             onChange={onChange}
             selectAll
-            className="min-w-72 h-9 px-3 md:w-auto text-left hover:bg-muted"
+            className="min-w-72 px-3 md:w-auto text-left hover:bg-muted"
         />
     );
 };

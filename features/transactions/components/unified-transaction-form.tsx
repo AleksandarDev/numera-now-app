@@ -458,7 +458,7 @@ export const UnifiedTransactionForm = ({
                                         <>
                                             {/* When debits are split but credit is single, show read-only synced amount */}
                                             {isSplitDebit && !isSplitCredit ? (
-                                                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
+                                                <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
                                                     {debitTotal.toFixed(2)}
                                                 </div>
                                             ) : (
@@ -546,7 +546,7 @@ export const UnifiedTransactionForm = ({
                             </div>
                         )}
                         {isAnySplit && (
-                            <div className="h-9 flex items-center justify-center text-sm text-muted-foreground">
+                            <div className="h-10 flex items-center justify-center text-sm text-muted-foreground">
                                 <ChevronRight className="size-4" />
                             </div>
                         )}
@@ -595,7 +595,7 @@ export const UnifiedTransactionForm = ({
                                         <>
                                             {/* When credits are split but debit is single, show read-only synced amount */}
                                             {isSplitCredit && !isSplitDebit ? (
-                                                <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
+                                                <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
                                                     {creditTotal.toFixed(2)}
                                                 </div>
                                             ) : (
