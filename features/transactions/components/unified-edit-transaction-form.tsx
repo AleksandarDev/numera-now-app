@@ -298,7 +298,7 @@ export const UnifiedEditTransactionForm = ({
             ...prev,
             {
                 id: `${Date.now()}`,
-                creditAccountId: '',
+                creditAccountId: creditAccountId, // Preserve parent credit account
                 debitAccountId: '',
                 amount: '0',
                 notes: '',
@@ -381,7 +381,7 @@ export const UnifiedEditTransactionForm = ({
         if (onSplit) {
             onSplit({
                 splits: splitEntries.map((entry) => ({
-                    amount: parseFloat(entry.amount) * 100, // Convert to miliunits
+                    amount: Math.round(parseFloat(entry.amount) * 1000), // Convert to miliunits (1000x)
                     creditAccountId: entry.creditAccountId,
                     debitAccountId: entry.debitAccountId,
                     notes: entry.notes || undefined,

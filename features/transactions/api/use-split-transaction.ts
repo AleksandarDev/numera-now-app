@@ -15,10 +15,24 @@ export const useSplitTransaction = (id?: string) => {
 
     const mutation = useMutation<ResponseType, Error, RequestType>({
         mutationFn: async (json) => {
+            if (!id) {
+                throw new Error('Transaction ID is required');
+            }
             const response = await client.api.transactions[':id'].split.$post({
-                param: { id: id || '' },
+                param: { id },
                 json,
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                const errorMessage =
+                    (errorData as { error?: string })?.error ||
+                    'Failed to split transaction.';
+                console.error('[useSplitTransaction] Error:', {
+                    status: response.status,
+                    errorData,
+                });
+                throw new Error(errorMessage);
+            }
             return await response.json();
         },
         onSuccess: () => {
