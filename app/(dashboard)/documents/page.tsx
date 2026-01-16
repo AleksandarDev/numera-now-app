@@ -2,11 +2,12 @@
 
 import type { ColumnFiltersState, Row } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
+import { parseAsString, useQueryStates } from 'nuqs';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table';
 import { DataTableSearch } from '@/components/data-table-search';
-import { DatePicker } from '@/components/date-picker';
+import { DateFilter } from '@/components/date-filter';
 import { DocumentDropzone } from '@/components/document-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,9 +41,12 @@ export default function DocumentsPage() {
     const [showUploadSheet, setShowUploadSheet] = useState(false);
     const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
     const [showUnattachedOnly, setShowUnattachedOnly] = useState(false);
-    const [dateFrom, setDateFrom] = useState<Date | undefined>();
-    const [dateTo, setDateTo] = useState<Date | undefined>();
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+    const [{ from, to }] = useQueryStates({
+        from: parseAsString,
+        to: parseAsString,
+    });
 
     const { onOpen: openTransaction } = useOpenTransaction();
 
@@ -51,8 +55,8 @@ export default function DocumentsPage() {
     const documentsQuery = useGetAllDocuments({
         documentTypeId:
             selectedTypeFilter !== 'all' ? selectedTypeFilter : undefined,
-        from: dateFrom?.toISOString(),
-        to: dateTo?.toISOString(),
+        from: from ? new Date(from).toISOString() : undefined,
+        to: to ? new Date(to).toISOString() : undefined,
         unattached: showUnattachedOnly,
     });
 
@@ -177,19 +181,7 @@ export default function DocumentsPage() {
                                 </Select>
                             </div>
 
-                            <div className="w-[180px]">
-                                <DatePicker
-                                    value={dateFrom}
-                                    onChange={setDateFrom}
-                                />
-                            </div>
-
-                            <div className="w-[180px]">
-                                <DatePicker
-                                    value={dateTo}
-                                    onChange={setDateTo}
-                                />
-                            </div>
+                            <DateFilter />
 
                             <Button
                                 variant={
