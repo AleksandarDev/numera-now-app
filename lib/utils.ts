@@ -14,6 +14,9 @@ export function convertAmountToMiliunits(amount: number) {
     return Math.round(amount * 1000);
 }
 
+// Tolerance for floating point comparisons in currency amounts
+export const AMOUNT_TOLERANCE = 0.01;
+
 export function formatCurrency(value: number) {
     return Intl.NumberFormat('en-us', {
         style: 'currency',
