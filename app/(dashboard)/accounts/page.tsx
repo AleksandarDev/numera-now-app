@@ -15,6 +15,7 @@ import {
     ChevronRight,
     Download,
     Expand,
+    EyeOff,
     Loader2,
     Minimize2,
     MoreHorizontal,
@@ -40,6 +41,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import type { accounts as accountsSchema } from '@/db/schema';
 import { YearClosingWizard } from '@/features/accounting-periods/components/year-closing-wizard';
 import { useYearClosingWizard } from '@/features/accounting-periods/hooks/use-year-closing-wizard';
@@ -201,20 +204,21 @@ function AccountsDataTable() {
                                 className="max-w-sm"
                             />
 
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
+                            <div className="flex items-center space-x-2 px-3 rounded-md border bg-background">
+                                <EyeOff className="size-4 text-muted-foreground shrink-0" />
+                                <Label
+                                    htmlFor="show-closed"
+                                    className="text-sm font-medium leading-none text-nowrap"
+                                >
+                                    Closed accounts
+                                </Label>
+                                <Switch
+                                    id="show-closed"
                                     checked={showClosed}
                                     onCheckedChange={(checked) =>
                                         setShowClosed(checked === true)
                                     }
-                                    id="show-closed"
                                 />
-                                <label
-                                    htmlFor="show-closed"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Show closed accounts
-                                </label>
                             </div>
                         </div>
 
@@ -284,35 +288,20 @@ function AccountsDataTable() {
                                             }}
                                         >
                                             <div
-                                                className="border-b group hover:bg-neutral-100 cursor-pointer"
+                                                className="border-b group hover:bg-neutral-100 w-full"
                                                 style={{
-                                                    paddingLeft:
-                                                        depth * 24 +
-                                                        (accountHasChildren
-                                                            ? 0
-                                                            : 24), // Add indent for leaf nodes
-                                                }}
-                                                onClick={(e) => {
-                                                    // Don't trigger row click if clicking on a button or action
-                                                    const target = e.target as HTMLElement;
-                                                    if (
-                                                        target.closest('button') ||
-                                                        target.closest('[role="menuitem"]')
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    onOpen(account.id);
+                                                    paddingLeft: depth * 20,
                                                 }}
                                             >
-                                                <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-4 py-2 gap-1">
+                                                <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-2 sm:px-4 py-2 gap-1">
                                                     {/* Expand/Collapse Button */}
-                                                    <div className="w-8 flex justify-center">
+                                                    <div className="w-10 flex justify-center">
                                                         {accountHasChildren &&
-                                                            code && (
+                                                            code ? (
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 w-8 p-0 hover:bg-neutral-200"
+                                                                    className="h-10 w-10 p-0 hover:bg-neutral-200"
                                                                     onClick={() =>
                                                                         toggleExpand(
                                                                             code,
@@ -325,84 +314,94 @@ function AccountsDataTable() {
                                                                         <ChevronRight className="h-5 w-5" />
                                                                     )}
                                                                 </Button>
+                                                            ) : (
+                                                                <span className="w-10" />
                                                             )}
                                                     </div>
 
-                                                    {/* Account Info */}
-                                                    <Stack>
-                                                        <div className="flex items-center gap-2">
-                                                            <Typography
-                                                                title={name}
-                                                                level="body1"
-                                                                className="line-clamp-1"
-                                                                style={{
-                                                                    fontWeight:
-                                                                        accountHasChildren
-                                                                            ? 'bold'
-                                                                            : 'normal',
-                                                                }}
-                                                            >
-                                                                {name}
-                                                            </Typography>
-                                                            {!account.isOpen && (
-                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-800 text-red-100 rounded-full">
-                                                                    Closed
-                                                                </span>
-                                                            )}
-                                                            {account.isReadOnly && (
-                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-800 rounded-full">
-                                                                    Read-only
-                                                                </span>
-                                                            )}
-                                                            {account.accountClass && (
-                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                                                    {
-                                                                        ACCOUNT_CLASS_LABELS[
-                                                                            account
-                                                                                .accountClass
-                                                                        ]
-                                                                    }
-                                                                </span>
-                                                            )}
-                                                            {doubleEntryMode &&
-                                                                !account.accountClass && (
-                                                                    <span
-                                                                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
-                                                                        title="Account class is required for double-entry mode"
-                                                                    >
-                                                                        ⚠️ No
-                                                                        Class
+                                                    {/* Account Info - clickable button */}
+                                                    <button
+                                                        type="button"
+                                                        className="text-left cursor-pointer bg-transparent border-none p-0"
+                                                        onClick={() =>
+                                                            onOpen(account.id)
+                                                        }
+                                                    >
+                                                        <Stack>
+                                                            <div className="flex items-center gap-2">
+                                                                <Typography
+                                                                    title={name}
+                                                                    level="body1"
+                                                                    className="line-clamp-1"
+                                                                    style={{
+                                                                        fontWeight:
+                                                                            accountHasChildren
+                                                                                ? 'bold'
+                                                                                : 'normal',
+                                                                    }}
+                                                                >
+                                                                    {name}
+                                                                </Typography>
+                                                                {!account.isOpen && (
+                                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-800 text-red-100 rounded-full">
+                                                                        Closed
                                                                     </span>
                                                                 )}
-                                                            {account.accountType ===
-                                                                'credit' && (
-                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                                                                    Credit
-                                                                </span>
-                                                            )}
-                                                            {account.accountType ===
-                                                                'debit' && (
-                                                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
-                                                                    Debit
-                                                                </span>
-                                                            )}
-                                                            {account.hasInvalidConfig && (
-                                                                <span
-                                                                    className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
-                                                                    title="Account is open but one or more parent accounts are closed"
-                                                                >
-                                                                    ⚠️ Invalid
-                                                                    Config
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <Typography
-                                                            level="body2"
-                                                            mono
-                                                        >
-                                                            {code}
-                                                        </Typography>
-                                                    </Stack>
+                                                                {account.isReadOnly && (
+                                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-800 rounded-full">
+                                                                        Read-only
+                                                                    </span>
+                                                                )}
+                                                                {account.accountClass && (
+                                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                                        {
+                                                                            ACCOUNT_CLASS_LABELS[
+                                                                                account
+                                                                                    .accountClass
+                                                                            ]
+                                                                        }
+                                                                    </span>
+                                                                )}
+                                                                {doubleEntryMode &&
+                                                                    !account.accountClass && (
+                                                                        <span
+                                                                            className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
+                                                                            title="Account class is required for double-entry mode"
+                                                                        >
+                                                                            ⚠️ No
+                                                                            Class
+                                                                        </span>
+                                                                    )}
+                                                                {account.accountType ===
+                                                                    'credit' && (
+                                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                                                                        Credit
+                                                                    </span>
+                                                                )}
+                                                                {account.accountType ===
+                                                                    'debit' && (
+                                                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                                                                        Debit
+                                                                    </span>
+                                                                )}
+                                                                {account.hasInvalidConfig && (
+                                                                    <span
+                                                                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
+                                                                        title="Account is open but one or more parent accounts are closed"
+                                                                    >
+                                                                        ⚠️ Invalid
+                                                                        Config
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <Typography
+                                                                level="body2"
+                                                                mono
+                                                            >
+                                                                {code}
+                                                            </Typography>
+                                                        </Stack>
+                                                    </button>
 
                                                     {/* Balance */}
                                                     <div className="text-right min-w-[100px] px-2">
