@@ -6,10 +6,12 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import { Loader2, Plus } from 'lucide-react';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { BankIntegrationCard } from '@/components/bank-integration-card';
 import { DataTable } from '@/components/data-table';
+import { DataTableSearch } from '@/components/data-table-search';
 import { DocumentTypesSettingsCard } from '@/components/document-types-settings-card';
 import { OpenFinancesSettingsCard } from '@/components/open-finances-settings-card';
 import { ReconciliationSettingsCard } from '@/components/reconciliation-settings-card';
@@ -116,6 +118,7 @@ function TagsSection() {
     const deleteTags = useBulkDeleteTags();
     const tagsQuery = useGetTags();
     const tags = tagsQuery.data || [];
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
     const isDisabled = tagsQuery.isLoading || deleteTags.isPending;
 
@@ -127,10 +130,16 @@ function TagsSection() {
                     <Plus className="size-4 mr-2" />
                     Add new
                 </Button>
-            </CardHeader>
+                </CardHeader>
             <CardContent>
+                <div className="mb-4 flex items-center">
+                    <DataTableSearch
+                        filterKey="name"
+                        columnFilters={columnFilters}
+                        onColumnFiltersChange={setColumnFilters}
+                    />
+                </div>
                 <DataTable
-                    filterKey="name"
                     paginationKey="settingsTags"
                     columns={tagColumns}
                     data={tags}
@@ -139,6 +148,8 @@ function TagsSection() {
                         deleteTags.mutate({ ids });
                     }}
                     disabled={isDisabled}
+                    columnFilters={columnFilters}
+                    onColumnFiltersChange={setColumnFilters}
                 />
             </CardContent>
         </Card>

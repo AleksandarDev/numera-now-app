@@ -6,11 +6,13 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import { Archive, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountFilter } from '@/components/account-filter';
 import { DateFilter } from '@/components/date-filter';
+import { DataTableSearch } from '@/components/data-table-search';
 import { ImportCard } from '@/components/import/import-card';
 import { ImportButton } from '@/components/import-button';
 import { Button } from '@/components/ui/button';
@@ -311,6 +313,7 @@ export default function TransactionsPage() {
     const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
     const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
     const newTransaction = useNewTransaction();
 
@@ -399,6 +402,13 @@ export default function TransactionsPage() {
 
                 <CardContent>
                     <div className="flex flex-col items-stretch gap-y-2 md:flex-row md:gap-x-2 md:gap-y-0">
+                        <DataTableSearch
+                            filterKey="payeeCustomerName"
+                            placeholder="Filter transactions..."
+                            columnFilters={columnFilters}
+                            onColumnFiltersChange={setColumnFilters}
+                            className="w-full md:w-[220px]"
+                        />
                         <AccountFilter />
                         <DateFilter />
                     </div>
@@ -411,6 +421,8 @@ export default function TransactionsPage() {
                     >
                         <TransactionsDataTable
                             bulkDeleteMode={bulkDeleteMode}
+                            columnFilters={columnFilters}
+                            onColumnFiltersChange={setColumnFilters}
                         />
                     </Suspense>
                 </CardContent>

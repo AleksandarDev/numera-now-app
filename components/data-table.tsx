@@ -17,7 +17,6 @@ import { ChevronLeft, ChevronRight, Trash } from 'lucide-react';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -32,8 +31,6 @@ import { cn } from '@/lib/utils';
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
-    filterKey?: string;
-    filterPlaceholder?: string;
     onDelete?: (rows: Row<TData>[]) => void;
     onRowClick?: (row: Row<TData>) => void;
     disabled?: boolean;
@@ -43,13 +40,17 @@ interface DataTableProps<TData, TValue> {
     rowHeight?: number;
     paginationKey?: string;
     autoResetPageIndex?: boolean;
+    columnFilters?: ColumnFiltersState;
+    onColumnFiltersChange?: (
+        updater:
+            | ColumnFiltersState
+            | ((prev: ColumnFiltersState) => ColumnFiltersState),
+    ) => void;
 }
 
 export function DataTable<TData, TValue>({
     columns,
     data,
-    filterKey,
-    filterPlaceholder,
     onDelete,
     onRowClick,
     disabled,
@@ -59,6 +60,8 @@ export function DataTable<TData, TValue>({
     rowHeight = 44.5,
     paginationKey,
     autoResetPageIndex = true,
+    columnFilters: columnFiltersProp,
+    onColumnFiltersChange,
 }: DataTableProps<TData, TValue>) {
     const [ConfirmationDialog, confirm] = useConfirm(
         'Are you sure?',
@@ -69,9 +72,12 @@ export function DataTable<TData, TValue>({
     const tableHeaderRef = React.useRef<HTMLTableSectionElement>(null);
     const paginationRef = React.useRef<HTMLDivElement>(null);
     const [sorting, setSorting] = React.useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] =
+    const [internalColumnFilters, setInternalColumnFilters] =
         React.useState<ColumnFiltersState>([]);
     const [rowSelection, setRowSelection] = React.useState({});
+    const columnFilters = columnFiltersProp ?? internalColumnFilters;
+    const handleColumnFiltersChange =
+        onColumnFiltersChange ?? setInternalColumnFilters;
     const pageQueryKey = paginationKey ? `${paginationKey}Page` : 'page';
     const pageSizeQueryKey = paginationKey
         ? `${paginationKey}PageSize`
@@ -160,7 +166,7 @@ export function DataTable<TData, TValue>({
         autoResetPageIndex,
         onSortingChange: setSorting,
         getSortedRowModel: getSortedRowModel(),
-        onColumnFiltersChange: setColumnFilters,
+        onColumnFiltersChange: handleColumnFiltersChange,
         getFilteredRowModel: getFilteredRowModel(),
         onRowSelectionChange: setRowSelection,
         onPaginationChange: handlePaginationChange,
@@ -184,27 +190,9 @@ export function DataTable<TData, TValue>({
     return (
         <div>
             <ConfirmationDialog />
-            <div className="flex items-center py-4">
-                {filterKey && (
-                    <Input
-                        placeholder={
-                            filterPlaceholder ?? `Filter ${filterKey}...`
-                        }
-                        value={
-                            (table
-                                .getColumn(filterKey)
-                                ?.getFilterValue() as string) ?? ''
-                        }
-                        onChange={(event) =>
-                            table
-                                .getColumn(filterKey)
-                                ?.setFilterValue(event.target.value)
-                        }
-                        className="max-w-sm"
-                    />
-                )}
-                {onDelete &&
-                    table.getFilteredSelectedRowModel().rows.length > 0 && (
+            {onDelete &&
+                table.getFilteredSelectedRowModel().rows.length > 0 && (
+                    <div className="flex items-center py-4">
                         <Button
                             disabled={disabled}
                             size="sm"
@@ -226,8 +214,8 @@ export function DataTable<TData, TValue>({
                             Delete (
                             {table.getFilteredSelectedRowModel().rows.length})
                         </Button>
-                    )}
-            </div>
+                    </div>
+                )}
             <div ref={tableWrapperRef} className="rounded-md border">
                 <Table>
                     <TableHeader ref={tableHeaderRef}>

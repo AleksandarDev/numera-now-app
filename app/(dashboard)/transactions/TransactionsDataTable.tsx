@@ -1,6 +1,6 @@
 'use client';
 
-import type { Row } from '@tanstack/react-table';
+import type { ColumnFiltersState, Row } from '@tanstack/react-table';
 import { DataTable } from '@/components/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBulkDeleteTransactions } from '@/features/transactions/api/use-bulk-delete-transactions';
@@ -11,10 +11,18 @@ import { hasValidationIssues } from './validation';
 
 type TransactionsDataTableProps = {
     bulkDeleteMode?: boolean;
+    columnFilters?: ColumnFiltersState;
+    onColumnFiltersChange?: (
+        updater:
+            | ColumnFiltersState
+            | ((prev: ColumnFiltersState) => ColumnFiltersState),
+    ) => void;
 };
 
 export function TransactionsDataTable({
     bulkDeleteMode = false,
+    columnFilters,
+    onColumnFiltersChange,
 }: TransactionsDataTableProps) {
     const transactionsQuery = useGetTransactions();
     const bulkDeleteMutation = useBulkDeleteTransactions();
@@ -52,8 +60,6 @@ export function TransactionsDataTable({
 
     return (
         <DataTable
-            filterKey="payeeCustomerName"
-            filterPlaceholder="Filter transactions..."
             autoPageSize
             rowHeight={48}
             paginationKey="transactions"
@@ -74,6 +80,8 @@ export function TransactionsDataTable({
             onDelete={bulkDeleteMode ? handleBulkDelete : undefined}
             onRowClick={bulkDeleteMode ? undefined : handleRowClick}
             getRowClassName={getRowClassName}
+            columnFilters={columnFilters}
+            onColumnFiltersChange={onColumnFiltersChange}
         />
     );
 }
