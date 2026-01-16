@@ -20,6 +20,8 @@ interface DashboardStore extends DashboardLayout {
     setWidgets: (widgets: WidgetConfig[]) => void;
     isInitialized: boolean;
     setInitialized: (initialized: boolean) => void;
+    isEditMode: boolean;
+    toggleEditMode: () => void;
 }
 
 /**
@@ -82,11 +84,17 @@ const defaultLayout: DashboardLayout = {
 export const useDashboardStore = create<DashboardStore>()((set) => ({
     widgets: defaultLayout.widgets,
     isInitialized: false,
+    isEditMode: false,
 
     setWidgets: (widgets) =>
         set({
             widgets,
         }),
+
+    toggleEditMode: () =>
+        set((state) => ({
+            isEditMode: !state.isEditMode,
+        })),
 
     setInitialized: (initialized) =>
         set({

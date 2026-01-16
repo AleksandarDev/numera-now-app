@@ -23,7 +23,7 @@ import { LegacyWidgetsAccordion } from './legacy-widgets-accordion';
 import { MigrationIndicator } from './migration-indicator';
 
 export function DashboardGrid() {
-    const { widgets, reorderWidgets } = useDashboardStore();
+    const { widgets, reorderWidgets, isEditMode } = useDashboardStore();
 
     // Separate legacy and new widgets
     const legacyWidgets = widgets.filter(
@@ -67,7 +67,7 @@ export function DashboardGrid() {
 
     return (
         <DndContext
-            sensors={sensors}
+            sensors={isEditMode ? sensors : []}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
         >
