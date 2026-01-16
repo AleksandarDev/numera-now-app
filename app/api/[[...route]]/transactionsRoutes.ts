@@ -32,6 +32,7 @@ import {
     transactions,
     transactionTags,
 } from '@/db/schema';
+import { AMOUNT_TOLERANCE } from '@/lib/utils';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const logDebug = (...args: unknown[]) => {
@@ -2297,7 +2298,7 @@ const app = new Hono()
                     .filter((s) => s.creditAccountId)
                     .reduce((sum, s) => sum + s.amount, 0);
 
-                if (Math.abs(totalDebits - totalCredits) > 0.01) {
+                if (Math.abs(totalDebits - totalCredits) > AMOUNT_TOLERANCE) {
                     return ctx.json(
                         {
                             error: 'In double-entry mode, total debits must equal total credits in split transactions.',
@@ -2602,7 +2603,7 @@ const app = new Hono()
                 0,
             );
             if (
-                Math.abs(totalSplitAmount - existingTransaction.amount) > 0.01
+                Math.abs(totalSplitAmount - existingTransaction.amount) > AMOUNT_TOLERANCE
             ) {
                 return ctx.json(
                     {
@@ -2621,7 +2622,7 @@ const app = new Hono()
                     .filter((s) => s.creditAccountId)
                     .reduce((sum, s) => sum + s.amount, 0);
 
-                if (Math.abs(totalDebits - totalCredits) > 0.01) {
+                if (Math.abs(totalDebits - totalCredits) > AMOUNT_TOLERANCE) {
                     return ctx.json(
                         {
                             error: 'In double-entry mode, total debits must equal total credits in split transactions.',

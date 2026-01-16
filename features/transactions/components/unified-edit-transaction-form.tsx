@@ -22,7 +22,7 @@ import { TagMultiSelect } from '@/features/tags/components/tag-multi-select';
 import { useGetSuggestedAccounts } from '@/features/transactions/api/use-get-suggested-accounts';
 import { useGetSuggestedCustomers } from '@/features/transactions/api/use-get-suggested-customers';
 
-import { cn } from '@/lib/utils';
+import { AMOUNT_TOLERANCE, cn } from '@/lib/utils';
 
 // Types for split entries
 type SplitEntry = {
@@ -290,7 +290,7 @@ export const UnifiedEditTransactionForm = ({
     );
 
     const originalAmount = parseFloat(amount || '0');
-    const isSplitBalanced = Math.abs(splitTotal - originalAmount) < 0.01;
+    const isSplitBalanced = Math.abs(splitTotal - originalAmount) < AMOUNT_TOLERANCE;
 
     // Split handlers
     const handleAddSplitEntry = () => {
