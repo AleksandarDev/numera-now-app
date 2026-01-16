@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useBulkDeleteCustomers } from '@/features/customers/api/use-bulk-delete-customers';
 import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
+import { useOpenCustomer } from '@/features/customers/hooks/use-open-customer';
 import { useConfirm } from '@/hooks/use-confirm';
 import { columns, type ResponseType, selectColumn } from './columns';
 
@@ -32,6 +33,7 @@ const CustomersPage = () => {
         'This action cannot be undone.',
     );
     const newCustomer = useNewCustomer();
+    const { onOpen } = useOpenCustomer();
     const customersQuery = useGetCustomers();
     const bulkDeleteMutation = useBulkDeleteCustomers();
     const customers = customersQuery.data || [];
@@ -44,6 +46,10 @@ const CustomersPage = () => {
 
         const ids = rows.map((row) => row.original.id);
         bulkDeleteMutation.mutate({ ids });
+    };
+
+    const handleRowClick = (row: Row<ResponseType>) => {
+        onOpen(row.original.id);
     };
 
     // Add select column when in bulk delete mode
@@ -105,6 +111,7 @@ const CustomersPage = () => {
                         columns={tableColumns}
                         data={customers}
                         onDelete={bulkDeleteMode ? handleBulkDelete : undefined}
+                        onRowClick={bulkDeleteMode ? undefined : handleRowClick}
                         disabled={isDisabled}
                     />
                 </CardContent>
