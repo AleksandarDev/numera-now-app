@@ -325,7 +325,7 @@ export const EditTransactionSheet = () => {
         <>
             <ConfirmDialog />
             <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-                <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg overflow-hidden">
+                <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-xl overflow-hidden">
                     <div className="px-6 pt-6">
                         <SheetHeader>
                             <SheetTitle className="flex items-center gap-2">

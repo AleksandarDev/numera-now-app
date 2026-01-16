@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight, Lock, Plus, Split, Trash, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
 import { AmountInput } from '@/components/amount-input';
 import { CustomerSelect } from '@/components/customer-select';
@@ -607,11 +607,14 @@ export const UnifiedEditTransactionForm = ({
 
             {/* Split UI - Show when in split mode */}
             {isSplitMode && (
-                <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">
+                        <div className="flex">
+                            <Split className="h-4 w-4 mr-2" />
+                            <h3 className="text-sm font-semibold">
                             Split Transaction
                         </h3>
+                        </div>
                         <Button
                             type="button"
                             variant="ghost"
@@ -623,24 +626,12 @@ export const UnifiedEditTransactionForm = ({
                         </Button>
                     </div>
 
-                    <div className="text-sm text-muted-foreground">
-                        Divide this transaction into multiple parts with
-                        different accounts. The total must equal{' '}
-                        {originalAmount.toFixed(2)}.
-                    </div>
-
                     {/* Split Entries */}
-                    <div className="space-y-3">
+                    <div className='space-y-2'>
                         {splitEntries.map((entry, index) => (
-                            <div
-                                key={entry.id}
-                                className="rounded-md border p-3 bg-background space-y-2"
-                            >
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">
-                                        Split {index + 1}
-                                    </span>
-                                    {splitEntries.length > 2 && (
+                            <Fragment key={entry.id}>
+                                                                {splitEntries.length > 2 && (
+                                                                    <div className="flex justify-end mt-1">
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -653,15 +644,14 @@ export const UnifiedEditTransactionForm = ({
                                         >
                                             <X className="h-3 w-3" />
                                         </Button>
+                                        </div>
                                     )}
-                                </div>
-
+                            <div
+                                className="rounded-md border p-2 bg-background space-y-2"
+                            >
                                 {/* Credit and Debit accounts */}
-                                <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-start">
+                                <div className="grid grid-cols-[2fr_auto_1fr_auto_2fr] gap-2 items-start">
                                     <div className="space-y-1">
-                                        <Label className="text-xs">
-                                            Credit
-                                        </Label>
                                         <AccountSelect
                                             value={entry.creditAccountId}
                                             onChange={(value) =>
@@ -689,10 +679,37 @@ export const UnifiedEditTransactionForm = ({
                                         )}
                                     </div>
 
-                                    <ChevronRight className="size-3 opacity-60 mt-7" />
+                                    <ChevronRight className="size-4 opacity-60 mt-3 shrink-0" />
+
+                                {/* Amount */}
+                                <div className="space-y-1">
+                                    <AmountInput
+                                        value={entry.amount}
+                                        onChange={(value) =>
+                                            handleUpdateSplitEntry(
+                                                index,
+                                                'amount',
+                                                value ?? '',
+                                            )
+                                        }
+                                        disabled={isPending}
+                                        placeholder="0.00"
+                                        hideSign
+                                    />
+                                    {errors[`splitEntries.${index}.amount`] && (
+                                        <p className="text-xs font-medium text-destructive">
+                                            {
+                                                errors[
+                                                    `splitEntries.${index}.amount`
+                                                ]
+                                            }
+                                        </p>
+                                    )}
+                                </div>
+
+                                                                    <ChevronRight className="size-4 opacity-60 mt-3 shrink-0" />
 
                                     <div className="space-y-1">
-                                        <Label className="text-xs">Debit</Label>
                                         <AccountSelect
                                             value={entry.debitAccountId}
                                             onChange={(value) =>
@@ -721,33 +738,6 @@ export const UnifiedEditTransactionForm = ({
                                     </div>
                                 </div>
 
-                                {/* Amount */}
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Amount</Label>
-                                    <AmountInput
-                                        value={entry.amount}
-                                        onChange={(value) =>
-                                            handleUpdateSplitEntry(
-                                                index,
-                                                'amount',
-                                                value ?? '',
-                                            )
-                                        }
-                                        disabled={isPending}
-                                        placeholder="0.00"
-                                        hideSign
-                                    />
-                                    {errors[`splitEntries.${index}.amount`] && (
-                                        <p className="text-xs font-medium text-destructive">
-                                            {
-                                                errors[
-                                                    `splitEntries.${index}.amount`
-                                                ]
-                                            }
-                                        </p>
-                                    )}
-                                </div>
-
                                 {/* Notes (Optional) */}
                                 <div className="space-y-1">
                                     <Label className="text-xs">
@@ -768,6 +758,7 @@ export const UnifiedEditTransactionForm = ({
                                     />
                                 </div>
                             </div>
+                            </Fragment>
                         ))}
 
                         <Button

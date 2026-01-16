@@ -75,7 +75,7 @@ export const NewTransactionSheet = () => {
 
     return (
         <Sheet open={isOpen || isPending} onOpenChange={onClose}>
-            <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-lg">
+            <SheetContent className="flex flex-col h-full p-0 max-w-xl lg:max-w-xl">
                 <div className="px-6 pt-6">
                     <SheetHeader>
                         <SheetTitle>New Transaction</SheetTitle>
