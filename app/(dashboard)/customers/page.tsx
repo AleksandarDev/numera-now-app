@@ -6,10 +6,11 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
-import type { Row } from '@tanstack/react-table';
+import type { ColumnFiltersState, Row } from '@tanstack/react-table';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { DataTable } from '@/components/data-table';
+import { DataTableSearch } from '@/components/data-table-search';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -27,6 +28,7 @@ import { columns, type ResponseType, selectColumn } from './columns';
 
 const CustomersPage = () => {
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [ConfirmDialog, confirm] = useConfirm(
         'Delete customers?',
         'This action cannot be undone.',
@@ -99,13 +101,21 @@ const CustomersPage = () => {
                     </div>
                 </CardHeader>
                 <CardContent>
+                    <div className="mb-4 flex items-center">
+                        <DataTableSearch
+                            filterKey="name"
+                            columnFilters={columnFilters}
+                            onColumnFiltersChange={setColumnFilters}
+                        />
+                    </div>
                     <DataTable
-                        filterKey="name"
                         paginationKey="customers"
                         columns={tableColumns}
                         data={customers}
                         onDelete={bulkDeleteMode ? handleBulkDelete : undefined}
                         disabled={isDisabled}
+                        columnFilters={columnFilters}
+                        onColumnFiltersChange={setColumnFilters}
                     />
                 </CardContent>
             </Card>

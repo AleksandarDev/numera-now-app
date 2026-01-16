@@ -1,10 +1,11 @@
 'use client';
 
-import type { Row } from '@tanstack/react-table';
+import type { ColumnFiltersState, Row } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table';
+import { DataTableSearch } from '@/components/data-table-search';
 import { DatePicker } from '@/components/date-picker';
 import { DocumentDropzone } from '@/components/document-dropzone';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ export default function DocumentsPage() {
     const [showUnattachedOnly, setShowUnattachedOnly] = useState(false);
     const [dateFrom, setDateFrom] = useState<Date | undefined>();
     const [dateTo, setDateTo] = useState<Date | undefined>();
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
     const { onOpen: openTransaction } = useOpenTransaction();
 
@@ -144,6 +146,12 @@ export default function DocumentsPage() {
                     {/* Filters */}
                     <div className="mb-6 space-y-4">
                         <div className="flex flex-wrap gap-4">
+                            <DataTableSearch
+                                filterKey="fileName"
+                                placeholder="Search documents..."
+                                columnFilters={columnFilters}
+                                onColumnFiltersChange={setColumnFilters}
+                            />
                             <div className="w-[180px]">
                                 <Label className="sr-only">Document Type</Label>
                                 <Select
@@ -200,8 +208,6 @@ export default function DocumentsPage() {
 
                     {/* Documents Table with Pagination */}
                     <DataTable
-                        filterKey="fileName"
-                        filterPlaceholder="Search documents..."
                         paginationKey="documents"
                         autoResetPageIndex={false}
                         columns={tableColumns}
@@ -209,6 +215,8 @@ export default function DocumentsPage() {
                         disabled={isInitialLoading || isDeleting}
                         loading={isDeleting}
                         onRowClick={handleRowClick}
+                        columnFilters={columnFilters}
+                        onColumnFiltersChange={setColumnFilters}
                     />
                 </CardContent>
             </Card>
