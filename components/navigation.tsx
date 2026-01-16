@@ -1,7 +1,16 @@
 'use client';
 
 import { Row } from '@signalco/ui-primitives/Row';
-import { Menu } from 'lucide-react';
+import {
+    ArrowLeftRight,
+    BarChart3,
+    FileText,
+    Landmark,
+    LayoutDashboard,
+    Menu,
+    Settings,
+    Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -24,32 +33,39 @@ const routes = [
     {
         href: '/',
         label: 'Overview',
+        icon: LayoutDashboard,
     },
     {
         href: '/transactions',
         label: 'Transactions',
+        icon: ArrowLeftRight,
     },
     {
         href: '/documents',
         label: 'Documents',
+        icon: FileText,
     },
     {
         href: '/customers',
         label: 'Customers',
+        icon: Users,
     },
     {
         href: '/accounts',
         label: 'Accounts',
+        icon: Landmark,
     },
     {
         href: '/reports',
         label: 'Reports',
+        icon: BarChart3,
     },
 ];
 
 const settingsRoute = {
     href: '/settings',
     label: 'Settings',
+    icon: Settings,
 };
 
 const mobileRoutes = [routes[0], routes[1]]; // Only show Overview and Transactions on mobile
@@ -109,6 +125,10 @@ export const Navigation = () => {
                                         className="w-full justify-start"
                                     >
                                         <span className="flex items-center gap-2">
+                                            <route.icon
+                                                className="size-4"
+                                                aria-hidden="true"
+                                            />
                                             {route.label}
                                             {route.href === '/customers' &&
                                                 incompleteCount !== undefined &&
@@ -142,6 +162,7 @@ export const Navigation = () => {
                         href={route.href}
                         query={searchParams.toString()}
                         label={route.label}
+                        icon={route.icon}
                         isActive={pathname === route.href}
                         badge={
                             route.href === '/customers'
@@ -164,6 +185,7 @@ export const Navigation = () => {
                     href={route.href}
                     query={searchParams.toString()}
                     label={route.label}
+                    icon={route.icon}
                     isActive={pathname === route.href}
                     badge={
                         route.href === '/customers'
@@ -188,6 +210,7 @@ export const SettingsNav = () => {
                 href={settingsRoute.href}
                 query={searchParams.toString()}
                 label={settingsRoute.label}
+                icon={settingsRoute.icon}
                 isActive={pathname === settingsRoute.href}
             />
         </div>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -7,11 +8,19 @@ type Props = {
     href: string;
     query?: string;
     label: string;
+    icon?: LucideIcon;
     isActive?: boolean;
     badge?: number;
 };
 
-export const NavButton = ({ href, query, label, isActive, badge }: Props) => {
+export const NavButton = ({
+    href,
+    query,
+    label,
+    icon: Icon,
+    isActive,
+    badge,
+}: Props) => {
     return (
         <Link
             href={{
@@ -28,6 +37,7 @@ export const NavButton = ({ href, query, label, isActive, badge }: Props) => {
                 )}
             >
                 <span className="flex items-center gap-2">
+                    {Icon && <Icon className="size-4" aria-hidden="true" />}
                     {label}
                     {badge !== undefined && badge > 0 && (
                         <Badge
