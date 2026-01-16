@@ -6,7 +6,11 @@ import { useDashboardStore } from '@/lib/widgets/store';
 import { WidgetStoreButton } from './widget-store-button';
 
 export function DashboardControls() {
-    const { resetToDefault } = useDashboardStore();
+    const { resetToDefault, isEditMode } = useDashboardStore();
+
+    if (!isEditMode) {
+        return null;
+    }
 
     return (
         <div className="mb-6 flex items-center justify-between">

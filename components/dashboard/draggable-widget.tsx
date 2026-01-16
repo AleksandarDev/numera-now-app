@@ -18,7 +18,7 @@ interface DraggableWidgetProps {
 
 export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
     const [isConfigOpen, setIsConfigOpen] = useState(false);
-    const { removeWidget } = useDashboardStore();
+    const { removeWidget, isEditMode } = useDashboardStore();
     const definition = getWidgetDefinition(widget.type);
 
     const {
@@ -54,8 +54,9 @@ export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
                     isLegacy && 'opacity-75',
                 )}
             >
-                {/* Widget Control Bar */}
-                <div className="absolute -top-10 left-0 right-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm px-2 py-1">
+                {/* Widget Control Bar - only shown in edit mode */}
+                {isEditMode && (
+                    <div className="absolute -top-10 left-0 right-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm px-2 py-1">
                     <div className="flex items-center gap-2">
                         <Button
                             variant="ghost"
@@ -93,10 +94,11 @@ export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
-                </div>
+                    </div>
+                )}
 
                 {/* Widget Content */}
-                <div className="pt-2">
+                <div className={isEditMode ? "pt-2" : ""}>
                     <WidgetComponent config={widget} />
                 </div>
             </div>

@@ -14,7 +14,7 @@ import { useDashboardStore } from '@/lib/widgets/store';
 export function DashboardSync() {
     const { data: dashboardData, isLoading } = useGetDashboardLayout();
     const { mutate: updateLayout } = useUpdateDashboardLayout();
-    const { widgets, setWidgets, isInitialized, setInitialized } =
+    const { widgets, setWidgets, isInitialized, setInitialized, isEditMode } =
         useDashboardStore();
     const isFirstLoad = useRef(true);
     const hasLoadedFromDb = useRef(false);
@@ -51,6 +51,11 @@ export function DashboardSync() {
             return;
         }
 
+        // Don't save changes when not in edit mode
+        if (!isEditMode) {
+            return;
+        }
+
         // Check if widgets have actually changed
         const currentWidgetsJson = JSON.stringify(widgets);
         if (currentWidgetsJson === previousWidgetsRef.current) {
@@ -67,7 +72,7 @@ export function DashboardSync() {
         }, 1000); // Debounce for 1 second
 
         return () => clearTimeout(timeoutId);
-    }, [widgets, isInitialized, updateLayout]);
+    }, [widgets, isInitialized, isEditMode, updateLayout]);
 
     return null;
 }
