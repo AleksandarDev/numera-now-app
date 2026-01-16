@@ -2483,6 +2483,333 @@ const app = new Hono()
             });
         },
     )
+    // Split an existing transaction
+    .post(
+        '/:id/split',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                splits: z
+                    .array(
+                        z.object({
+                            amount: z.number(),
+                            accountId: z.string().optional(),
+                            creditAccountId: z.string().optional(),
+                            debitAccountId: z.string().optional(),
+                            notes: z.string().optional(),
+                        }),
+                    )
+                    .min(2, 'At least 2 splits are required'),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+            const { splits } = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Get the existing transaction
+            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+            const [existingTransaction] = await db
+                .select({
+                    id: transactions.id,
+                    date: transactions.date,
+                    payee: transactions.payee,
+                    payeeCustomerId: transactions.payeeCustomerId,
+                    amount: transactions.amount,
+                    notes: transactions.notes,
+                    accountId: transactions.accountId,
+                    creditAccountId: transactions.creditAccountId,
+                    debitAccountId: transactions.debitAccountId,
+                    status: transactions.status,
+                    splitGroupId: transactions.splitGroupId,
+                    splitType: transactions.splitType,
+                })
+                .from(transactions)
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    creditAccounts,
+                    eq(transactions.creditAccountId, creditAccounts.id),
+                )
+                .leftJoin(
+                    debitAccounts,
+                    eq(transactions.debitAccountId, debitAccounts.id),
+                )
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        or(
+                            eq(accounts.userId, auth.userId),
+                            eq(creditAccounts.userId, auth.userId),
+                            eq(debitAccounts.userId, auth.userId),
+                            and(
+                                isNull(transactions.accountId),
+                                isNull(transactions.creditAccountId),
+                                isNull(transactions.debitAccountId),
+                                eq(transactions.statusChangedBy, auth.userId),
+                            ),
+                        ),
+                    ),
+                );
+
+            if (!existingTransaction) {
+                return ctx.json({ error: 'Transaction not found.' }, 404);
+            }
+
+            // Check if transaction is already split
+            if (existingTransaction.splitGroupId) {
+                return ctx.json(
+                    { error: 'Transaction is already part of a split group.' },
+                    400,
+                );
+            }
+
+            // Check if transaction is reconciled or completed
+            if (
+                existingTransaction.status === 'reconciled' ||
+                existingTransaction.status === 'completed'
+            ) {
+                return ctx.json(
+                    {
+                        error: 'Cannot split reconciled or completed transactions.',
+                    },
+                    400,
+                );
+            }
+
+            // Check if double-entry mode is enabled
+            const [userSettings] = await db
+                .select()
+                .from(settings)
+                .where(eq(settings.userId, auth.userId));
+
+            const doubleEntryMode = userSettings?.doubleEntryMode ?? false;
+
+            // Validate split amounts equal original amount
+            const totalSplitAmount = splits.reduce(
+                (sum, s) => sum + s.amount,
+                0,
+            );
+            if (
+                Math.abs(totalSplitAmount - existingTransaction.amount) > 0.01
+            ) {
+                return ctx.json(
+                    {
+                        error: 'Total split amounts must equal the original transaction amount.',
+                    },
+                    400,
+                );
+            }
+
+            // In double-entry mode, validate that total debits equal total credits
+            if (doubleEntryMode) {
+                const totalDebits = splits
+                    .filter((s) => s.debitAccountId)
+                    .reduce((sum, s) => sum + s.amount, 0);
+                const totalCredits = splits
+                    .filter((s) => s.creditAccountId)
+                    .reduce((sum, s) => sum + s.amount, 0);
+
+                if (Math.abs(totalDebits - totalCredits) > 0.01) {
+                    return ctx.json(
+                        {
+                            error: 'In double-entry mode, total debits must equal total credits in split transactions.',
+                        },
+                        400,
+                    );
+                }
+            }
+
+            const splitAccountIds = splits
+                .flatMap((s) => [s.creditAccountId, s.debitAccountId])
+                .filter(Boolean) as string[];
+
+            const splitAccountMap = new Map<
+                string,
+                { id: string; name: string; accountType: string }
+            >();
+
+            if (splitAccountIds.length > 0) {
+                const accountsToCheck = await db
+                    .select({
+                        id: accounts.id,
+                        name: accounts.name,
+                        accountType: accounts.accountType,
+                    })
+                    .from(accounts)
+                    .where(
+                        and(
+                            inArray(accounts.id, splitAccountIds),
+                            eq(accounts.userId, auth.userId),
+                        ),
+                    );
+
+                for (const acc of accountsToCheck) {
+                    splitAccountMap.set(acc.id, acc);
+                }
+            }
+
+            if (doubleEntryMode) {
+                for (const split of splits) {
+                    if (split.creditAccountId) {
+                        const creditAccount = splitAccountMap.get(
+                            split.creditAccountId,
+                        );
+                        if (!creditAccount) {
+                            return ctx.json(
+                                {
+                                    error: 'Credit account not found for this user.',
+                                },
+                                400,
+                            );
+                        }
+                        if (creditAccount.accountType === 'debit') {
+                            return ctx.json(
+                                {
+                                    error: `Account ${creditAccount.name} is debit-only and cannot be used as a credit account.`,
+                                },
+                                400,
+                            );
+                        }
+                    }
+
+                    if (split.debitAccountId) {
+                        const debitAccount = splitAccountMap.get(
+                            split.debitAccountId,
+                        );
+                        if (!debitAccount) {
+                            return ctx.json(
+                                {
+                                    error: 'Debit account not found for this user.',
+                                },
+                                400,
+                            );
+                        }
+                        if (debitAccount.accountType === 'credit') {
+                            return ctx.json(
+                                {
+                                    error: `Account ${debitAccount.name} is credit-only and cannot be used as a debit account.`,
+                                },
+                                400,
+                            );
+                        }
+                    }
+                }
+            }
+
+            // Validate that all splits have either accountId or both creditAccountId and debitAccountId
+            for (const split of splits) {
+                if (
+                    !split.accountId &&
+                    (!split.creditAccountId || !split.debitAccountId)
+                ) {
+                    return ctx.json(
+                        {
+                            error: 'Each split must have either accountId or both creditAccountId and debitAccountId.',
+                        },
+                        400,
+                    );
+                }
+            }
+
+            const splitGroupId = createId();
+
+            // Get existing tags for the transaction
+            const existingTags = await db
+                .select({ tagId: transactionTags.tagId })
+                .from(transactionTags)
+                .where(eq(transactionTags.transactionId, id));
+
+            // Update the existing transaction to be a parent
+            await db
+                .update(transactions)
+                .set({
+                    splitGroupId,
+                    splitType: 'parent',
+                })
+                .where(eq(transactions.id, id));
+
+            // Record status change
+            await recordStatusChange(
+                id,
+                existingTransaction.status,
+                existingTransaction.status,
+                auth.userId,
+                'Transaction split',
+            );
+
+            // Create child transactions
+            const childTransactions = await db
+                .insert(transactions)
+                .values(
+                    splits.map((split) => ({
+                        id: createId(),
+                        date: existingTransaction.date,
+                        payee: existingTransaction.payee,
+                        payeeCustomerId: existingTransaction.payeeCustomerId,
+                        amount: split.amount,
+                        accountId: split.accountId,
+                        creditAccountId: split.creditAccountId,
+                        debitAccountId: split.debitAccountId,
+                        notes: split.notes,
+                        splitGroupId,
+                        splitType: 'child' as const,
+                        status: existingTransaction.status,
+                        statusChangedAt: new UTCDate(),
+                        statusChangedBy: auth.userId,
+                    })),
+                )
+                .returning();
+
+            // Copy tags to child transactions
+            if (existingTags.length > 0) {
+                for (const child of childTransactions) {
+                    await db.insert(transactionTags).values(
+                        existingTags.map((tag) => ({
+                            id: createId(),
+                            transactionId: child.id,
+                            tagId: tag.tagId,
+                        })),
+                    );
+                }
+            }
+
+            // Record initial status for all child transactions
+            for (const child of childTransactions) {
+                await recordStatusChange(
+                    child.id,
+                    null,
+                    existingTransaction.status,
+                    auth.userId,
+                    'Split transaction child created',
+                );
+            }
+
+            // Open accounts if needed
+            const accountIdsToOpen = splits
+                .flatMap((s) => [s.creditAccountId, s.debitAccountId])
+                .filter(Boolean) as string[];
+            await openAccountsAndParentsBatch(accountIdsToOpen, auth.userId);
+
+            return ctx.json({
+                data: {
+                    parent: existingTransaction,
+                    children: childTransactions,
+                },
+            });
+        },
+    )
     // Unreconcile a transaction
     .post(
         '/:id/unreconcile',

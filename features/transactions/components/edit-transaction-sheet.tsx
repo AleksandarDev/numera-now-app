@@ -27,6 +27,7 @@ import { useEditTransaction } from '@/features/transactions/api/use-edit-transac
 import { useGetSplitGroup } from '@/features/transactions/api/use-get-split-group';
 import { useGetStatusHistory } from '@/features/transactions/api/use-get-status-history';
 import { useGetTransaction } from '@/features/transactions/api/use-get-transaction';
+import { useSplitTransaction } from '@/features/transactions/api/use-split-transaction';
 import { useUncompleteTransaction } from '@/features/transactions/api/use-uncomplete-transaction';
 import { useUnreconcileTransaction } from '@/features/transactions/api/use-unreconcile-transaction';
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
@@ -35,6 +36,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
 
 import {
+    type SplitTransactionData,
     UnifiedEditTransactionForm,
     type UnifiedEditTransactionFormValues,
 } from './unified-edit-transaction-form';
@@ -60,6 +62,7 @@ export const EditTransactionSheet = () => {
     );
     const canReconcileQuery = useCanReconcile(id);
     const editMutation = useEditTransaction(id);
+    const splitMutation = useSplitTransaction(id);
     const deleteMutation = useDeleteTransaction(id);
     const unreconcileMutation = useUnreconcileTransaction(id);
     const uncompleteMutation = useUncompleteTransaction(id);
@@ -91,6 +94,7 @@ export const EditTransactionSheet = () => {
 
     const isPending =
         editMutation.isPending ||
+        splitMutation.isPending ||
         deleteMutation.isPending ||
         unreconcileMutation.isPending ||
         uncompleteMutation.isPending ||
@@ -160,6 +164,15 @@ export const EditTransactionSheet = () => {
     const onUncomplete = async (reason: string) => {
         if (!transactionQuery.data) return;
         await uncompleteMutation.mutateAsync({ reason });
+    };
+
+    const onSplit = async (data: SplitTransactionData) => {
+        if (!transactionQuery.data) return;
+        await splitMutation.mutateAsync(data, {
+            onSuccess: () => {
+                onClose();
+            },
+        });
     };
 
     const defaultValuesForForm: Partial<UnifiedEditTransactionFormValues> =
@@ -403,6 +416,7 @@ export const EditTransactionSheet = () => {
                                         id={id}
                                         defaultValues={defaultValuesForForm}
                                         onSubmit={onSubmit}
+                                        onSplit={onSplit}
                                         disabled={isPending}
                                         tagOptions={tagOptions}
                                         onCreateTag={onCreateTag}
@@ -410,6 +424,10 @@ export const EditTransactionSheet = () => {
                                         onDelete={onDelete}
                                         payeeText={transactionQuery.data?.payee}
                                         currentStatus={currentStatus}
+                                        isSplit={
+                                            !!transactionQuery.data
+                                                ?.splitGroupId
+                                        }
                                     />
 
                                     {splitGroupQuery.data &&
