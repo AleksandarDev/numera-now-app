@@ -4,7 +4,6 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import type { InferResponseType } from 'hono';
 import { ArrowUpDown } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { client } from '@/lib/hono';
@@ -12,14 +11,54 @@ import { AccountColumn } from './account-column';
 import { Actions } from './actions';
 import { CustomerColumn } from './customer-column';
 import { DocumentsColumn } from './documents-column';
+import { SplitAccountsColumn } from './split-accounts-column';
 import { StatusColumn } from './status-column';
 import { TagsColumn } from './tags-column';
 import { validateTransaction } from './validation';
 
+type TransactionStatus = 'draft' | 'pending' | 'completed' | 'reconciled';
+
+type TransactionTag = {
+    id: string;
+    name: string;
+    color?: string | null;
+};
+
+type SplitAccountSummary = {
+    id: string;
+    name: string;
+    code?: string | null;
+};
+
+type SplitSummary = {
+    status: TransactionStatus;
+    tags: TransactionTag[];
+    documentCount: number;
+    hasAllRequiredDocuments: boolean;
+    requiredDocumentTypes: number;
+    attachedRequiredTypes: number;
+    minRequiredDocuments: number;
+    totalAmount: number;
+    creditAccounts: SplitAccountSummary[];
+    debitAccounts: SplitAccountSummary[];
+    singleAccounts: SplitAccountSummary[];
+    customers: string[];
+};
+
+type SplitMeta = {
+    role: 'parent' | 'child';
+    childIndex?: number;
+    childCount?: number;
+    isLastChild?: boolean;
+};
+
 export type ResponseType = InferResponseType<
     typeof client.api.transactions.$get,
     200
->['data'][0];
+>['data'][0] & {
+    splitSummary?: SplitSummary;
+    splitMeta?: SplitMeta;
+};
 
 // Separate select column for conditional rendering
 export const selectColumn: ColumnDef<ResponseType> = {
@@ -47,7 +86,65 @@ export const selectColumn: ColumnDef<ResponseType> = {
     enableHiding: false,
 };
 
+const SplitFlowIndicator = ({ meta }: { meta?: SplitMeta }) => {
+    if (!meta) return null;
+
+    if (meta.role === 'parent') {
+        if (!meta.childCount) return null;
+        return (
+            <div
+                className="relative h-8 w-3"
+                aria-label="Split parent transaction"
+                role="img"
+            >
+                <span
+                    className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-400"
+                    aria-hidden="true"
+                />
+                <span
+                    className="absolute left-1/2 top-1/2 bottom-0 w-px bg-slate-300"
+                    aria-hidden="true"
+                />
+            </div>
+        );
+    }
+
+    if (meta.role === 'child') {
+        const isLastChild = meta.isLastChild ?? false;
+        return (
+            <div
+                className="relative h-8 w-3"
+                aria-label={`Split child transaction ${meta.childIndex !== undefined ? meta.childIndex + 1 : ''} of ${meta.childCount ?? ''}`}
+                role="img"
+            >
+                <span
+                    className={`absolute left-1/2 top-0 w-px bg-slate-300 ${
+                        isLastChild ? 'bottom-1/2' : 'bottom-0'
+                    }`}
+                    aria-hidden="true"
+                />
+                <span
+                    className="absolute left-1/2 top-1/2 w-2 border-t border-slate-300"
+                    aria-hidden="true"
+                />
+                <span
+                    className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-400"
+                    aria-hidden="true"
+                />
+            </div>
+        );
+    }
+
+    return null;
+};
+
 export const columns: ColumnDef<ResponseType>[] = [
+    {
+        id: 'flow',
+        header: () => <span className="inline-block w-3" aria-hidden="true" />,
+        enableSorting: false,
+        cell: ({ row }) => <SplitFlowIndicator meta={row.original.splitMeta} />,
+    },
     {
         accessorKey: 'status',
         header: ({ column }) => {
@@ -64,10 +161,15 @@ export const columns: ColumnDef<ResponseType>[] = [
             );
         },
         cell: ({ row }) => {
+            const isParent = row.original.splitType === 'parent';
+            const splitSummary = row.original.splitSummary;
             return (
                 <StatusColumn
                     transactionId={row.original.id}
-                    status={row.original.status ?? 'pending'}
+                    status={
+                        splitSummary?.status ?? row.original.status ?? 'pending'
+                    }
+                    readOnly={isParent}
                     transaction={{
                         date: row.original.date,
                         amount: row.original.amount,
@@ -81,16 +183,24 @@ export const columns: ColumnDef<ResponseType>[] = [
                         splitType: row.original.splitType,
                     }}
                     hasAllRequiredDocuments={
-                        row.original.hasAllRequiredDocuments ?? true
+                        splitSummary?.hasAllRequiredDocuments ??
+                        row.original.hasAllRequiredDocuments ??
+                        true
                     }
                     requiredDocumentTypes={
-                        row.original.requiredDocumentTypes ?? 0
+                        splitSummary?.requiredDocumentTypes ??
+                        row.original.requiredDocumentTypes ??
+                        0
                     }
                     attachedRequiredTypes={
-                        row.original.attachedRequiredTypes ?? 0
+                        splitSummary?.attachedRequiredTypes ??
+                        row.original.attachedRequiredTypes ??
+                        0
                     }
                     minRequiredDocuments={
-                        row.original.minRequiredDocuments ?? 0
+                        splitSummary?.minRequiredDocuments ??
+                        row.original.minRequiredDocuments ??
+                        0
                     }
                 />
             );
@@ -132,17 +242,28 @@ export const columns: ColumnDef<ResponseType>[] = [
             );
         },
         cell: ({ row }) => {
-            const isChild = row.original.splitType === 'child';
+            const isParent = row.original.splitType === 'parent';
+            const customers = row.original.splitSummary?.customers ?? [];
+
+            if (isParent && customers.length > 0) {
+                const [first, ...rest] = customers;
+                return (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm">{first}</span>
+                        {rest.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                                +{rest.length} more
+                            </span>
+                        )}
+                    </div>
+                );
+            }
+
             return (
-                <div className={isChild ? 'pl-4' : undefined}>
-                    {isChild ? (
-                        <span className="mr-1 text-muted-foreground">↳</span>
-                    ) : null}
-                    <CustomerColumn
-                        customerName={row.original.payeeCustomerName}
-                        payee={row.original.payee}
-                    />
-                </div>
+                <CustomerColumn
+                    customerName={row.original.payeeCustomerName}
+                    payee={row.original.payee}
+                />
             );
         },
     },
@@ -158,6 +279,20 @@ export const columns: ColumnDef<ResponseType>[] = [
         enableSorting: false,
         cell: ({ row }) => {
             const amount = row.original.amount;
+            const isParent = row.original.splitType === 'parent';
+            const splitSummary = row.original.splitSummary;
+
+            if (isParent) {
+                return (
+                    <SplitAccountsColumn
+                        creditAccounts={splitSummary?.creditAccounts ?? []}
+                        debitAccounts={splitSummary?.debitAccounts ?? []}
+                        singleAccounts={splitSummary?.singleAccounts ?? []}
+                        amount={splitSummary?.totalAmount ?? amount}
+                    />
+                );
+            }
+
             // Get double-entry validation issues for this transaction
             const validationIssues = validateTransaction(row.original).filter(
                 (issue) => issue.type === 'double-entry',
@@ -183,48 +318,46 @@ export const columns: ColumnDef<ResponseType>[] = [
         },
     },
     {
-        id: 'split',
-        header: () => (
-            <span className="text-sm text-muted-foreground">Split</span>
-        ),
-        enableSorting: false,
-        cell: ({ row }) => {
-            if (!row.original.splitGroupId) return null;
-            const isParent = row.original.splitType === 'parent';
-            return (
-                <Badge
-                    variant={isParent ? 'default' : 'outline'}
-                    className="px-2 py-1 text-[11px]"
-                >
-                    {isParent ? 'Split' : 'Part'}
-                </Badge>
-            );
-        },
-    },
-    {
         id: 'documents',
         header: () => (
             <span className="text-sm text-muted-foreground">Docs</span>
         ),
         enableSorting: false,
         cell: ({ row }) => {
+            const isParent = row.original.splitType === 'parent';
+            const splitSummary = row.original.splitSummary;
             return (
                 <DocumentsColumn
-                    documentCount={row.original.documentCount ?? 0}
+                    documentCount={
+                        splitSummary?.documentCount ??
+                        row.original.documentCount ??
+                        0
+                    }
                     hasAllRequiredDocuments={
-                        row.original.hasAllRequiredDocuments ?? true
+                        splitSummary?.hasAllRequiredDocuments ??
+                        row.original.hasAllRequiredDocuments ??
+                        true
                     }
                     requiredDocumentTypes={
-                        row.original.requiredDocumentTypes ?? 0
+                        splitSummary?.requiredDocumentTypes ??
+                        row.original.requiredDocumentTypes ??
+                        0
                     }
                     attachedRequiredTypes={
-                        row.original.attachedRequiredTypes ?? 0
+                        splitSummary?.attachedRequiredTypes ??
+                        row.original.attachedRequiredTypes ??
+                        0
                     }
-                    status={row.original.status ?? 'pending'}
+                    status={
+                        splitSummary?.status ?? row.original.status ?? 'pending'
+                    }
                     transactionId={row.original.id}
                     minRequiredDocuments={
-                        row.original.minRequiredDocuments ?? 0
+                        splitSummary?.minRequiredDocuments ??
+                        row.original.minRequiredDocuments ??
+                        0
                     }
+                    readOnly={isParent}
                 />
             );
         },
@@ -245,10 +378,13 @@ export const columns: ColumnDef<ResponseType>[] = [
             );
         },
         cell: ({ row }) => {
+            const isParent = row.original.splitType === 'parent';
+            const splitSummary = row.original.splitSummary;
             return (
                 <TagsColumn
                     id={row.original.id}
-                    tags={row.original.tags ?? []}
+                    tags={splitSummary?.tags ?? row.original.tags ?? []}
+                    readOnly={isParent}
                 />
             );
         },

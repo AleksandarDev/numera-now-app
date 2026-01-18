@@ -1,7 +1,18 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from 'drizzle-orm';
+import {
+    and,
+    desc,
+    eq,
+    gte,
+    ilike,
+    inArray,
+    isNull,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -204,6 +215,10 @@ const app = new Hono()
                     eq(transactions.creditAccountId, id),
                     eq(transactions.debitAccountId, id),
                 ),
+                or(
+                    isNull(transactions.splitType),
+                    eq(transactions.splitType, 'child'),
+                ),
             ];
 
             if (from) {
@@ -302,7 +317,16 @@ const app = new Hono()
                 })
                 .from(transactions)
                 .where(
-                    inArray(transactions.debitAccountId, nonReadOnlyAccountIds),
+                    and(
+                        inArray(
+                            transactions.debitAccountId,
+                            nonReadOnlyAccountIds,
+                        ),
+                        or(
+                            isNull(transactions.splitType),
+                            eq(transactions.splitType, 'child'),
+                        ),
+                    ),
                 )
                 .groupBy(transactions.debitAccountId);
 
@@ -315,9 +339,15 @@ const app = new Hono()
                 })
                 .from(transactions)
                 .where(
-                    inArray(
-                        transactions.creditAccountId,
-                        nonReadOnlyAccountIds,
+                    and(
+                        inArray(
+                            transactions.creditAccountId,
+                            nonReadOnlyAccountIds,
+                        ),
+                        or(
+                            isNull(transactions.splitType),
+                            eq(transactions.splitType, 'child'),
+                        ),
                     ),
                 )
                 .groupBy(transactions.creditAccountId);

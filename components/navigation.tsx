@@ -171,7 +171,7 @@ export const Navigation = () => {
                                 ? incompleteCount
                                 : route.href === '/documents'
                                   ? unattachedCount
-                                : undefined
+                                  : undefined
                         }
                     />
                 ))}
@@ -194,7 +194,7 @@ export const Navigation = () => {
                             ? incompleteCount
                             : route.href === '/documents'
                               ? unattachedCount
-                            : undefined
+                              : undefined
                     }
                 />
             ))}

@@ -1,6 +1,6 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
-import { aliasedTable, and, eq, ne, or, sql } from 'drizzle-orm';
+import { aliasedTable, and, eq, isNull, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '@/db/drizzle';
@@ -176,6 +176,10 @@ const app = new Hono()
                         eq(creditAccounts.userId, userId),
                         eq(debitAccounts.userId, userId),
                     ),
+                    or(
+                        isNull(transactions.splitType),
+                        eq(transactions.splitType, 'child'),
+                    ),
                     ne(transactions.status, 'draft'), // Exclude draft transactions
                 ),
             );
@@ -227,6 +231,10 @@ const app = new Hono()
                     or(
                         eq(transactions.creditAccountId, accounts.id),
                         eq(transactions.debitAccountId, accounts.id),
+                    ),
+                    or(
+                        isNull(transactions.splitType),
+                        eq(transactions.splitType, 'child'),
                     ),
                     ne(transactions.status, 'draft'),
                 ),

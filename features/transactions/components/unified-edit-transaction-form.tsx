@@ -290,7 +290,8 @@ export const UnifiedEditTransactionForm = ({
     );
 
     const originalAmount = parseFloat(amount || '0');
-    const isSplitBalanced = Math.abs(splitTotal - originalAmount) < AMOUNT_TOLERANCE;
+    const isSplitBalanced =
+        Math.abs(splitTotal - originalAmount) < AMOUNT_TOLERANCE;
 
     // Split handlers
     const handleAddSplitEntry = () => {
@@ -612,8 +613,8 @@ export const UnifiedEditTransactionForm = ({
                         <div className="flex">
                             <Split className="h-4 w-4 mr-2" />
                             <h3 className="text-sm font-semibold">
-                            Split Transaction
-                        </h3>
+                                Split Transaction
+                            </h3>
                         </div>
                         <Button
                             type="button"
@@ -627,11 +628,11 @@ export const UnifiedEditTransactionForm = ({
                     </div>
 
                     {/* Split Entries */}
-                    <div className='space-y-2'>
+                    <div className="space-y-2">
                         {splitEntries.map((entry, index) => (
                             <Fragment key={entry.id}>
-                                                                {splitEntries.length > 2 && (
-                                                                    <div className="flex justify-end mt-1">
+                                {splitEntries.length > 2 && (
+                                    <div className="flex justify-end mt-1">
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -644,120 +645,126 @@ export const UnifiedEditTransactionForm = ({
                                         >
                                             <X className="h-3 w-3" />
                                         </Button>
+                                    </div>
+                                )}
+                                <div className="rounded-md border p-2 bg-background space-y-2">
+                                    {/* Credit and Debit accounts */}
+                                    <div className="grid grid-cols-[2fr_auto_1fr_auto_2fr] gap-2 items-start">
+                                        <div className="space-y-1">
+                                            <AccountSelect
+                                                value={entry.creditAccountId}
+                                                onChange={(value) =>
+                                                    handleUpdateSplitEntry(
+                                                        index,
+                                                        'creditAccountId',
+                                                        value,
+                                                    )
+                                                }
+                                                disabled={isPending}
+                                                placeholder="Credit..."
+                                                excludeReadOnly
+                                                allowedTypes={[
+                                                    'credit',
+                                                    'neutral',
+                                                ]}
+                                            />
+                                            {errors[
+                                                `splitEntries.${index}.creditAccountId`
+                                            ] && (
+                                                <p className="text-xs font-medium text-destructive">
+                                                    {
+                                                        errors[
+                                                            `splitEntries.${index}.creditAccountId`
+                                                        ]
+                                                    }
+                                                </p>
+                                            )}
                                         </div>
-                                    )}
-                            <div
-                                className="rounded-md border p-2 bg-background space-y-2"
-                            >
-                                {/* Credit and Debit accounts */}
-                                <div className="grid grid-cols-[2fr_auto_1fr_auto_2fr] gap-2 items-start">
+
+                                        <ChevronRight className="size-4 opacity-60 mt-3 shrink-0" />
+
+                                        {/* Amount */}
+                                        <div className="space-y-1">
+                                            <AmountInput
+                                                value={entry.amount}
+                                                onChange={(value) =>
+                                                    handleUpdateSplitEntry(
+                                                        index,
+                                                        'amount',
+                                                        value ?? '',
+                                                    )
+                                                }
+                                                disabled={isPending}
+                                                placeholder="0.00"
+                                                hideSign
+                                            />
+                                            {errors[
+                                                `splitEntries.${index}.amount`
+                                            ] && (
+                                                <p className="text-xs font-medium text-destructive">
+                                                    {
+                                                        errors[
+                                                            `splitEntries.${index}.amount`
+                                                        ]
+                                                    }
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <ChevronRight className="size-4 opacity-60 mt-3 shrink-0" />
+
+                                        <div className="space-y-1">
+                                            <AccountSelect
+                                                value={entry.debitAccountId}
+                                                onChange={(value) =>
+                                                    handleUpdateSplitEntry(
+                                                        index,
+                                                        'debitAccountId',
+                                                        value,
+                                                    )
+                                                }
+                                                disabled={isPending}
+                                                placeholder="Debit..."
+                                                excludeReadOnly
+                                                allowedTypes={[
+                                                    'debit',
+                                                    'neutral',
+                                                ]}
+                                            />
+                                            {errors[
+                                                `splitEntries.${index}.debitAccountId`
+                                            ] && (
+                                                <p className="text-xs font-medium text-destructive">
+                                                    {
+                                                        errors[
+                                                            `splitEntries.${index}.debitAccountId`
+                                                        ]
+                                                    }
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Notes (Optional) */}
                                     <div className="space-y-1">
-                                        <AccountSelect
-                                            value={entry.creditAccountId}
-                                            onChange={(value) =>
+                                        <Label className="text-xs">
+                                            Notes (Optional)
+                                        </Label>
+                                        <Textarea
+                                            value={entry.notes}
+                                            onChange={(e) =>
                                                 handleUpdateSplitEntry(
                                                     index,
-                                                    'creditAccountId',
-                                                    value,
+                                                    'notes',
+                                                    e.target.value,
                                                 )
                                             }
                                             disabled={isPending}
-                                            placeholder="Credit..."
-                                            excludeReadOnly
-                                            allowedTypes={['credit', 'neutral']}
+                                            placeholder="Optional notes for this split..."
+                                            className="h-16 text-xs"
                                         />
-                                        {errors[
-                                            `splitEntries.${index}.creditAccountId`
-                                        ] && (
-                                            <p className="text-xs font-medium text-destructive">
-                                                {
-                                                    errors[
-                                                        `splitEntries.${index}.creditAccountId`
-                                                    ]
-                                                }
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <ChevronRight className="size-4 opacity-60 mt-3 shrink-0" />
-
-                                {/* Amount */}
-                                <div className="space-y-1">
-                                    <AmountInput
-                                        value={entry.amount}
-                                        onChange={(value) =>
-                                            handleUpdateSplitEntry(
-                                                index,
-                                                'amount',
-                                                value ?? '',
-                                            )
-                                        }
-                                        disabled={isPending}
-                                        placeholder="0.00"
-                                        hideSign
-                                    />
-                                    {errors[`splitEntries.${index}.amount`] && (
-                                        <p className="text-xs font-medium text-destructive">
-                                            {
-                                                errors[
-                                                    `splitEntries.${index}.amount`
-                                                ]
-                                            }
-                                        </p>
-                                    )}
-                                </div>
-
-                                                                    <ChevronRight className="size-4 opacity-60 mt-3 shrink-0" />
-
-                                    <div className="space-y-1">
-                                        <AccountSelect
-                                            value={entry.debitAccountId}
-                                            onChange={(value) =>
-                                                handleUpdateSplitEntry(
-                                                    index,
-                                                    'debitAccountId',
-                                                    value,
-                                                )
-                                            }
-                                            disabled={isPending}
-                                            placeholder="Debit..."
-                                            excludeReadOnly
-                                            allowedTypes={['debit', 'neutral']}
-                                        />
-                                        {errors[
-                                            `splitEntries.${index}.debitAccountId`
-                                        ] && (
-                                            <p className="text-xs font-medium text-destructive">
-                                                {
-                                                    errors[
-                                                        `splitEntries.${index}.debitAccountId`
-                                                    ]
-                                                }
-                                            </p>
-                                        )}
                                     </div>
                                 </div>
-
-                                {/* Notes (Optional) */}
-                                <div className="space-y-1">
-                                    <Label className="text-xs">
-                                        Notes (Optional)
-                                    </Label>
-                                    <Textarea
-                                        value={entry.notes}
-                                        onChange={(e) =>
-                                            handleUpdateSplitEntry(
-                                                index,
-                                                'notes',
-                                                e.target.value,
-                                            )
-                                        }
-                                        disabled={isPending}
-                                        placeholder="Optional notes for this split..."
-                                        className="h-16 text-xs"
-                                    />
-                                </div>
-                            </div>
                             </Fragment>
                         ))}
 

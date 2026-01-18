@@ -10,16 +10,24 @@ type Tag = {
 type TagsColumnProps = {
     id: string;
     tags: Tag[];
+    readOnly?: boolean;
 };
 
-export const TagsColumn = ({ id, tags }: TagsColumnProps) => {
+export const TagsColumn = ({ id, tags, readOnly = false }: TagsColumnProps) => {
     const { onOpen: onOpenTransaction } = useOpenTransaction();
 
     const onClick = () => {
+        if (readOnly) return;
         onOpenTransaction(id);
     };
 
     if (!tags || tags.length === 0) {
+        if (readOnly) {
+            return (
+                <span className="text-muted-foreground text-sm">No tags</span>
+            );
+        }
+
         return (
             <button
                 type="button"
@@ -31,12 +39,8 @@ export const TagsColumn = ({ id, tags }: TagsColumnProps) => {
         );
     }
 
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="flex flex-wrap gap-1 cursor-pointer"
-        >
+    const content = (
+        <>
             {tags.slice(0, 3).map((tag) => {
                 const badgeColors = tag.color
                     ? getTagBadgeColors(tag.color)
@@ -71,6 +75,20 @@ export const TagsColumn = ({ id, tags }: TagsColumnProps) => {
                     +{tags.length - 3}
                 </span>
             )}
+        </>
+    );
+
+    if (readOnly) {
+        return <div className="flex flex-wrap gap-1">{content}</div>;
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="flex flex-wrap gap-1 cursor-pointer"
+        >
+            {content}
         </button>
     );
 };

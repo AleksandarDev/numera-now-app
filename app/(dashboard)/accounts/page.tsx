@@ -32,7 +32,6 @@ import {
 import { toast } from 'sonner';
 import { type CSVResult, ImportButton } from '@/components/import-button';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -297,26 +296,26 @@ function AccountsDataTable() {
                                                     {/* Expand/Collapse Button */}
                                                     <div className="w-10 flex justify-center">
                                                         {accountHasChildren &&
-                                                            code ? (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-10 w-10 p-0 hover:bg-neutral-200"
-                                                                    onClick={() =>
-                                                                        toggleExpand(
-                                                                            code,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {isExpanded ? (
-                                                                        <ChevronDown className="h-5 w-5" />
-                                                                    ) : (
-                                                                        <ChevronRight className="h-5 w-5" />
-                                                                    )}
-                                                                </Button>
-                                                            ) : (
-                                                                <span className="w-10" />
-                                                            )}
+                                                        code ? (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-10 w-10 p-0 hover:bg-neutral-200"
+                                                                onClick={() =>
+                                                                    toggleExpand(
+                                                                        code,
+                                                                    )
+                                                                }
+                                                            >
+                                                                {isExpanded ? (
+                                                                    <ChevronDown className="h-5 w-5" />
+                                                                ) : (
+                                                                    <ChevronRight className="h-5 w-5" />
+                                                                )}
+                                                            </Button>
+                                                        ) : (
+                                                            <span className="w-10" />
+                                                        )}
                                                     </div>
 
                                                     {/* Account Info - clickable button */}
@@ -389,7 +388,8 @@ function AccountsDataTable() {
                                                                         className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
                                                                         title="Account is open but one or more parent accounts are closed"
                                                                     >
-                                                                        ⚠️ Invalid
+                                                                        ⚠️
+                                                                        Invalid
                                                                         Config
                                                                     </span>
                                                                 )}

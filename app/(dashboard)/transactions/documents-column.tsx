@@ -19,6 +19,7 @@ type DocumentsColumnProps = {
     status: string;
     transactionId: string;
     minRequiredDocuments?: number;
+    readOnly?: boolean;
 };
 
 export const DocumentsColumn = ({
@@ -29,6 +30,7 @@ export const DocumentsColumn = ({
     status,
     transactionId,
     minRequiredDocuments = 0,
+    readOnly = false,
 }: DocumentsColumnProps) => {
     const { onOpen } = useOpenTransaction();
     const showWarning =
@@ -48,8 +50,11 @@ export const DocumentsColumn = ({
     }
 
     const handleClick = () => {
+        if (readOnly) return;
         onOpen(transactionId, 'documents');
     };
+
+    const isInteractive = !readOnly;
 
     // Generate appropriate message based on min required setting
     const getRequirementMessage = () => {
@@ -82,15 +87,19 @@ export const DocumentsColumn = ({
                         <Badge
                             variant="outline"
                             className={cn(
-                                'gap-1 px-2 py-0.5 text-xs font-normal cursor-pointer hover:bg-accent transition-colors',
+                                'gap-1 px-2 py-0.5 text-xs font-normal',
+                                isInteractive &&
+                                    'cursor-pointer hover:bg-accent transition-colors',
                                 showWarning &&
                                     'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100',
                                 isReconciled &&
                                     hasAllRequiredDocuments &&
                                     'border-green-300 bg-green-50 text-green-700 hover:bg-green-100',
                             )}
-                            data-row-interactive="true"
-                            onClick={handleClick}
+                            data-row-interactive={
+                                isInteractive ? 'true' : undefined
+                            }
+                            onClick={isInteractive ? handleClick : undefined}
                         >
                             <FileText className="h-3 w-3" />
                             {documentCount}
@@ -98,7 +107,9 @@ export const DocumentsColumn = ({
                         {showWarning && (
                             <AlertTriangle
                                 className="h-4 w-4 text-amber-500"
-                                data-row-interactive="true"
+                                data-row-interactive={
+                                    isInteractive ? 'true' : undefined
+                                }
                             />
                         )}
                     </div>
@@ -126,9 +137,11 @@ export const DocumentsColumn = ({
                                 {getWarningMessage()}
                             </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                            Click to view/manage documents
-                        </p>
+                        {!readOnly && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Click to view/manage documents
+                            </p>
+                        )}
                     </div>
                 </TooltipContent>
             </Tooltip>

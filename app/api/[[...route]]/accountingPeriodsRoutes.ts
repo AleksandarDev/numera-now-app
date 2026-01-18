@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { and, desc, eq, gte, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '@/db/drizzle';
@@ -331,6 +331,10 @@ const app = new Hono()
                             eq(accounts.accountClass, 'income'),
                             eq(accounts.accountClass, 'expense'),
                         ),
+                        or(
+                            isNull(transactions.splitType),
+                            eq(transactions.splitType, 'child'),
+                        ),
                         gte(transactions.date, startDate),
                         lte(transactions.date, endDate),
                     ),
@@ -516,6 +520,10 @@ const app = new Hono()
                         or(
                             eq(accounts.accountClass, 'income'),
                             eq(accounts.accountClass, 'expense'),
+                        ),
+                        or(
+                            isNull(transactions.splitType),
+                            eq(transactions.splitType, 'child'),
                         ),
                         gte(transactions.date, period.startDate),
                         lte(transactions.date, period.endDate),

@@ -14,6 +14,7 @@ import {
     desc,
     eq,
     gte,
+    isNull,
     lte,
     ne,
     or,
@@ -160,6 +161,10 @@ const app = new Hono().get(
                             eq(accounts.userId, userId),
                             eq(creditAccounts.userId, userId),
                             eq(debitAccounts.userId, userId),
+                        ),
+                        or(
+                            isNull(transactions.splitType),
+                            eq(transactions.splitType, 'child'),
                         ),
                         ne(transactions.status, 'draft'), // Exclude draft transactions
                         gte(transactions.date, startDate),

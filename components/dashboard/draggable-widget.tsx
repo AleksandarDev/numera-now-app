@@ -57,48 +57,48 @@ export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
                 {/* Widget Control Bar - only shown in edit mode */}
                 {isEditMode && (
                     <div className="absolute -top-10 left-0 right-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm px-2 py-1">
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 cursor-grab active:cursor-grabbing text-foreground"
-                            {...attributes}
-                            {...listeners}
-                        >
-                            <GripVertical className="h-4 w-4" />
-                            <span className="ml-2 text-xs text-foreground">
-                                {definition.name}
-                            </span>
-                            {isLegacy && (
-                                <span className="ml-2 text-xs bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded">
-                                    Deprecated
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 cursor-grab active:cursor-grabbing text-foreground"
+                                {...attributes}
+                                {...listeners}
+                            >
+                                <GripVertical className="h-4 w-4" />
+                                <span className="ml-2 text-xs text-foreground">
+                                    {definition.name}
                                 </span>
-                            )}
-                        </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-foreground"
-                            onClick={() => setIsConfigOpen(true)}
-                        >
-                            <Settings className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-destructive hover:text-destructive"
-                            onClick={() => removeWidget(widget.id)}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
+                                {isLegacy && (
+                                    <span className="ml-2 text-xs bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded">
+                                        Deprecated
+                                    </span>
+                                )}
+                            </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-foreground"
+                                onClick={() => setIsConfigOpen(true)}
+                            >
+                                <Settings className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-destructive hover:text-destructive"
+                                onClick={() => removeWidget(widget.id)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 )}
 
                 {/* Widget Content */}
-                <div className={isEditMode ? "pt-2" : ""}>
+                <div className={isEditMode ? 'pt-2' : ''}>
                     <WidgetComponent config={widget} />
                 </div>
             </div>

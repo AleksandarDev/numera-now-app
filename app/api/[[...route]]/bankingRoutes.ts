@@ -836,10 +836,7 @@ const app = new Hono()
             );
 
             for (const connection of connections) {
-                if (
-                    connection.status !== 'linked' ||
-                    !connection.agreementId
-                ) {
+                if (connection.status !== 'linked' || !connection.agreementId) {
                     continue;
                 }
 

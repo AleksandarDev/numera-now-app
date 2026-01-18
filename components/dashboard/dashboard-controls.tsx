@@ -12,7 +12,7 @@ export function DashboardControls() {
     return (
         <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <div className='bg-white rounded-lg'>
+                <div className="bg-white rounded-lg">
                     <DateFilter />
                 </div>
                 {isEditMode && <WidgetStoreButton />}
