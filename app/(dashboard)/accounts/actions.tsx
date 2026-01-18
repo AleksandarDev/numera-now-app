@@ -46,7 +46,7 @@ export const Actions = ({ id, disabled }: Props) => {
                 <DropdownMenuTrigger asChild disabled={disabled}>
                     <Button
                         variant="ghost"
-                        className="size-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="size-8 p-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     >
                         <MoreHorizontal className="size-4" />
                     </Button>

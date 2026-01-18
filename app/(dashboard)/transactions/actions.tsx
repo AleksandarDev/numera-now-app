@@ -117,6 +117,7 @@ export const Actions = ({ transaction }: ActionsProps) => {
     const nextStatus = getNextStatus(currentStatus);
     const canAdvance = canAdvanceStatus(currentStatus);
     const isCompleted = currentStatus === 'reconciled';
+    const isSplitParent = transaction.splitType === 'parent';
 
     const handleAdvanceStatus = () => {
         if (!canAdvance || !nextStatus) return;
@@ -161,7 +162,7 @@ export const Actions = ({ transaction }: ActionsProps) => {
 
                 <DropdownMenuContent align="end">
                     {/* Quick Actions */}
-                    {canAdvance && nextStatus && (
+                    {!isSplitParent && canAdvance && nextStatus && (
                         <DropdownMenuItem
                             disabled={isPending}
                             onClick={handleAdvanceStatus}
@@ -171,7 +172,7 @@ export const Actions = ({ transaction }: ActionsProps) => {
                         </DropdownMenuItem>
                     )}
 
-                    {!isCompleted && (
+                    {!isSplitParent && !isCompleted && (
                         <DropdownMenuItem
                             disabled={isPending}
                             onClick={handleAttachDocuments}
@@ -181,7 +182,9 @@ export const Actions = ({ transaction }: ActionsProps) => {
                         </DropdownMenuItem>
                     )}
 
-                    {(canAdvance || !isCompleted) && <DropdownMenuSeparator />}
+                    {!isSplitParent && (canAdvance || !isCompleted) && (
+                        <DropdownMenuSeparator />
+                    )}
 
                     {/* Standard Actions */}
                     <DropdownMenuItem

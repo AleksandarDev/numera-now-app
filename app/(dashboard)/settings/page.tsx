@@ -130,7 +130,7 @@ function TagsSection() {
                     <Plus className="size-4 mr-2" />
                     Add new
                 </Button>
-                </CardHeader>
+            </CardHeader>
             <CardContent>
                 <div className="mb-4 flex items-center">
                     <DataTableSearch

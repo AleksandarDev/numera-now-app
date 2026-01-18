@@ -2603,7 +2603,8 @@ const app = new Hono()
                 0,
             );
             if (
-                Math.abs(totalSplitAmount - existingTransaction.amount) > AMOUNT_TOLERANCE
+                Math.abs(totalSplitAmount - existingTransaction.amount) >
+                AMOUNT_TOLERANCE
             ) {
                 return ctx.json(
                     {

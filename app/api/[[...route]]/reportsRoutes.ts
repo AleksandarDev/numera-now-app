@@ -2,7 +2,7 @@ import { UTCDate } from '@date-fns/utc';
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { endOfDay, parse, startOfYear } from 'date-fns';
-import { and, eq, gte, inArray, lte, ne, or, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -85,6 +85,10 @@ const app = new Hono()
                                 transactions.debitAccountId,
                                 nonReadOnlyAccountIds,
                             ),
+                            or(
+                                isNull(transactions.splitType),
+                                eq(transactions.splitType, 'child'),
+                            ),
                             ne(transactions.status, 'draft'),
                             gte(transactions.date, startDate),
                             lte(transactions.date, endDate),
@@ -106,6 +110,10 @@ const app = new Hono()
                             inArray(
                                 transactions.creditAccountId,
                                 nonReadOnlyAccountIds,
+                            ),
+                            or(
+                                isNull(transactions.splitType),
+                                eq(transactions.splitType, 'child'),
                             ),
                             ne(transactions.status, 'draft'),
                             gte(transactions.date, startDate),
@@ -320,6 +328,10 @@ const app = new Hono()
                                 transactions.debitAccountId,
                                 nonReadOnlyAccountIds,
                             ),
+                            or(
+                                isNull(transactions.splitType),
+                                eq(transactions.splitType, 'child'),
+                            ),
                             ne(transactions.status, 'draft'),
                             lte(transactions.date, asOfDate),
                         ),
@@ -340,6 +352,10 @@ const app = new Hono()
                             inArray(
                                 transactions.creditAccountId,
                                 nonReadOnlyAccountIds,
+                            ),
+                            or(
+                                isNull(transactions.splitType),
+                                eq(transactions.splitType, 'child'),
                             ),
                             ne(transactions.status, 'draft'),
                             lte(transactions.date, asOfDate),

@@ -35,6 +35,7 @@ const STATUS_LABELS: Record<TransactionStatus, string> = {
 type StatusColumnProps = {
     transactionId: string;
     status: string;
+    readOnly?: boolean;
     transaction: {
         date?: Date | string | null;
         amount?: number | null;
@@ -57,6 +58,7 @@ type StatusColumnProps = {
 export const StatusColumn = ({
     transactionId,
     status,
+    readOnly = false,
     transaction,
     hasAllRequiredDocuments = true,
     requiredDocumentTypes = 0,
@@ -69,6 +71,34 @@ export const StatusColumn = ({
     const currentStatus = (status ?? 'pending') as TransactionStatus;
     const nextStatus = getNextStatus(currentStatus);
     const canAdvance = canAdvanceStatus(currentStatus);
+
+    const statusVariants = {
+        draft: 'secondary',
+        pending: 'outline',
+        completed: 'outline',
+        reconciled: 'outline',
+    } as const;
+
+    const statusColors = {
+        draft: 'text-muted-foreground',
+        pending: 'text-yellow-600',
+        completed: 'text-blue-600',
+        reconciled: 'text-green-600',
+    } as const;
+
+    if (readOnly) {
+        return (
+            <Badge
+                variant={statusVariants[currentStatus] || 'outline'}
+                className={`${statusColors[currentStatus] || ''}`}
+            >
+                {currentStatus
+                    ? currentStatus.charAt(0).toUpperCase() +
+                      currentStatus.slice(1)
+                    : 'Pending'}
+            </Badge>
+        );
+    }
 
     const autoDraftToPending = settingsQuery.data?.autoDraftToPending ?? false;
     const isAutoDraftToPendingBlocked =
@@ -116,20 +146,6 @@ export const StatusColumn = ({
     };
 
     const documentBlock = isDocumentBlockedForReconciliation();
-
-    const statusVariants = {
-        draft: 'secondary',
-        pending: 'outline',
-        completed: 'outline',
-        reconciled: 'outline',
-    } as const;
-
-    const statusColors = {
-        draft: 'text-muted-foreground',
-        pending: 'text-yellow-600',
-        completed: 'text-blue-600',
-        reconciled: 'text-green-600',
-    } as const;
 
     const handleAdvanceStatus = () => {
         if (!canAdvance || !nextStatus) return;

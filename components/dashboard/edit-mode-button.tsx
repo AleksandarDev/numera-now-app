@@ -10,7 +10,7 @@ export function EditModeButton() {
     return (
         <IconButton
             onClick={toggleEditMode}
-            size='lg'
+            size="lg"
             className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg"
             aria-label={isEditMode ? 'Exit edit mode' : 'Enter edit mode'}
             title={isEditMode ? 'Exit edit mode' : 'Edit dashboard'}

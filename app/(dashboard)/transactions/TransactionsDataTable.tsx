@@ -35,7 +35,9 @@ export function TransactionsDataTable({
 
     const getRowClassName = (transaction: ResponseType) => {
         if (isInitialLoading) return '';
-        if (transaction.status === 'draft') {
+        const displayStatus =
+            transaction.splitSummary?.status ?? transaction.status;
+        if (displayStatus === 'draft') {
             return 'bg-gray-50 hover:bg-gray-100 opacity-60 italic';
         }
         if (transaction.splitType === 'child') {

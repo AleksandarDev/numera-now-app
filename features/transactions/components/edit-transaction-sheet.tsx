@@ -1,3 +1,4 @@
+import { useQueries } from '@tanstack/react-query';
 import { Copy, ExternalLink, Loader2 } from 'lucide-react';
 import React, { Fragment, useMemo, useState } from 'react';
 import type { z } from 'zod';
@@ -33,6 +34,7 @@ import { useUnreconcileTransaction } from '@/features/transactions/api/use-unrec
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 import { useConfirm } from '@/hooks/use-confirm';
+import { client } from '@/lib/hono';
 import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
 
 import {
@@ -45,9 +47,35 @@ const formSchema = insertTransactionSchema.omit({ id: true });
 
 type FormValues = z.infer<typeof formSchema>;
 
+type StatusHistoryEntry = {
+    id: string;
+    fromStatus?: string | null;
+    toStatus: string;
+    changedAt?: string | Date | null;
+    changedBy?: string | null;
+    notes?: string | null;
+};
+
+const STATUS_ORDER: Record<
+    'draft' | 'pending' | 'completed' | 'reconciled',
+    number
+> = {
+    draft: 0,
+    pending: 1,
+    completed: 2,
+    reconciled: 3,
+};
+
 export const EditTransactionSheet = () => {
-    const { isOpen, onClose, id, initialTab, tab, setTab } =
-        useOpenTransaction();
+    const {
+        isOpen,
+        onClose,
+        id,
+        initialTab,
+        tab,
+        setTab,
+        onOpen: onOpenTransaction,
+    } = useOpenTransaction();
     const { onOpen: onOpenNew } = useNewTransaction();
 
     const [ConfirmDialog, confirm] = useConfirm(
@@ -60,6 +88,15 @@ export const EditTransactionSheet = () => {
     const splitGroupQuery = useGetSplitGroup(
         transactionQuery.data?.splitGroupId,
     );
+    const isSplitParent = transactionQuery.data?.splitType === 'parent';
+    const splitGroupTransactions = splitGroupQuery.data ?? [];
+    const splitChildren = useMemo(
+        () =>
+            splitGroupTransactions.filter(
+                (transaction) => transaction.splitType === 'child',
+            ),
+        [splitGroupTransactions],
+    );
     const canReconcileQuery = useCanReconcile(id);
     const editMutation = useEditTransaction(id);
     const splitMutation = useSplitTransaction(id);
@@ -68,7 +105,7 @@ export const EditTransactionSheet = () => {
     const uncompleteMutation = useUncompleteTransaction(id);
 
     // Document validation queries
-    const documentsQuery = useGetDocuments(id ?? '');
+    const documentsQuery = useGetDocuments(isSplitParent ? '' : (id ?? ''));
     const settingsQuery = useGetSettings();
 
     const tagMutation = useCreateTag();
@@ -213,6 +250,176 @@ export const EditTransactionSheet = () => {
         | 'completed'
         | 'reconciled';
 
+    // Derive status from children for split parents.
+    // Note: A split parent with zero children is an invalid state (should have at least one child).
+    // In this edge case, we fall back to currentStatus to avoid UI issues.
+    const derivedStatus = useMemo(() => {
+        if (splitChildren.length === 0) return currentStatus;
+        return splitChildren.reduce(
+            (lowest, child) => {
+                const nextStatus =
+                    (child.status as typeof currentStatus) ?? 'pending';
+                return STATUS_ORDER[nextStatus] < STATUS_ORDER[lowest]
+                    ? nextStatus
+                    : lowest;
+            },
+            'reconciled' as typeof currentStatus,
+        );
+    }, [currentStatus, splitChildren]);
+
+    const displayStatus = isSplitParent ? derivedStatus : currentStatus;
+
+    const splitCustomers = useMemo(() => {
+        const customers = new Set<string>();
+        for (const child of splitChildren) {
+            const name = child.payeeCustomerName || child.payee;
+            if (name) customers.add(name);
+        }
+        return [...customers];
+    }, [splitChildren]);
+
+    const splitCustomerLabel = splitCustomers.length
+        ? `${splitCustomers[0]}${
+              splitCustomers.length > 1
+                  ? ` +${splitCustomers.length - 1} more`
+                  : ''
+          }`
+        : '—';
+
+    const totalSplitAmount = useMemo(
+        () =>
+            splitChildren.reduce((sum, child) => sum + (child.amount ?? 0), 0),
+        [splitChildren],
+    );
+
+    // Only create query objects when this is actually a split parent to avoid
+    // unnecessary query instance creation on every render
+    const childHistoryQueries = useQueries({
+        queries: isSplitParent
+            ? splitChildren.map((child) => ({
+                  queryKey: ['transaction-status-history', { id: child.id }],
+                  queryFn: async (): Promise<StatusHistoryEntry[]> => {
+                      const response = await client.api.transactions[':id'][
+                          'status-history'
+                      ].$get({
+                          param: { id: child.id },
+                      });
+
+                      if (!response.ok) {
+                          throw new Error(
+                              'Failed to fetch transaction status history.',
+                          );
+                      }
+
+                      const { data } = await response.json();
+                      return data;
+                  },
+              }))
+            : [],
+    });
+
+    // Only create query objects when this is actually a split parent to avoid
+    // unnecessary query instance creation on every render
+    const childDocumentQueries = useQueries({
+        queries: isSplitParent
+            ? splitChildren.map((child) => ({
+                  queryKey: ['documents', child.id],
+                  queryFn: async () => {
+                      const response = await client.api.documents.transaction[
+                          ':transactionId'
+                      ].$get({
+                          param: { transactionId: child.id },
+                      });
+
+                      if (!response.ok) {
+                          throw new Error('Failed to fetch documents');
+                      }
+
+                      const { data } = await response.json();
+                      return data;
+                  },
+              }))
+            : [],
+    });
+
+    const totalSplitDocuments = childDocumentQueries.reduce(
+        (sum, query) => sum + (query.data?.length ?? 0),
+        0,
+    );
+
+    const statusColors: Record<typeof currentStatus, string> = {
+        draft: 'text-muted-foreground',
+        pending: 'text-yellow-600',
+        completed: 'text-blue-600',
+        reconciled: 'text-green-600',
+    };
+
+    const formatStatusLabel = (status?: string | null) =>
+        status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending';
+
+    const transactionDateLabel = transactionQuery.data?.date
+        ? new Date(transactionQuery.data.date).toLocaleDateString()
+        : '—';
+
+    const splitCreatedAt = useMemo(() => {
+        if (!statusHistoryQuery.data || statusHistoryQuery.data.length === 0) {
+            return transactionQuery.data?.date;
+        }
+        const oldestEntry =
+            statusHistoryQuery.data[statusHistoryQuery.data.length - 1];
+        return oldestEntry?.changedAt ?? transactionQuery.data?.date;
+    }, [statusHistoryQuery.data, transactionQuery.data?.date]);
+
+    const formatDateTime = (value?: string | Date | null) =>
+        value ? new Date(value).toLocaleString() : '—';
+
+    const renderStatusHistory = (history: StatusHistoryEntry[]) => {
+        if (!history || history.length === 0) {
+            return (
+                <div className="text-sm text-muted-foreground">
+                    No status history yet.
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-2 text-sm text-muted-foreground">
+                {history.map((entry, idx) => (
+                    <Fragment key={entry.id}>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-1">
+                                <UserAvatar
+                                    userId={entry.changedBy || 'unknown'}
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-foreground">
+                                        {entry.fromStatus && (
+                                            <span className="text-muted-foreground">
+                                                {entry.fromStatus} →{' '}
+                                            </span>
+                                        )}
+                                        {entry.toStatus}
+                                    </div>
+                                    {!!entry.notes && (
+                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                            {entry.notes}
+                                        </div>
+                                    )}
+                                    <div className="text-xs">
+                                        {formatDateTime(entry.changedAt)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {idx < history.length - 1 && (
+                            <div className="h-px bg-muted" />
+                        )}
+                    </Fragment>
+                ))}
+            </div>
+        );
+    };
+
     const reconciliationStatus = canReconcileQuery.data;
     const canReconcile = reconciliationStatus?.isReconciled ?? false;
     const reconciliationBlockers: string[] = [];
@@ -329,7 +536,7 @@ export const EditTransactionSheet = () => {
                     <div className="px-6 pt-6">
                         <SheetHeader>
                             <SheetTitle className="flex items-center gap-2">
-                                {currentStatus === 'reconciled'
+                                {displayStatus === 'reconciled'
                                     ? 'Transaction Details'
                                     : 'Edit Transaction'}
                                 {transactionQuery.data?.stripePaymentId && (
@@ -342,7 +549,7 @@ export const EditTransactionSheet = () => {
                                 )}
                             </SheetTitle>
                             <SheetDescription>
-                                {currentStatus === 'reconciled'
+                                {displayStatus === 'reconciled'
                                     ? 'View reconciled transaction details.'
                                     : 'Edit an existing transaction.'}
                                 {transactionQuery.data?.stripePaymentUrl && (
@@ -365,22 +572,49 @@ export const EditTransactionSheet = () => {
 
                     {/* Status Progression */}
                     <div className="px-6">
-                        <StatusProgression
-                            currentStatus={currentStatus}
-                            onAdvance={onAdvanceStatus}
-                            onUnreconcile={onUnreconcile}
-                            onUncomplete={onUncomplete}
-                            disabled={isPending}
-                            autoDraftToPendingEnabled={
-                                settingsQuery.data?.autoDraftToPending ?? false
-                            }
-                            canReconcile={canReconcile}
-                            reconciliationBlockers={reconciliationBlockers}
-                            hasAllRequiredDocuments={hasAllRequiredDocuments}
-                            requiredDocumentTypes={requiredDocTypeIds.length}
-                            attachedRequiredTypes={attachedRequiredTypesCount}
-                            minRequiredDocuments={minRequiredDocuments}
-                        />
+                        {isSplitParent ? (
+                            <div className="rounded-md border p-3">
+                                <div className="flex items-center gap-2">
+                                    <Badge
+                                        variant="outline"
+                                        className={
+                                            statusColors[displayStatus] || ''
+                                        }
+                                    >
+                                        {formatStatusLabel(displayStatus)}
+                                    </Badge>
+                                    <span className="text-sm text-muted-foreground">
+                                        Derived from {splitChildren.length}{' '}
+                                        split part
+                                        {splitChildren.length === 1 ? '' : 's'}.
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <StatusProgression
+                                currentStatus={currentStatus}
+                                onAdvance={onAdvanceStatus}
+                                onUnreconcile={onUnreconcile}
+                                onUncomplete={onUncomplete}
+                                disabled={isPending}
+                                autoDraftToPendingEnabled={
+                                    settingsQuery.data?.autoDraftToPending ??
+                                    false
+                                }
+                                canReconcile={canReconcile}
+                                reconciliationBlockers={reconciliationBlockers}
+                                hasAllRequiredDocuments={
+                                    hasAllRequiredDocuments
+                                }
+                                requiredDocumentTypes={
+                                    requiredDocTypeIds.length
+                                }
+                                attachedRequiredTypes={
+                                    attachedRequiredTypesCount
+                                }
+                                minRequiredDocuments={minRequiredDocuments}
+                            />
+                        )}
                     </div>
 
                     {isLoading ? (
@@ -412,177 +646,402 @@ export const EditTransactionSheet = () => {
                                     value="details"
                                     className="space-y-6 mt-0"
                                 >
-                                    <UnifiedEditTransactionForm
-                                        id={id}
-                                        defaultValues={defaultValuesForForm}
-                                        onSubmit={onSubmit}
-                                        onSplit={onSplit}
-                                        disabled={isPending}
-                                        tagOptions={tagOptions}
-                                        onCreateTag={onCreateTag}
-                                        onCreateCustomer={onCreateCustomer}
-                                        onDelete={onDelete}
-                                        payeeText={transactionQuery.data?.payee}
-                                        currentStatus={currentStatus}
-                                        isSplit={
-                                            !!transactionQuery.data
-                                                ?.splitGroupId
-                                        }
-                                    />
-
-                                    {splitGroupQuery.data &&
-                                        splitGroupQuery.data.length > 0 && (
-                                            <div className="space-y-2 rounded-md border p-3">
+                                    {isSplitParent ? (
+                                        <div className="space-y-4">
+                                            <div className="rounded-md border p-3 space-y-3">
                                                 <div className="text-sm font-semibold">
-                                                    Split group
+                                                    Split summary
                                                 </div>
-                                                <div className="space-y-1 text-sm">
-                                                    {splitGroupQuery.data.map(
-                                                        (split) => (
-                                                            <div
-                                                                key={split.id}
-                                                                className="flex items-center justify-between rounded bg-muted/40 px-2 py-1"
-                                                            >
-                                                                <div>
-                                                                    <div className="font-medium">
-                                                                        {split.splitType ===
-                                                                        'parent'
-                                                                            ? 'Parent'
-                                                                            : 'Child'}
-                                                                    </div>
-                                                                    <div className="text-xs text-muted-foreground">
-                                                                        {split.payeeCustomerName ||
-                                                                            split.payee ||
-                                                                            ''}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="text-xs text-muted-foreground">
-                                                                    {formatCurrency(
-                                                                        split.amount ??
-                                                                            0,
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ),
-                                                    )}
+                                                <div className="text-xs text-muted-foreground">
+                                                    This parent only groups
+                                                    split parts. Edit parts to
+                                                    update amounts, accounts,
+                                                    tags, status, and documents.
+                                                </div>
+                                                <div className="grid gap-2 text-sm">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Date
+                                                        </span>
+                                                        <span>
+                                                            {
+                                                                transactionDateLabel
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Status
+                                                        </span>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={
+                                                                statusColors[
+                                                                    displayStatus
+                                                                ] || ''
+                                                            }
+                                                        >
+                                                            {formatStatusLabel(
+                                                                displayStatus,
+                                                            )}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Customers
+                                                        </span>
+                                                        <span>
+                                                            {splitCustomerLabel}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Total amount
+                                                        </span>
+                                                        <span>
+                                                            {formatCurrency(
+                                                                totalSplitAmount,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground">
+                                                            Parts
+                                                        </span>
+                                                        <span>
+                                                            {
+                                                                splitChildren.length
+                                                            }
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        )}
 
-                                    {/* Duplicate button */}
-                                    <div className="pb-4">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={handleDuplicate}
-                                            disabled={
-                                                isPending ||
-                                                !transactionQuery.data
-                                            }
-                                            className="w-full"
-                                        >
-                                            <Copy className="mr-2 size-4" />
-                                            Duplicate Transaction
-                                        </Button>
-                                    </div>
+                                            <div className="space-y-2 rounded-md border p-3">
+                                                <div className="text-sm font-semibold">
+                                                    Split parts
+                                                </div>
+                                                {splitChildren.length === 0 ? (
+                                                    <div className="text-sm text-muted-foreground">
+                                                        No parts found for this
+                                                        split group.
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2 text-sm">
+                                                        {splitChildren.map(
+                                                            (child) => (
+                                                                <div
+                                                                    key={
+                                                                        child.id
+                                                                    }
+                                                                    className="flex items-center justify-between gap-3 rounded bg-muted/40 px-2 py-1"
+                                                                >
+                                                                    <div>
+                                                                        <div className="font-medium">
+                                                                            {child.payeeCustomerName ||
+                                                                                child.payee ||
+                                                                                'Untitled'}
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground">
+                                                                            {formatStatusLabel(
+                                                                                child.status ??
+                                                                                    'pending',
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {formatCurrency(
+                                                                                child.amount ??
+                                                                                    0,
+                                                                            )}
+                                                                        </span>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() =>
+                                                                                onOpenTransaction(
+                                                                                    child.id,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            Open
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <UnifiedEditTransactionForm
+                                                id={id}
+                                                defaultValues={
+                                                    defaultValuesForForm
+                                                }
+                                                onSubmit={onSubmit}
+                                                onSplit={onSplit}
+                                                disabled={isPending}
+                                                tagOptions={tagOptions}
+                                                onCreateTag={onCreateTag}
+                                                onCreateCustomer={
+                                                    onCreateCustomer
+                                                }
+                                                onDelete={onDelete}
+                                                payeeText={
+                                                    transactionQuery.data?.payee
+                                                }
+                                                currentStatus={currentStatus}
+                                                isSplit={
+                                                    !!transactionQuery.data
+                                                        ?.splitGroupId
+                                                }
+                                            />
+
+                                            {splitGroupQuery.data &&
+                                                splitGroupQuery.data.length >
+                                                    0 && (
+                                                    <div className="space-y-2 rounded-md border p-3">
+                                                        <div className="text-sm font-semibold">
+                                                            Split group
+                                                        </div>
+                                                        <div className="space-y-1 text-sm">
+                                                            {splitGroupQuery.data.map(
+                                                                (split) => (
+                                                                    <div
+                                                                        key={
+                                                                            split.id
+                                                                        }
+                                                                        className="flex items-center justify-between rounded bg-muted/40 px-2 py-1"
+                                                                    >
+                                                                        <div>
+                                                                            <div className="font-medium">
+                                                                                {split.splitType ===
+                                                                                'parent'
+                                                                                    ? 'Parent'
+                                                                                    : 'Child'}
+                                                                            </div>
+                                                                            <div className="text-xs text-muted-foreground">
+                                                                                {split.payeeCustomerName ||
+                                                                                    split.payee ||
+                                                                                    ''}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground">
+                                                                            {formatCurrency(
+                                                                                split.amount ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            {/* Duplicate button */}
+                                            <div className="pb-4">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={handleDuplicate}
+                                                    disabled={
+                                                        isPending ||
+                                                        !transactionQuery.data
+                                                    }
+                                                    className="w-full"
+                                                >
+                                                    <Copy className="mr-2 size-4" />
+                                                    Duplicate Transaction
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
                                 </TabsContent>
 
                                 <TabsContent value="documents" className="mt-0">
-                                    {transactionQuery.data && (
-                                        <DocumentsTab
-                                            transactionId={
-                                                transactionQuery.data.id
-                                            }
-                                            readOnly={
-                                                currentStatus === 'reconciled'
-                                            }
-                                        />
+                                    {isSplitParent ? (
+                                        <div className="space-y-4">
+                                            <div className="rounded-md border p-3 space-y-2">
+                                                <div className="text-sm font-semibold">
+                                                    Documents
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Documents are stored on
+                                                    split parts. Open a part to
+                                                    manage its documents.
+                                                </div>
+                                                <div className="text-sm">
+                                                    {totalSplitDocuments}{' '}
+                                                    document
+                                                    {totalSplitDocuments === 1
+                                                        ? ''
+                                                        : 's'}{' '}
+                                                    across{' '}
+                                                    {splitChildren.length} part
+                                                    {splitChildren.length === 1
+                                                        ? ''
+                                                        : 's'}
+                                                    .
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {splitChildren.map(
+                                                    (child, index) => {
+                                                        const docsQuery =
+                                                            childDocumentQueries[
+                                                                index
+                                                            ];
+                                                        const count =
+                                                            docsQuery?.data
+                                                                ?.length ?? 0;
+                                                        return (
+                                                            <div
+                                                                key={child.id}
+                                                                className="flex items-center justify-between rounded bg-muted/40 px-2 py-1"
+                                                            >
+                                                                <div>
+                                                                    <div className="text-sm font-medium">
+                                                                        {child.payeeCustomerName ||
+                                                                            child.payee ||
+                                                                            'Untitled'}
+                                                                    </div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {docsQuery?.isLoading
+                                                                            ? 'Loading documents...'
+                                                                            : `${count} document${count === 1 ? '' : 's'}`}
+                                                                    </div>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onOpenTransaction(
+                                                                            child.id,
+                                                                            'documents',
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Open
+                                                                </Button>
+                                                            </div>
+                                                        );
+                                                    },
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        transactionQuery.data && (
+                                            <DocumentsTab
+                                                transactionId={
+                                                    transactionQuery.data.id
+                                                }
+                                                readOnly={
+                                                    displayStatus ===
+                                                    'reconciled'
+                                                }
+                                            />
+                                        )
                                     )}
                                 </TabsContent>
 
                                 <TabsContent value="history" className="mt-0">
-                                    {statusHistoryQuery.data &&
-                                    statusHistoryQuery.data.length > 0 ? (
+                                    {isSplitParent ? (
+                                        <div className="space-y-4">
+                                            <div className="rounded-md border p-3">
+                                                <div className="text-sm font-semibold">
+                                                    Split created
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {formatDateTime(
+                                                        splitCreatedAt ?? null,
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {splitChildren.map(
+                                                (child, index) => {
+                                                    const historyQuery =
+                                                        childHistoryQueries[
+                                                            index
+                                                        ];
+                                                    const history =
+                                                        historyQuery?.data ??
+                                                        [];
+                                                    return (
+                                                        <div
+                                                            key={child.id}
+                                                            className="space-y-2 rounded-md border p-3"
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <div className="text-sm font-semibold">
+                                                                        {child.payeeCustomerName ||
+                                                                            child.payee ||
+                                                                            'Untitled'}
+                                                                    </div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        Part{' '}
+                                                                        {index +
+                                                                            1}{' '}
+                                                                        ·{' '}
+                                                                        {formatCurrency(
+                                                                            child.amount ??
+                                                                                0,
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onOpenTransaction(
+                                                                            child.id,
+                                                                            'history',
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Open
+                                                                </Button>
+                                                            </div>
+                                                            {historyQuery?.isLoading ? (
+                                                                <div className="text-sm text-muted-foreground">
+                                                                    Loading
+                                                                    history...
+                                                                </div>
+                                                            ) : (
+                                                                renderStatusHistory(
+                                                                    history,
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    ) : (
                                         <div className="space-y-2 rounded-md border p-3">
                                             <div className="text-sm font-semibold">
                                                 Status history
                                             </div>
                                             <div className="text-xs text-muted-foreground">
                                                 Created:{' '}
-                                                {statusHistoryQuery.data[
-                                                    statusHistoryQuery.data
-                                                        .length - 1
-                                                ]?.changedAt
-                                                    ? new Date(
-                                                          statusHistoryQuery
-                                                              .data[
-                                                              statusHistoryQuery
-                                                                  .data.length -
-                                                                  1
-                                                          ].changedAt,
-                                                      ).toLocaleString()
-                                                    : ''}
-                                            </div>
-                                            <div className="space-y-2 text-sm text-muted-foreground">
-                                                {statusHistoryQuery.data.map(
-                                                    (entry, idx) => (
-                                                        <Fragment
-                                                            key={entry.id}
-                                                        >
-                                                            <div className="flex items-center justify-between gap-3">
-                                                                <div className="flex items-center gap-2 flex-1">
-                                                                    <UserAvatar
-                                                                        userId={
-                                                                            entry.changedBy ||
-                                                                            'unknown'
-                                                                        }
-                                                                    />
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="font-medium text-foreground">
-                                                                            {entry.fromStatus && (
-                                                                                <span className="text-muted-foreground">
-                                                                                    {
-                                                                                        entry.fromStatus
-                                                                                    }{' '}
-                                                                                    →{' '}
-                                                                                </span>
-                                                                            )}
-                                                                            {
-                                                                                entry.toStatus
-                                                                            }
-                                                                        </div>
-                                                                        {!!entry.notes && (
-                                                                            <div className="text-xs text-muted-foreground mt-0.5">
-                                                                                {
-                                                                                    entry.notes
-                                                                                }
-                                                                            </div>
-                                                                        )}
-                                                                        <div className="text-xs">
-                                                                            {entry.changedAt
-                                                                                ? new Date(
-                                                                                      entry.changedAt,
-                                                                                  ).toLocaleString()
-                                                                                : ''}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {idx <
-                                                                statusHistoryQuery
-                                                                    .data
-                                                                    .length -
-                                                                    1 && (
-                                                                <div className="h-px bg-muted" />
-                                                            )}
-                                                        </Fragment>
-                                                    ),
+                                                {formatDateTime(
+                                                    statusHistoryQuery.data?.[
+                                                        statusHistoryQuery.data
+                                                            .length - 1
+                                                    ]?.changedAt ?? null,
                                                 )}
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-sm text-muted-foreground">
-                                            No status history yet.
+                                            {renderStatusHistory(
+                                                statusHistoryQuery.data ?? [],
+                                            )}
                                         </div>
                                     )}
                                 </TabsContent>
