@@ -1,7 +1,6 @@
 import {
     Cell,
     Legend,
-    type LegendProps,
     Pie,
     PieChart,
     ResponsiveContainer,
@@ -10,7 +9,7 @@ import {
 
 import { formatPercentage } from '@/lib/utils';
 
-import { TagTooltip } from './tag-tooltip';
+import { TagTooltip, type TagTooltipProps } from './tag-tooltip';
 
 const COLORS = ['#0062FF', '#12C6FF', '#FF647F', '#FF9354'];
 
@@ -21,8 +20,6 @@ type PieVariantProps = {
         percent?: number;
     }[];
 };
-
-type PieChartLegendPayload = NonNullable<LegendProps['payload']>[number];
 
 export const PieVariant = ({ data }: PieVariantProps) => {
     return (
@@ -36,41 +33,39 @@ export const PieVariant = ({ data }: PieVariantProps) => {
                     content={({ payload }) => {
                         return (
                             <ul className="flex flex-col space-y-2">
-                                {payload?.map(
-                                    (entry: PieChartLegendPayload) => {
-                                        const payloadData = entry.payload as {
-                                            percent?: number;
-                                        };
-                                        return (
-                                            <li
-                                                key={`legend-${entry.value}`}
-                                                className="flex items-center space-x-2"
-                                            >
-                                                <span
-                                                    className="size-2 rounded-full"
-                                                    style={{
-                                                        backgroundColor:
-                                                            entry.color,
-                                                    }}
-                                                    aria-hidden
-                                                />
+                                {payload?.map((entry) => {
+                                    const payloadData = entry.payload as {
+                                        percent?: number;
+                                    };
+                                    return (
+                                        <li
+                                            key={`legend-${entry.value}`}
+                                            className="flex items-center space-x-2"
+                                        >
+                                            <span
+                                                className="size-2 rounded-full"
+                                                style={{
+                                                    backgroundColor:
+                                                        entry.color,
+                                                }}
+                                                aria-hidden
+                                            />
 
-                                                <div className="space-x-1">
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {entry.value}
-                                                    </span>
+                                            <div className="space-x-1">
+                                                <span className="text-sm text-muted-foreground">
+                                                    {entry.value}
+                                                </span>
 
-                                                    <span className="text-sm">
-                                                        {formatPercentage(
-                                                            (payloadData.percent ??
-                                                                0) * 100,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            </li>
-                                        );
-                                    },
-                                )}
+                                                <span className="text-sm">
+                                                    {formatPercentage(
+                                                        (payloadData.percent ??
+                                                            0) * 100,
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         );
                     }}
@@ -78,7 +73,10 @@ export const PieVariant = ({ data }: PieVariantProps) => {
 
                 <Tooltip
                     content={({ active, payload }) => (
-                        <TagTooltip active={active} payload={payload} />
+                        <TagTooltip
+                            active={active}
+                            payload={payload as TagTooltipProps['payload']}
+                        />
                     )}
                 />
 

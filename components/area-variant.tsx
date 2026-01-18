@@ -8,7 +8,7 @@ import {
     XAxis,
 } from 'recharts';
 
-import { CustomTooltip } from './custom-tooltip';
+import { CustomTooltip, type CustomTooltipProps } from './custom-tooltip';
 
 type AreaVariantProps = {
     data: {
@@ -64,7 +64,10 @@ export const AreaVariant = ({ data }: AreaVariantProps) => {
 
                 <Tooltip
                     content={({ active, payload }) => (
-                        <CustomTooltip active={active} payload={payload} />
+                        <CustomTooltip
+                            active={active}
+                            payload={payload as CustomTooltipProps['payload']}
+                        />
                     )}
                 />
 
