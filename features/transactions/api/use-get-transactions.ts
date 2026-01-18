@@ -48,10 +48,12 @@ export const useGetTransactions = () => {
                 splitSummary?: SplitSummary;
             };
 
-            const converted: TransactionWithMeta[] = data.map((transaction) => ({
-                ...transaction,
-                amount: convertAmountFromMiliunits(transaction.amount),
-            }));
+            const converted: TransactionWithMeta[] = data.map(
+                (transaction) => ({
+                    ...transaction,
+                    amount: convertAmountFromMiliunits(transaction.amount),
+                }),
+            );
 
             const sortedByDateDesc = [...converted].sort((a, b) => {
                 const aTime = new Date(a.date).getTime();

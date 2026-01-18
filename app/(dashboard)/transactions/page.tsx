@@ -400,7 +400,7 @@ export default function TransactionsPage() {
                     </div>
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="space-y-4">
                     <div className="flex flex-col items-stretch gap-y-2 md:flex-row md:gap-x-2 md:gap-y-0">
                         <DataTableSearch
                             filterKey="payeeCustomerName"

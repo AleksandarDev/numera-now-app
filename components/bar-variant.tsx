@@ -8,7 +8,10 @@ import {
     XAxis,
 } from 'recharts';
 
-import { CustomTooltip } from '@/components/custom-tooltip';
+import {
+    CustomTooltip,
+    type CustomTooltipProps,
+} from '@/components/custom-tooltip';
 
 type BarVariantProps = {
     data: {
@@ -37,7 +40,10 @@ export const BarVariant = ({ data }: BarVariantProps) => {
 
                 <Tooltip
                     content={({ active, payload }) => (
-                        <CustomTooltip active={active} payload={payload} />
+                        <CustomTooltip
+                            active={active}
+                            payload={payload as CustomTooltipProps['payload']}
+                        />
                     )}
                 />
 

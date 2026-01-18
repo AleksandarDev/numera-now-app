@@ -1,7 +1,13 @@
 'use client';
 
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
 import type { ColumnFiltersState, Row } from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { parseAsString, useQueryStates } from 'nuqs';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -10,7 +16,6 @@ import { DataTableSearch } from '@/components/data-table-search';
 import { DateFilter } from '@/components/date-filter';
 import { DocumentDropzone } from '@/components/document-dropzone';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -136,15 +141,19 @@ export default function DocumentsPage() {
 
     return (
         <div className="mx-auto -mt-24 w-full max-w-screen-2xl pb-10">
-            <Card className="border-none drop-shadow-sm">
+            <Card>
                 <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
-                    <CardTitle className="line-clamp-1 text-xl">
-                        Documents
-                    </CardTitle>
-                    <Button onClick={() => setShowUploadSheet(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Upload Document
-                    </Button>
+                    <CardTitle>Documents</CardTitle>
+                    <div className="flex flex-row items-center gap-x-2 gap-y-2">
+                        <Button
+                            size="sm"
+                            className="w-full lg:w-auto"
+                            onClick={() => setShowUploadSheet(true)}
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {/* Filters */}
