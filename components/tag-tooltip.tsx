@@ -7,9 +7,9 @@ import type {
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
 
-type TagTooltipProps = {
+export type TagTooltipProps = {
     active: boolean | undefined;
-    payload: Payload<ValueType, NameType>[] | undefined;
+    payload: readonly Payload<ValueType, NameType>[] | undefined;
 };
 
 export const TagTooltip = ({ active, payload }: TagTooltipProps) => {
