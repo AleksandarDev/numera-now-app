@@ -1,7 +1,6 @@
+import { Button } from '@signalco/ui-primitives/Button';
 import { type ReactNode, useRef, useState } from 'react';
-
 import { Select } from '@/components/select';
-import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -76,7 +75,7 @@ export const useSelectAccount = (): [
                 />
 
                 <DialogFooter className="pt-2">
-                    <Button onClick={handleCancel} variant="outline">
+                    <Button onClick={handleCancel} variant="outlined">
                         Cancel
                     </Button>
                     <Button onClick={handleConfirm}>Confirm</Button>

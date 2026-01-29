@@ -1,17 +1,16 @@
 'use client';
 
 import { useAuth } from '@clerk/nextjs';
-import { Check, Copy, ExternalLink, Info, Loader2, Share2 } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+} from '@signalco/ui-primitives/Card';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Check, Copy, ExternalLink, Info, Loader2, Share2 } from 'lucide-react';
+import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,7 +87,7 @@ export function OpenFinancesSettingsCard() {
             <Card>
                 <CardHeader>
                     <CardTitle>Open Finances</CardTitle>
-                    <CardDescription>Loading...</CardDescription>
+                    <p className="text-sm text-muted-foreground">Loading...</p>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center justify-center py-8">
@@ -103,10 +102,10 @@ export function OpenFinancesSettingsCard() {
         <Card>
             <CardHeader>
                 <CardTitle>Open Finances</CardTitle>
-                <CardDescription>
+                <p className="text-sm text-muted-foreground">
                     Share selected financial data publicly with transparency.
                     Control what information is visible and how it's displayed.
-                </CardDescription>
+                </p>
             </CardHeader>
             <CardContent className="space-y-6">
                 {/* Enable/Disable */}
@@ -352,8 +351,8 @@ export function OpenFinancesSettingsCard() {
                                             className="flex-1 bg-white"
                                         />
                                         <Button
-                                            variant="outline"
-                                            size="icon"
+                                            variant="outlined"
+                                            className="h-10 w-10 p-0"
                                             onClick={() =>
                                                 copyToClipboard(embedUrl)
                                             }
@@ -365,20 +364,15 @@ export function OpenFinancesSettingsCard() {
                                                 <Copy className="size-4" />
                                             )}
                                         </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            asChild
+                                        <a
+                                            href={embedUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center justify-center h-10 w-10 p-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
                                             title="Open in new tab"
                                         >
-                                            <a
-                                                href={embedUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                <ExternalLink className="size-4" />
-                                            </a>
-                                        </Button>
+                                            <ExternalLink className="size-4" />
+                                        </a>
                                     </div>
                                 </div>
 
@@ -400,8 +394,8 @@ export function OpenFinancesSettingsCard() {
                                                 rows={3}
                                             />
                                             <Button
-                                                variant="outline"
-                                                size="icon"
+                                                variant="outlined"
+                                                className="h-10 w-10 p-0"
                                                 onClick={() =>
                                                     copyToClipboard(embedCode)
                                                 }

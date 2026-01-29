@@ -1,8 +1,8 @@
 'use client';
 
+import { Input } from '@signalco/ui-primitives/Input';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import * as React from 'react';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface DataTableSearchProps {

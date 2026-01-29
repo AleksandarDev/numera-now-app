@@ -1,28 +1,21 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Table } from '@signalco/ui-primitives/Table';
 import { format } from 'date-fns';
 import { CalendarClock, Loader2, MoreHorizontal, Trash } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { useDeleteAccountingPeriod } from '@/features/accounting-periods/api/use-delete-accounting-period';
 import { useGetAccountingPeriods } from '@/features/accounting-periods/api/use-get-accounting-periods';
 import { useYearClosingWizard } from '@/features/accounting-periods/hooks/use-year-closing-wizard';
@@ -76,18 +69,18 @@ export const AccountingPeriodsSettingsCard = () => {
                     ) : (
                         <div className="rounded-md border">
                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Period</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Closed</TableHead>
-                                        <TableHead className="w-[50px]"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
+                                <Table.Header>
+                                    <Table.Row>
+                                        <Table.Head>Period</Table.Head>
+                                        <Table.Head>Status</Table.Head>
+                                        <Table.Head>Closed</Table.Head>
+                                        <Table.Head className="w-[50px]"></Table.Head>
+                                    </Table.Row>
+                                </Table.Header>
+                                <Table.Body>
                                     {periods.map((period) => (
-                                        <TableRow key={period.id}>
-                                            <TableCell>
+                                        <Table.Row key={period.id}>
+                                            <Table.Cell>
                                                 <div className="font-medium">
                                                     {format(
                                                         new Date(
@@ -108,8 +101,8 @@ export const AccountingPeriodsSettingsCard = () => {
                                                         {period.notes}
                                                     </div>
                                                 )}
-                                            </TableCell>
-                                            <TableCell>
+                                            </Table.Cell>
+                                            <Table.Cell>
                                                 <span
                                                     className={cn(
                                                         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
@@ -123,8 +116,8 @@ export const AccountingPeriodsSettingsCard = () => {
                                                         ? 'Closed'
                                                         : 'Open'}
                                                 </span>
-                                            </TableCell>
-                                            <TableCell>
+                                            </Table.Cell>
+                                            <Table.Cell>
                                                 {period.closedAt
                                                     ? format(
                                                           new Date(
@@ -133,14 +126,14 @@ export const AccountingPeriodsSettingsCard = () => {
                                                           'MMM d, yyyy',
                                                       )
                                                     : '-'}
-                                            </TableCell>
-                                            <TableCell>
+                                            </Table.Cell>
+                                            <Table.Cell>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger
                                                         asChild
                                                     >
                                                         <Button
-                                                            variant="ghost"
+                                                            variant="plain"
                                                             size="sm"
                                                             className="h-8 w-8 p-0"
                                                         >
@@ -173,10 +166,10 @@ export const AccountingPeriodsSettingsCard = () => {
                                                         )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
+                                            </Table.Cell>
+                                        </Table.Row>
                                     ))}
-                                </TableBody>
+                                </Table.Body>
                             </Table>
                         </div>
                     )}

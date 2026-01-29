@@ -1,6 +1,11 @@
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@signalco/ui-primitives/Tabs';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
-
 import { InvoiceImport } from '@/components/invoice-import';
 import {
     Sheet,
@@ -9,7 +14,6 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
 import { useCreateTag } from '@/features/tags/api/use-create-tag';
 import { useGetTags } from '@/features/tags/api/use-get-tags';

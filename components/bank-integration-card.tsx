@@ -1,5 +1,14 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Divider } from '@signalco/ui-primitives/Divider';
+import { Input } from '@signalco/ui-primitives/Input';
 import {
     AlertCircle,
     Building2,
@@ -16,14 +25,6 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
 import { DatePicker } from '@/components/date-picker';
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -32,7 +33,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -41,7 +41,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -372,11 +371,11 @@ export function BankIntegrationCard() {
                         <Building2 className="h-5 w-5" />
                         Bank Integration
                     </CardTitle>
-                    <CardDescription>
+                    <p className="text-sm text-muted-foreground">
                         Connect your bank accounts via{' '}
                         {bankingProviderConfig.name} to automatically import
                         transactions
-                    </CardDescription>
+                    </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {/* Connection Status */}
@@ -407,7 +406,7 @@ export function BankIntegrationCard() {
                         {isConnected && (
                             <div className="flex gap-2">
                                 <Button
-                                    variant="outline"
+                                    variant="outlined"
                                     size="sm"
                                     onClick={handleTestConnection}
                                     disabled={testConnection.isPending}
@@ -419,7 +418,8 @@ export function BankIntegrationCard() {
                                     )}
                                 </Button>
                                 <Button
-                                    variant="destructive"
+                                    variant="solid"
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     size="sm"
                                     onClick={handleDisconnect}
                                     disabled={disconnectBanking.isPending}
@@ -522,28 +522,22 @@ export function BankIntegrationCard() {
                                     key here
                                 </li>
                             </ol>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
-                                asChild
+                            <a
+                                href={bankingProviderConfig.docsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
                             >
-                                <a
-                                    href={bankingProviderConfig.docsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Open {bankingProviderConfig.name} Docs
-                                    <ExternalLink className="h-3 w-3 ml-1" />
-                                </a>
-                            </Button>
+                                Open {bankingProviderConfig.name} Docs
+                                <ExternalLink className="h-3 w-3 ml-1" />
+                            </a>
                         </div>
                     </div>
 
                     {/* Connected Banks Section - only shown when connected */}
                     {isConnected && (
                         <>
-                            <Separator />
+                            <Divider />
 
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
@@ -560,7 +554,10 @@ export function BankIntegrationCard() {
                                         onOpenChange={setAddBankDialogOpen}
                                     >
                                         <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm">
+                                            <Button
+                                                variant="outlined"
+                                                size="sm"
+                                            >
                                                 <Plus className="h-4 w-4 mr-1" />
                                                 Add Bank
                                             </Button>
@@ -735,7 +732,7 @@ export function BankIntegrationCard() {
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <Button
-                                                            variant="ghost"
+                                                            variant="plain"
                                                             size="sm"
                                                             onClick={() =>
                                                                 handleDeleteConnection(
@@ -807,7 +804,7 @@ export function BankIntegrationCard() {
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <Button
-                                                            variant="ghost"
+                                                            variant="plain"
                                                             size="sm"
                                                             onClick={() =>
                                                                 handleDeleteConnection(
@@ -874,7 +871,7 @@ export function BankIntegrationCard() {
                                                         </div>
                                                     </div>
                                                     <Button
-                                                        variant="ghost"
+                                                        variant="plain"
                                                         size="sm"
                                                         onClick={() =>
                                                             handleDeleteConnection(
@@ -968,7 +965,7 @@ export function BankIntegrationCard() {
                                 )}
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Default Transaction Settings */}
                             <div className="space-y-4">
@@ -1050,7 +1047,7 @@ export function BankIntegrationCard() {
                                 </div>
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Sync From Date */}
                             <div className="space-y-2">
@@ -1069,7 +1066,7 @@ export function BankIntegrationCard() {
                                 </p>
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Sync Section */}
                             <div className="space-y-3">
@@ -1093,7 +1090,7 @@ export function BankIntegrationCard() {
                                         )}
                                     </div>
                                     <Button
-                                        variant="outline"
+                                        variant="outlined"
                                         size="sm"
                                         onClick={handleSync}
                                         disabled={
@@ -1120,7 +1117,7 @@ export function BankIntegrationCard() {
                                 )}
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Enable/Disable Toggle */}
                             <div className="flex items-center justify-between">

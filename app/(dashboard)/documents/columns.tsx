@@ -1,10 +1,10 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import type { ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import type { InferResponseType } from 'hono';
 import { ArrowUpDown, FileText, Link2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import type { client } from '@/lib/hono';
 import { DocumentActions } from './actions';
 
@@ -37,7 +37,7 @@ export const getColumns = ({
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -63,7 +63,7 @@ export const getColumns = ({
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -82,7 +82,7 @@ export const getColumns = ({
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -101,7 +101,7 @@ export const getColumns = ({
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }

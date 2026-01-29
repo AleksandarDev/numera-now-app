@@ -1,3 +1,10 @@
+import { Button } from '@signalco/ui-primitives/Button';
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@signalco/ui-primitives/Tabs';
 import { useQueries } from '@tanstack/react-query';
 import { Copy, ExternalLink, Loader2 } from 'lucide-react';
 import React, { Fragment, useMemo, useState } from 'react';
@@ -5,7 +12,6 @@ import type { z } from 'zod';
 import { DocumentsTab } from '@/components/documents-tab';
 import { StatusProgression } from '@/components/status-progression';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
     Sheet,
     SheetContent,
@@ -13,7 +19,6 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserAvatar } from '@/components/user-avatar';
 import { insertTransactionSchema } from '@/db/schema';
 import { useCreateAccount } from '@/features/accounts/api/use-create-account';
@@ -758,7 +763,7 @@ export const EditTransactionSheet = () => {
                                                                         </span>
                                                                         <Button
                                                                             type="button"
-                                                                            variant="outline"
+                                                                            variant="outlined"
                                                                             size="sm"
                                                                             onClick={() =>
                                                                                 onOpenTransaction(
@@ -848,7 +853,7 @@ export const EditTransactionSheet = () => {
                                             <div className="pb-4">
                                                 <Button
                                                     type="button"
-                                                    variant="outline"
+                                                    variant="outlined"
                                                     onClick={handleDuplicate}
                                                     disabled={
                                                         isPending ||
@@ -919,7 +924,7 @@ export const EditTransactionSheet = () => {
                                                                 </div>
                                                                 <Button
                                                                     type="button"
-                                                                    variant="outline"
+                                                                    variant="outlined"
                                                                     size="sm"
                                                                     onClick={() =>
                                                                         onOpenTransaction(
@@ -998,7 +1003,7 @@ export const EditTransactionSheet = () => {
                                                                 </div>
                                                                 <Button
                                                                     type="button"
-                                                                    variant="outline"
+                                                                    variant="outlined"
                                                                     size="sm"
                                                                     onClick={() =>
                                                                         onOpenTransaction(

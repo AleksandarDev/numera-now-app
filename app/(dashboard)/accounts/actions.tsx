@@ -1,8 +1,8 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { BookOpen, Edit, MoreHorizontal, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -45,7 +45,7 @@ export const Actions = ({ id, disabled }: Props) => {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild disabled={disabled}>
                     <Button
-                        variant="ghost"
+                        variant="plain"
                         className="size-8 p-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     >
                         <MoreHorizontal className="size-4" />

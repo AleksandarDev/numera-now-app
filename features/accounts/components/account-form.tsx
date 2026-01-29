@@ -1,11 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Input } from '@signalco/ui-primitives/Input';
 import { AlertCircle, Info, Trash } from 'lucide-react';
 import CurrencyInput from 'react-currency-input-field';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Form,
     FormControl,
@@ -15,7 +16,6 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -332,7 +332,7 @@ export const AccountForm = ({
                             disabled={disabled}
                             onClick={handleDelete}
                             className="w-full"
-                            variant="outline"
+                            variant="outlined"
                         >
                             <Trash className="size-4 mr-2" />
                             Delete account

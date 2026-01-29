@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Input } from '@signalco/ui-primitives/Input';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
-
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Form,
     FormControl,
@@ -12,7 +12,6 @@ import {
     FormItem,
     FormLabel,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { insertCustomerSchema } from '@/db/schema';
@@ -195,7 +194,7 @@ export const CustomerForm = ({
                             disabled={disabled}
                             onClick={handleDelete}
                             className="w-full"
-                            variant="outline"
+                            variant="outlined"
                         >
                             Delete customer
                         </Button>

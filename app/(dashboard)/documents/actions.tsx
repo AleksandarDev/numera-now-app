@@ -1,7 +1,7 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { Download, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface DocumentActionsProps {
     documentId: string;
@@ -23,7 +23,7 @@ export function DocumentActions({
         >
             <Button
                 size="sm"
-                variant="ghost"
+                variant="plain"
                 onClick={(e) => {
                     e.stopPropagation();
                     onDownload(documentId);
@@ -34,7 +34,7 @@ export function DocumentActions({
             </Button>
             <Button
                 size="sm"
-                variant="ghost"
+                variant="plain"
                 onClick={(e) => {
                     e.stopPropagation();
                     onDelete(documentId);

@@ -1,6 +1,11 @@
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@signalco/ui-primitives/Tabs';
 import { Loader2 } from 'lucide-react';
 import type { z } from 'zod';
-
 import {
     Sheet,
     SheetContent,
@@ -8,7 +13,6 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { insertCustomerSchema } from '@/db/schema';
 import { useDeleteCustomer } from '@/features/customers/api/use-delete-customer';
 import { useEditCustomer } from '@/features/customers/api/use-edit-customer';

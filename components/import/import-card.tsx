@@ -1,3 +1,4 @@
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
@@ -6,7 +7,6 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 
 import { ImportTable } from './import-table';
 

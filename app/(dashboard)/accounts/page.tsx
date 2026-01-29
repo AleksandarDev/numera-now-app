@@ -1,11 +1,13 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -31,7 +33,6 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import { type CSVResult, ImportButton } from '@/components/import-button';
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -39,7 +40,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import type { accounts as accountsSchema } from '@/db/schema';
@@ -223,8 +223,8 @@ function AccountsDataTable() {
 
                         <div className="flex">
                             <Button
-                                variant="ghost"
-                                size="icon"
+                                variant="plain"
+                                className="h-10 w-10 p-0"
                                 onClick={() => {
                                     // Expand all accounts that have children
                                     const accountsWithChildren = allAccounts
@@ -244,8 +244,8 @@ function AccountsDataTable() {
                                 <Expand className="size-4" />
                             </Button>
                             <Button
-                                variant="ghost"
-                                size="icon"
+                                variant="plain"
+                                className="h-10 w-10 p-0"
                                 onClick={() => setExpandedAccounts(new Set())}
                                 disabled={isDisabled}
                             >
@@ -298,7 +298,7 @@ function AccountsDataTable() {
                                                         {accountHasChildren &&
                                                         code ? (
                                                             <Button
-                                                                variant="ghost"
+                                                                variant="plain"
                                                                 size="sm"
                                                                 className="h-10 w-10 p-0 hover:bg-neutral-200"
                                                                 onClick={() =>
@@ -638,7 +638,7 @@ export default function AccountsPage() {
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     size="sm"
-                                    variant="ghost"
+                                    variant="plain"
                                     className="w-full lg:w-auto"
                                 >
                                     <MoreHorizontal className="size-4" />

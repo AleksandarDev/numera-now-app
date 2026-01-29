@@ -1,8 +1,8 @@
+import { Button } from '@signalco/ui-primitives/Button';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
 import { DatePicker } from '@/components/date-picker';
-import { Button } from '@/components/ui/button';
 import {
     Sheet,
     SheetContent,
@@ -226,7 +226,7 @@ export const YearClosingWizard = () => {
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
-                                        variant="outline"
+                                        variant="outlined"
                                         onClick={() => setStep(1)}
                                     >
                                         Back
@@ -294,7 +294,7 @@ export const YearClosingWizard = () => {
 
                                 <div className="flex gap-2">
                                     <Button
-                                        variant="outline"
+                                        variant="outlined"
                                         onClick={() => setStep(2)}
                                     >
                                         Back
@@ -336,7 +336,7 @@ export const YearClosingWizard = () => {
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
-                                        variant="outline"
+                                        variant="outlined"
                                         onClick={handleClose}
                                     >
                                         Cancel

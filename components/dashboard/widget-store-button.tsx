@@ -1,15 +1,14 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card';
+} from '@signalco/ui-primitives/Card';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -35,7 +34,7 @@ export function WidgetStoreButton() {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button
-                    variant="outline"
+                    variant="outlined"
                     size="sm"
                     className="bg-white/10 text-white border-neutral-800 hover:bg-white/20"
                 >
@@ -70,15 +69,15 @@ export function WidgetStoreButton() {
                                                 {widget.name}
                                             </CardTitle>
                                         </div>
-                                        <Button size="sm" variant="outline">
+                                        <Button size="sm" variant="outlined">
                                             Add
                                         </Button>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="pb-3">
-                                    <CardDescription>
+                                    <p className="text-sm text-muted-foreground">
                                         {widget.description}
-                                    </CardDescription>
+                                    </p>
                                 </CardContent>
                             </Card>
                         );

@@ -1,8 +1,9 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
 import { useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
-import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -11,7 +12,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -235,7 +235,7 @@ export function WidgetConfigDialog({
 
                 <DialogFooter>
                     <Button
-                        variant="outline"
+                        variant="outlined"
                         onClick={() => onOpenChange(false)}
                     >
                         Cancel

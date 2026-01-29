@@ -1,10 +1,10 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { AlertCircle, ArrowRight, CheckCircle, Undo2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -214,7 +214,7 @@ export function StatusProgression({
                     </div>
                     <DialogFooter>
                         <Button
-                            variant="outline"
+                            variant="outlined"
                             onClick={() => {
                                 setShowUnreconcileDialog(false);
                                 setUnreconcileReason('');
@@ -224,7 +224,8 @@ export function StatusProgression({
                             Cancel
                         </Button>
                         <Button
-                            variant="destructive"
+                            variant="solid"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={handleUnreconcile}
                             disabled={
                                 isUnreconciling || !unreconcileReason.trim()
@@ -269,7 +270,7 @@ export function StatusProgression({
                     </div>
                     <DialogFooter>
                         <Button
-                            variant="outline"
+                            variant="outlined"
                             onClick={() => {
                                 setShowUncompleteDialog(false);
                                 setUncompleteReason('');
@@ -279,7 +280,8 @@ export function StatusProgression({
                             Cancel
                         </Button>
                         <Button
-                            variant="destructive"
+                            variant="solid"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={handleUncomplete}
                             disabled={
                                 isUncompleting || !uncompleteReason.trim()
@@ -312,7 +314,7 @@ export function StatusProgression({
                             </div>
                             {onUnreconcile && (
                                 <Button
-                                    variant="outline"
+                                    variant="outlined"
                                     size="sm"
                                     onClick={() =>
                                         setShowUnreconcileDialog(true)
@@ -423,7 +425,7 @@ export function StatusProgression({
                                         {currentStatus === 'completed' &&
                                             onUncomplete && (
                                                 <Button
-                                                    variant="outline"
+                                                    variant="outlined"
                                                     size="sm"
                                                     onClick={() =>
                                                         setShowUncompleteDialog(

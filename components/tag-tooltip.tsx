@@ -1,10 +1,9 @@
+import { Divider } from '@signalco/ui-primitives/Divider';
 import type {
     NameType,
     Payload,
     ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
-
-import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
 
 export type TagTooltipProps = {
@@ -24,7 +23,7 @@ export const TagTooltip = ({ active, payload }: TagTooltipProps) => {
                 {name}
             </div>
 
-            <Separator />
+            <Divider />
 
             <div className="space-y-1 p-2 px-3">
                 <div className="flex items-center justify-between gap-x-4">

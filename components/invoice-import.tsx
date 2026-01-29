@@ -1,9 +1,9 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { Check, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { InvoiceZipDropzone } from '@/components/invoice-zip-dropzone';
-import { Button } from '@/components/ui/button';
 import {
     type ImportedInvoiceResult,
     useImportInvoiceZip,
@@ -141,7 +141,7 @@ export function InvoiceImport({
                             </div>
                             {result.success && result.transactionId && (
                                 <Button
-                                    variant="ghost"
+                                    variant="plain"
                                     size="sm"
                                     onClick={() => {
                                         if (result.transactionId) {
@@ -161,7 +161,7 @@ export function InvoiceImport({
 
                 {/* Actions */}
                 <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={handleReset}>
+                    <Button variant="outlined" onClick={handleReset}>
                         Import More
                     </Button>
                     <Button onClick={onComplete}>Done</Button>

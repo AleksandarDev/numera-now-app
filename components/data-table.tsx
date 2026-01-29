@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Table } from '@signalco/ui-primitives/Table';
 import {
     type ColumnDef,
     type ColumnFiltersState,
@@ -16,15 +18,6 @@ import {
 import { ChevronLeft, ChevronRight, Trash } from 'lucide-react';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import * as React from 'react';
-import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { useConfirm } from '@/hooks/use-confirm';
 import { cn } from '@/lib/utils';
 
@@ -69,7 +62,7 @@ export function DataTable<TData, TValue>({
     );
 
     const tableWrapperRef = React.useRef<HTMLDivElement>(null);
-    const tableHeaderRef = React.useRef<HTMLTableSectionElement>(null);
+    const tableHeaderRef = React.useRef<HTMLTableSectionElement | null>(null);
     const paginationRef = React.useRef<HTMLDivElement>(null);
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [internalColumnFilters, setInternalColumnFilters] =
@@ -137,6 +130,9 @@ export function DataTable<TData, TValue>({
     React.useEffect(() => {
         if (!autoPageSize) return;
 
+        // Get thead element from the table wrapper since signalco Table.Header doesn't support ref forwarding
+        tableHeaderRef.current = tableWrapperRef.current?.querySelector('thead') ?? null;
+
         recalcPageSize();
         const handleResize = () => recalcPageSize();
         window.addEventListener('resize', handleResize);
@@ -196,7 +192,7 @@ export function DataTable<TData, TValue>({
                         <Button
                             disabled={disabled}
                             size="sm"
-                            variant="outline"
+                            variant="outlined"
                             className="ml-auto"
                             onClick={async () => {
                                 const ok = await confirm();
@@ -218,12 +214,12 @@ export function DataTable<TData, TValue>({
                 )}
             <div ref={tableWrapperRef} className="rounded-md border">
                 <Table>
-                    <TableHeader ref={tableHeaderRef}>
+                    <Table.Header>
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <Table.Row key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
                                     return (
-                                        <TableHead key={header.id}>
+                                        <Table.Head key={header.id}>
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -231,25 +227,25 @@ export function DataTable<TData, TValue>({
                                                           .header,
                                                       header.getContext(),
                                                   )}
-                                        </TableHead>
+                                        </Table.Head>
                                     );
                                 })}
-                            </TableRow>
+                            </Table.Row>
                         ))}
-                    </TableHeader>
-                    <TableBody>
+                    </Table.Header>
+                    <Table.Body>
                         {loading ? (
-                            <TableRow>
-                                <TableCell
+                            <Table.Row>
+                                <Table.Cell
                                     colSpan={columns.length}
                                     className="h-24 text-center"
                                 >
                                     Loading...
-                                </TableCell>
-                            </TableRow>
+                                </Table.Cell>
+                            </Table.Row>
                         ) : table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
-                                <TableRow
+                                <Table.Row
                                     key={row.id}
                                     data-state={
                                         row.getIsSelected() && 'selected'
@@ -277,26 +273,26 @@ export function DataTable<TData, TValue>({
                                     }}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <Table.Cell key={cell.id}>
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext(),
                                             )}
-                                        </TableCell>
+                                        </Table.Cell>
                                     ))}
-                                </TableRow>
+                                </Table.Row>
                             ))
                         ) : (
-                            <TableRow>
-                                <TableCell
+                            <Table.Row>
+                                <Table.Cell
                                     colSpan={columns.length}
                                     className="h-24 text-center"
                                 >
                                     No results.
-                                </TableCell>
-                            </TableRow>
+                                </Table.Cell>
+                            </Table.Row>
                         )}
-                    </TableBody>
+                    </Table.Body>
                 </Table>
             </div>
             <div
@@ -309,7 +305,7 @@ export function DataTable<TData, TValue>({
                 </div>
 
                 <Button
-                    variant="outline"
+                    variant="outlined"
                     size="sm"
                     className="px-2"
                     onClick={() => table.previousPage()}
@@ -318,7 +314,7 @@ export function DataTable<TData, TValue>({
                     <ChevronLeft className="size-4" />
                 </Button>
                 <Button
-                    variant="outline"
+                    variant="outlined"
                     size="sm"
                     className="px-2"
                     onClick={() => table.nextPage()}

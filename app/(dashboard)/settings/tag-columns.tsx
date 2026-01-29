@@ -1,10 +1,10 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferResponseType } from 'hono';
 import { ArrowUpDown, MoreHorizontal, Pencil, Trash } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -44,7 +44,7 @@ const Actions = ({ id }: { id: string }) => {
             <ConfirmDialog />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="size-8 p-0">
+                    <Button variant="plain" className="size-8 p-0">
                         <MoreHorizontal className="size-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -99,7 +99,7 @@ export const tagColumns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -124,7 +124,7 @@ export const tagColumns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }

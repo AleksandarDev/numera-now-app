@@ -1,11 +1,10 @@
+import { Divider } from '@signalco/ui-primitives/Divider';
 import { format } from 'date-fns';
 import type {
     NameType,
     Payload,
     ValueType,
 } from 'recharts/types/component/DefaultTooltipContent';
-
-import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
 
 export type CustomTooltipProps = {
@@ -26,7 +25,7 @@ export const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
                 {format(date, 'MMM dd, yyyy')}
             </div>
 
-            <Separator />
+            <Divider />
 
             <div className="space-y-1 p-2 px-3">
                 <div className="flex items-center justify-between gap-x-4">

@@ -1,7 +1,6 @@
+import { Button } from '@signalco/ui-primitives/Button';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
     Popover,
@@ -30,7 +29,7 @@ export const DatePicker = ({
             <PopoverTrigger asChild>
                 <Button
                     disabled={disabled}
-                    variant="outline"
+                    variant="outlined"
                     className={cn(
                         'w-full justify-start text-left font-normal',
                         !value && 'text-muted-foreground',

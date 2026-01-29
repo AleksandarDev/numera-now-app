@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
@@ -16,7 +17,6 @@ import { DocumentTypesSettingsCard } from '@/components/document-types-settings-
 import { OpenFinancesSettingsCard } from '@/components/open-finances-settings-card';
 import { ReconciliationSettingsCard } from '@/components/reconciliation-settings-card';
 import { StripeIntegrationCard } from '@/components/stripe-integration-card';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AccountingPeriodsSettingsCard } from '@/features/accounting-periods/components/accounting-periods-settings-card';

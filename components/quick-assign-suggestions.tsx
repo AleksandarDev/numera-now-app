@@ -1,7 +1,7 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export type QuickAssignSuggestion = {
     id: string;
@@ -49,7 +49,7 @@ export const QuickAssignSuggestions = ({
                         <Button
                             key={suggestion.id}
                             type="button"
-                            variant="outline"
+                            variant="outlined"
                             size="sm"
                             className="h-6 px-2 text-xs truncate max-w-24 justify-start cursor-pointer"
                             disabled={disabled}
