@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { ChevronRight, Lock, Plus, Split, Trash, X } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
@@ -11,7 +12,6 @@ import {
     QuickAssignSuggestions,
 } from '@/components/quick-assign-suggestions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
@@ -595,7 +595,7 @@ export const UnifiedEditTransactionForm = ({
                     <div className="flex justify-center">
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="outlined"
                             size="sm"
                             onClick={handleToggleSplitMode}
                             disabled={isPending || !amount || amount === '0'}
@@ -618,7 +618,7 @@ export const UnifiedEditTransactionForm = ({
                         </div>
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="plain"
                             size="sm"
                             onClick={handleToggleSplitMode}
                             disabled={isPending}
@@ -635,9 +635,8 @@ export const UnifiedEditTransactionForm = ({
                                     <div className="flex justify-end mt-1">
                                         <Button
                                             type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6"
+                                            variant="plain"
+                                            className="h-6 w-6 p-0"
                                             onClick={() =>
                                                 handleRemoveSplitEntry(index)
                                             }
@@ -770,7 +769,7 @@ export const UnifiedEditTransactionForm = ({
 
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="outlined"
                             size="sm"
                             className="w-full"
                             onClick={handleAddSplitEntry}
@@ -898,7 +897,7 @@ export const UnifiedEditTransactionForm = ({
                         disabled={isPending}
                         onClick={onDelete}
                         className="w-full"
-                        variant="outline"
+                        variant="outlined"
                     >
                         <Trash className="mr-2 size-4" />
                         Delete transaction

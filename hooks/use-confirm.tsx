@@ -1,6 +1,5 @@
+import { Button } from '@signalco/ui-primitives/Button';
 import { type ReactNode, useState } from 'react';
-
-import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -45,10 +44,10 @@ export const useConfirm = (
                     <DialogDescription>{message}</DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="pt-2">
-                    <Button onClick={handleCancel} variant="outline">
+                    <Button onClick={handleCancel} variant="outlined">
                         Cancel
                     </Button>
-                    <Button onClick={handleConfirm} variant="outline">
+                    <Button onClick={handleConfirm} variant="outlined">
                         Confirm
                     </Button>
                 </DialogFooter>

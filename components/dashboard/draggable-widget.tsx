@@ -2,9 +2,9 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Button } from '@signalco/ui-primitives/Button';
 import { GripVertical, Settings, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getWidgetDefinition } from '@/lib/widgets/registry';
 import { useDashboardStore } from '@/lib/widgets/store';
@@ -59,7 +59,7 @@ export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
                     <div className="absolute -top-10 left-0 right-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm px-2 py-1">
                         <div className="flex items-center gap-2">
                             <Button
-                                variant="ghost"
+                                variant="plain"
                                 size="sm"
                                 className="h-8 cursor-grab active:cursor-grabbing text-foreground"
                                 {...attributes}
@@ -78,7 +78,7 @@ export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
-                                variant="ghost"
+                                variant="plain"
                                 size="sm"
                                 className="h-8 text-foreground"
                                 onClick={() => setIsConfigOpen(true)}
@@ -86,7 +86,7 @@ export function DraggableWidget({ widget, isLegacy }: DraggableWidgetProps) {
                                 <Settings className="h-4 w-4" />
                             </Button>
                             <Button
-                                variant="ghost"
+                                variant="plain"
                                 size="sm"
                                 className="h-8 text-destructive hover:text-destructive"
                                 onClick={() => removeWidget(widget.id)}

@@ -1,19 +1,19 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { format, getMonth, getYear } from 'date-fns';
 import { ArrowLeft, Calendar, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Fragment, use, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useGetAccountLedger } from '@/features/accounts/api/use-get-account-ledger';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { ACCOUNT_CLASS_LABELS, NORMAL_BALANCES } from '@/lib/accounting';
@@ -169,7 +169,7 @@ export default function AccountLedgerPage({ params }: Props) {
                 <CardHeader className="gap-y-2">
                     <div className="flex items-center gap-2">
                         <Link href="/accounts">
-                            <Button variant="ghost" size="icon">
+                            <Button variant="plain" className="h-10 w-10 p-0">
                                 <ArrowLeft className="size-4" />
                             </Button>
                         </Link>

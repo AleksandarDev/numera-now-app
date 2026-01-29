@@ -1,5 +1,14 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Divider } from '@signalco/ui-primitives/Divider';
+import { Input } from '@signalco/ui-primitives/Input';
 import {
     AlertCircle,
     Check,
@@ -14,15 +23,6 @@ import {
 import { useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
 import { DatePicker } from '@/components/date-picker';
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -31,7 +31,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import {
     useDisconnectStripe,
@@ -162,10 +161,10 @@ export function StripeIntegrationCard() {
                         <CreditCard className="h-5 w-5" />
                         Stripe Integration
                     </CardTitle>
-                    <CardDescription>
+                    <p className="text-sm text-muted-foreground">
                         Connect your Stripe account to automatically create
                         transactions from payments
-                    </CardDescription>
+                    </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {/* Connection Status */}
@@ -197,7 +196,7 @@ export function StripeIntegrationCard() {
                         {isConnected && (
                             <div className="flex gap-2">
                                 <Button
-                                    variant="outline"
+                                    variant="outlined"
                                     size="sm"
                                     onClick={handleTestConnection}
                                     disabled={testConnection.isPending}
@@ -209,7 +208,8 @@ export function StripeIntegrationCard() {
                                     )}
                                 </Button>
                                 <Button
-                                    variant="destructive"
+                                    variant="solid"
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     size="sm"
                                     onClick={handleDisconnect}
                                     disabled={disconnectStripe.isPending}
@@ -248,7 +248,7 @@ export function StripeIntegrationCard() {
                                 />
                                 <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="plain"
                                     size="sm"
                                     className="absolute right-0 top-0 h-full px-3"
                                     onClick={() =>
@@ -281,7 +281,7 @@ export function StripeIntegrationCard() {
                     {/* Webhook Section - only shown when connected */}
                     {isConnected && (
                         <>
-                            <Separator />
+                            <Divider />
 
                             <div>
                                 <h4 className="font-medium">
@@ -322,21 +322,15 @@ export function StripeIntegrationCard() {
                                         charge.refunded
                                     </span>
                                 </p>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-2"
-                                    asChild
+                                <a
+                                    href="https://dashboard.stripe.com/webhooks"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
                                 >
-                                    <a
-                                        href="https://dashboard.stripe.com/webhooks"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Open Stripe Webhooks
-                                        <ExternalLink className="h-3 w-3 ml-1" />
-                                    </a>
-                                </Button>
+                                    Open Stripe Webhooks
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
                             </div>
 
                             {/* Webhook Secret Input */}
@@ -370,7 +364,7 @@ export function StripeIntegrationCard() {
                                         />
                                         <Button
                                             type="button"
-                                            variant="ghost"
+                                            variant="plain"
                                             size="sm"
                                             className="absolute right-0 top-0 h-full px-3"
                                             onClick={() =>
@@ -408,7 +402,7 @@ export function StripeIntegrationCard() {
                                 )}
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Default Transaction Settings */}
                             <div className="space-y-4">
@@ -491,7 +485,7 @@ export function StripeIntegrationCard() {
                                 </div>
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Sync From Date */}
                             <div className="space-y-2">
@@ -508,7 +502,7 @@ export function StripeIntegrationCard() {
                                 </p>
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Sync Section */}
                             <div className="space-y-3">
@@ -530,7 +524,7 @@ export function StripeIntegrationCard() {
                                         )}
                                     </div>
                                     <Button
-                                        variant="outline"
+                                        variant="outlined"
                                         size="sm"
                                         onClick={handleSync}
                                         disabled={
@@ -563,7 +557,7 @@ export function StripeIntegrationCard() {
                                 )}
                             </div>
 
-                            <Separator />
+                            <Divider />
 
                             {/* Enable/Disable Toggle - at the bottom */}
                             <div className="flex items-center justify-between">

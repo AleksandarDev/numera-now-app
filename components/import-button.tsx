@@ -1,7 +1,6 @@
+import { Button } from '@signalco/ui-primitives/Button';
 import { Import } from 'lucide-react';
 import { useCSVReader } from 'react-papaparse';
-
-import { Button } from '@/components/ui/button';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 

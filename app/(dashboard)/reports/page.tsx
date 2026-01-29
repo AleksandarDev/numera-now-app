@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
@@ -10,8 +11,6 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-
-import { Button } from '@/components/ui/button';
 
 const reports = [
     {
@@ -71,7 +70,10 @@ export default function ReportsPage() {
                                             </Typography>
                                         </CardHeader>
                                         <CardContent>
-                                            <Button variant="outline" size="sm">
+                                            <Button
+                                                variant="outlined"
+                                                size="sm"
+                                            >
                                                 View Report
                                             </Button>
                                         </CardContent>

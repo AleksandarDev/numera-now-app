@@ -1,16 +1,16 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card';
+} from '@signalco/ui-primitives/Card';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import {
     Dialog,
     DialogContent,
@@ -18,7 +18,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     useCreateDocumentType,
@@ -113,10 +112,10 @@ export function DocumentTypesSettingsCard() {
         <Card>
             <CardHeader>
                 <CardTitle>Document Types</CardTitle>
-                <CardDescription>
+                <p className="text-sm text-muted-foreground">
                     Define document types that can be attached to transactions
                     (e.g., Receipt, Invoice, Contract).
-                </CardDescription>
+                </p>
             </CardHeader>
             <CardContent className="space-y-4">
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -205,7 +204,7 @@ export function DocumentTypesSettingsCard() {
                                 <div className="flex items-center gap-2">
                                     <Button
                                         size="sm"
-                                        variant="outline"
+                                        variant="outlined"
                                         onClick={() =>
                                             handleOpenDialog(docType)
                                         }
@@ -214,7 +213,7 @@ export function DocumentTypesSettingsCard() {
                                     </Button>
                                     <Button
                                         size="sm"
-                                        variant="ghost"
+                                        variant="plain"
                                         onClick={() => handleDelete(docType.id)}
                                         disabled={deleteDocumentType.isPending}
                                     >

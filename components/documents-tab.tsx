@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -13,7 +14,6 @@ import {
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentDropzone } from '@/components/document-dropzone';
-import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -354,7 +354,7 @@ export function DocumentList({
                     <div className="flex items-center gap-1">
                         <Button
                             size="sm"
-                            variant="ghost"
+                            variant="plain"
                             onClick={() => handleDownload(doc.id, doc.fileName)}
                             title="Download"
                         >
@@ -363,7 +363,7 @@ export function DocumentList({
                         {!readOnly && (
                             <Button
                                 size="sm"
-                                variant="ghost"
+                                variant="plain"
                                 onClick={() => handleDelete(doc.id)}
                                 disabled={deleteDocument.isPending}
                                 title="Delete"
@@ -454,7 +454,7 @@ function UnattachedDocuments({ transactionId }: UnattachedDocumentsProps) {
                         </div>
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant="outlined"
                             onClick={() => handleLink(doc.id)}
                             disabled={linkDocument.isPending}
                             className="gap-1"

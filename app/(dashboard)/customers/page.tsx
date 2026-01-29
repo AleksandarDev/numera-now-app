@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
@@ -11,7 +12,6 @@ import { MoreHorizontal, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { DataTable } from '@/components/data-table';
 import { DataTableSearch } from '@/components/data-table-search';
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -87,7 +87,7 @@ const CustomersPage = () => {
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="ghost">
+                                <Button size="sm" variant="plain">
                                     <MoreHorizontal className="size-4" />
                                 </Button>
                             </DropdownMenuTrigger>

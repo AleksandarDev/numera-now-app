@@ -1,5 +1,6 @@
 'use client';
 
+import { Card } from '@signalco/ui-primitives/Card';
 import {
     ArrowDownIcon,
     ArrowUpIcon,
@@ -10,7 +11,6 @@ import {
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
 
 type MetricConfig = {
     enabled: boolean;

@@ -1,12 +1,5 @@
+import { Table } from '@signalco/ui-primitives/Table';
 import { TableHeadSelect } from '@/components/import/table-head-select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 
 type ImportTableProps = {
     headers: string[];
@@ -29,36 +22,36 @@ export const ImportTable = ({
     return (
         <div className="overflow-hidden rounded-md border">
             <Table>
-                <TableHeader className="bg-muted">
-                    <TableRow>
+                <Table.Header className="bg-muted">
+                    <Table.Row>
                         {headers.map((header, index) => (
-                            <TableHead key={`header-${index}-${header}`}>
+                            <Table.Head key={`header-${index}-${header}`}>
                                 <TableHeadSelect
                                     options={options}
                                     columnIndex={index}
                                     selectedColumns={selectedColumns}
                                     onChange={onTableHeadSelectChange}
                                 />
-                            </TableHead>
+                            </Table.Head>
                         ))}
-                    </TableRow>
-                </TableHeader>
+                    </Table.Row>
+                </Table.Header>
 
-                <TableBody>
+                <Table.Body>
                     {body.map((row: string[], rowIndex) => (
-                        <TableRow
+                        <Table.Row
                             key={`row-${rowIndex}-${row.join('-').slice(0, 50)}`}
                         >
                             {row.map((cell, cellIndex) => (
-                                <TableCell
+                                <Table.Cell
                                     key={`cell-${rowIndex}-${cellIndex}-${cell?.slice(0, 20) ?? ''}`}
                                 >
                                     {cell}
-                                </TableCell>
+                                </Table.Cell>
                             ))}
-                        </TableRow>
+                        </Table.Row>
                     ))}
-                </TableBody>
+                </Table.Body>
             </Table>
         </div>
     );

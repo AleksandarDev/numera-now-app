@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     ArrowRight,
     Copy,
@@ -8,8 +9,6 @@ import {
     Paperclip,
     Trash,
 } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -155,7 +154,7 @@ export const Actions = ({ transaction }: ActionsProps) => {
             <ConfirmDialog />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="size-8 p-0">
+                    <Button variant="plain" className="size-8 p-0">
                         <MoreHorizontal className="size-4" />
                     </Button>
                 </DropdownMenuTrigger>

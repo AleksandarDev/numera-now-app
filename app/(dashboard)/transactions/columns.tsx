@@ -1,11 +1,11 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import type { ColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import type { InferResponseType } from 'hono';
 import { ArrowUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import type { client } from '@/lib/hono';
 import { AccountColumn } from './account-column';
 import { Actions } from './actions';
@@ -150,7 +150,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -211,7 +211,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -231,7 +231,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -367,7 +367,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }

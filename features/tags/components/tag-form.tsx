@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
-
-import { Button } from '@/components/ui/button';
 import {
     Form,
     FormControl,
@@ -13,7 +13,6 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -160,7 +159,7 @@ export const TagForm = ({
                             disabled={disabled}
                             onClick={handleDelete}
                             className="w-full"
-                            variant="outline"
+                            variant="outlined"
                         >
                             <Trash className="mr-2 size-4" />
                             Delete tag

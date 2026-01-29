@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferResponseType } from 'hono';
 import {
@@ -9,8 +11,6 @@ import {
     TriangleAlert,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -75,7 +75,7 @@ const ActionsCell = ({ row }: { row: { original: ResponseType } }) => {
             <ConfirmDialog />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
+                    <Button variant="plain" className="h-8 w-8 p-0">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -125,7 +125,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }
@@ -192,7 +192,7 @@ export const columns: ColumnDef<ResponseType>[] = [
         header: ({ column }) => {
             return (
                 <Button
-                    variant="ghost"
+                    variant="plain"
                     onClick={() =>
                         column.toggleSorting(column.getIsSorted() === 'asc')
                     }

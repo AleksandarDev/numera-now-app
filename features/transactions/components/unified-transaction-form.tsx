@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import { ChevronRight, Plus, Trash, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { AccountSelect } from '@/components/account-select';
@@ -10,7 +11,6 @@ import {
     type QuickAssignSuggestion,
     QuickAssignSuggestions,
 } from '@/components/quick-assign-suggestions';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
@@ -493,8 +493,8 @@ export const UnifiedTransactionForm = ({
                                 {creditEntries.length > 1 && (
                                     <Button
                                         type="button"
-                                        variant="ghost"
-                                        size="icon"
+                                        variant="plain"
+                                        className="h-10 w-10 p-0"
                                         onClick={() => removeCredit(index)}
                                         disabled={isPending}
                                     >
@@ -505,7 +505,7 @@ export const UnifiedTransactionForm = ({
                         ))}
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="outlined"
                             size="sm"
                             className="w-full"
                             onClick={appendCredit}
@@ -630,8 +630,8 @@ export const UnifiedTransactionForm = ({
                                 {debitEntries.length > 1 && (
                                     <Button
                                         type="button"
-                                        variant="ghost"
-                                        size="icon"
+                                        variant="plain"
+                                        className="h-10 w-10 p-0"
                                         onClick={() => removeDebit(index)}
                                         disabled={isPending}
                                     >
@@ -642,7 +642,7 @@ export const UnifiedTransactionForm = ({
                         ))}
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="outlined"
                             size="sm"
                             className="w-full"
                             onClick={appendDebit}
@@ -759,7 +759,7 @@ export const UnifiedTransactionForm = ({
                         disabled={isPending}
                         onClick={onDelete}
                         className="w-full"
-                        variant="outline"
+                        variant="outlined"
                     >
                         <Trash className="mr-2 size-4" />
                         Delete transaction

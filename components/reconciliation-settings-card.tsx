@@ -1,16 +1,15 @@
 'use client';
 
-import { Info } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
+} from '@signalco/ui-primitives/Card';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Info } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import {
     Tooltip,
@@ -65,10 +64,10 @@ export function ReconciliationSettingsCard() {
         <Card>
             <CardHeader>
                 <CardTitle>Reconciliation Conditions</CardTitle>
-                <CardDescription>
+                <p className="text-sm text-muted-foreground">
                     Configure what conditions must be met for a transaction to
                     be considered reconciled.
-                </CardDescription>
+                </p>
             </CardHeader>
             <CardContent className="space-y-6">
                 {/* Required Document Types for Reconciliation */}

@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
@@ -15,7 +16,6 @@ import { DataTableSearch } from '@/components/data-table-search';
 import { DateFilter } from '@/components/date-filter';
 import { ImportCard } from '@/components/import/import-card';
 import { ImportButton } from '@/components/import-button';
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -363,7 +363,7 @@ export default function TransactionsPage() {
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     size="sm"
-                                    variant="ghost"
+                                    variant="plain"
                                     className="w-full lg:w-auto"
                                 >
                                     <MoreHorizontal className="size-4" />

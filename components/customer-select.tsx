@@ -1,12 +1,12 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import clsx from 'clsx';
 import { Plus } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -252,7 +252,7 @@ export const CustomerSelect = ({
                             void handleCreate(customerFilter);
                             setOpen(false);
                         }}
-                        variant="ghost"
+                        variant="plain"
                         className="w-full justify-start h-8"
                     >
                         <Plus className="mr-2 h-4 w-4" />
@@ -349,7 +349,7 @@ export const CustomerSelect = ({
                                     void handleCreate(customerFilter);
                                     setOpen(false);
                                 }}
-                                variant="ghost"
+                                variant="plain"
                                 className="w-full justify-start h-8"
                             >
                                 <Plus className="mr-2 h-4 w-4" />

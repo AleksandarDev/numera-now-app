@@ -1,8 +1,7 @@
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateCustomerIban } from '@/features/customers/api/use-create-customer-iban';
 import { useDeleteCustomerIban } from '@/features/customers/api/use-delete-customer-iban';
@@ -90,8 +89,8 @@ export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
                                     </div>
                                     <Button
                                         type="button"
-                                        variant="ghost"
-                                        size="icon"
+                                        variant="plain"
+                                        className="h-10 w-10 p-0"
                                         disabled={disabled || isPending}
                                         onClick={() => handleDelete(iban.id)}
                                     >
@@ -126,11 +125,10 @@ export const CustomerIbansManager = ({ customerId, disabled }: Props) => {
                         </div>
                         <Button
                             type="button"
-                            variant="outline"
-                            size="icon"
+                            variant="outlined"
+                            className="h-10 w-10 p-0 self-start"
                             onClick={handleAdd}
                             disabled={disabled || isPending || !newIban.trim()}
-                            className="self-start"
                         >
                             {createMutation.isPending ? (
                                 <Loader2 className="size-4 animate-spin" />

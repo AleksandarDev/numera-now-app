@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
@@ -15,7 +16,6 @@ import { DataTable } from '@/components/data-table';
 import { DataTableSearch } from '@/components/data-table-search';
 import { DateFilter } from '@/components/date-filter';
 import { DocumentDropzone } from '@/components/document-dropzone';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -194,7 +194,7 @@ export default function DocumentsPage() {
 
                             <Button
                                 variant={
-                                    showUnattachedOnly ? 'default' : 'outline'
+                                    showUnattachedOnly ? 'solid' : 'outlined'
                                 }
                                 onClick={() =>
                                     setShowUnattachedOnly(!showUnattachedOnly)
