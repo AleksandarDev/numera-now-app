@@ -13,6 +13,7 @@ import {
     generateUploadUrl,
     verifyStoragePathOwnership,
 } from '@/lib/azure-storage';
+import { categorizeDocument } from '@/lib/document-categorization';
 
 const getAuthorizedTransaction = async (
     transactionId: string,
@@ -263,7 +264,7 @@ const app = new Hono()
             'json',
             z.object({
                 transactionId: z.string(),
-                documentTypeId: z.string(),
+                documentTypeId: z.string().optional(),
                 fileName: z.string(),
                 fileSize: z.number(),
                 mimeType: z.string(),
@@ -272,7 +273,7 @@ const app = new Hono()
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const {
+            let {
                 transactionId,
                 documentTypeId,
                 fileName,
@@ -293,6 +294,31 @@ const app = new Hono()
 
             if (!transaction) {
                 return ctx.json({ error: 'Transaction not found.' }, 404);
+            }
+
+            // Auto-categorize if documentTypeId not provided
+            if (!documentTypeId) {
+                const userDocTypes = await db
+                    .select()
+                    .from(documentTypes)
+                    .where(eq(documentTypes.userId, auth.userId));
+
+                const categorization = categorizeDocument(
+                    fileName,
+                    userDocTypes,
+                );
+
+                if (categorization.documentTypeId) {
+                    documentTypeId = categorization.documentTypeId;
+                } else {
+                    return ctx.json(
+                        {
+                            error: 'Document type is required. Could not auto-categorize document.',
+                            suggestion: categorization.suggestedTypeName,
+                        },
+                        400,
+                    );
+                }
             }
 
             // Verify document type belongs to user
@@ -576,7 +602,7 @@ const app = new Hono()
         zValidator(
             'json',
             z.object({
-                documentTypeId: z.string(),
+                documentTypeId: z.string().optional(),
                 fileName: z.string(),
                 fileSize: z.number(),
                 mimeType: z.string(),
@@ -585,16 +611,36 @@ const app = new Hono()
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const {
-                documentTypeId,
-                fileName,
-                fileSize,
-                mimeType,
-                storagePath,
-            } = ctx.req.valid('json');
+            let { documentTypeId, fileName, fileSize, mimeType, storagePath } =
+                ctx.req.valid('json');
 
             if (!auth?.userId) {
                 return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Auto-categorize if documentTypeId not provided
+            if (!documentTypeId) {
+                const userDocTypes = await db
+                    .select()
+                    .from(documentTypes)
+                    .where(eq(documentTypes.userId, auth.userId));
+
+                const categorization = categorizeDocument(
+                    fileName,
+                    userDocTypes,
+                );
+
+                if (categorization.documentTypeId) {
+                    documentTypeId = categorization.documentTypeId;
+                } else {
+                    return ctx.json(
+                        {
+                            error: 'Document type is required. Could not auto-categorize document.',
+                            suggestion: categorization.suggestedTypeName,
+                        },
+                        400,
+                    );
+                }
             }
 
             // Verify document type belongs to user
