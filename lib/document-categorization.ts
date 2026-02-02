@@ -273,11 +273,36 @@ function findMatchingDocumentType(
 }
 
 /**
- * Automatically categorize a document based on its filename
+ * Automatically categorize a document based on its filename.
  *
- * @param fileName - The name of the file to categorize
- * @param userDocumentTypes - The user's existing document types
- * @returns Categorization result with document type ID (if found) and confidence level
+ * Analyzes the filename using pattern matching for 17+ document categories with
+ * bilingual support (Croatian and English). Matches the detected category against
+ * the user's existing document types to find the best match.
+ *
+ * @param fileName - The name of the file to categorize (e.g., "racun_2024.pdf", "recipe_cake.jpg")
+ * @param userDocumentTypes - The user's existing document types to match against
+ * @returns Categorization result with document type ID (if found), confidence level, and optional suggestions
+ *
+ * @example
+ * // Croatian invoice - successful match
+ * const types = [{ id: '1', name: 'Invoice' }, { id: '2', name: 'Recipe' }];
+ * categorizeDocument('racun_2024.pdf', types);
+ * // Returns: { documentTypeId: '1', confidence: 'high', matchedPattern: 'racun' }
+ *
+ * @example
+ * // English recipe - successful match
+ * categorizeDocument('recipe_cake.jpg', types);
+ * // Returns: { documentTypeId: '2', confidence: 'high', matchedPattern: 'recipe' }
+ *
+ * @example
+ * // No matching document type - suggestion provided
+ * categorizeDocument('contract_2024.pdf', types);
+ * // Returns: { documentTypeId: null, confidence: 'medium', matchedPattern: 'contract', suggestedTypeName: 'contract' }
+ *
+ * @example
+ * // No pattern match
+ * categorizeDocument('random_file.pdf', types);
+ * // Returns: { documentTypeId: null, confidence: 'low' }
  */
 export function categorizeDocument(
     fileName: string,

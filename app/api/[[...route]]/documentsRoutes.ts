@@ -55,9 +55,26 @@ const getAuthorizedTransaction = async (
 };
 
 /**
- * Auto-categorize a document if documentTypeId is not provided
+ * Auto-categorize a document if documentTypeId is not provided.
+ *
+ * Analyzes the filename to detect common document patterns in Croatian and English,
+ * then matches against the user's existing document types to auto-assign a category.
+ *
+ * @param documentTypeId - Optional document type ID. If provided, returns as-is.
+ * @param fileName - The filename to analyze for categorization (e.g., "racun_2024.pdf")
+ * @param userId - The user ID for fetching their document types
  * @returns The documentTypeId (either provided or auto-assigned)
- * @throws Error with suggestion if categorization fails
+ * @throws Object with error message and optional suggestion if categorization fails
+ *
+ * @example
+ * // Returns existing documentTypeId if provided
+ * await getOrAutoCategorizeDocumentType("existing-id", "file.pdf", "user123")
+ * // Returns: "existing-id"
+ *
+ * @example
+ * // Auto-categorizes based on filename
+ * await getOrAutoCategorizeDocumentType(undefined, "racun_2024.pdf", "user123")
+ * // Returns: "invoice-doc-type-id" (if user has an Invoice type)
  */
 const getOrAutoCategorizeDocumentType = async (
     documentTypeId: string | undefined,
@@ -80,7 +97,7 @@ const getOrAutoCategorizeDocumentType = async (
         return categorization.documentTypeId;
     }
 
-    // No match found - throw error with suggestion
+    // No match found - throw error object with suggestion
     throw {
         error: 'Document type is required. Could not auto-categorize document.',
         suggestion: categorization.suggestedTypeName,
