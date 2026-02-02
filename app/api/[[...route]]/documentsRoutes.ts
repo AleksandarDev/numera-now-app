@@ -54,6 +54,39 @@ const getAuthorizedTransaction = async (
     return transaction;
 };
 
+/**
+ * Auto-categorize a document if documentTypeId is not provided
+ * @returns The documentTypeId (either provided or auto-assigned)
+ * @throws Error with suggestion if categorization fails
+ */
+const getOrAutoCategorizeDocumentType = async (
+    documentTypeId: string | undefined,
+    fileName: string,
+    userId: string,
+): Promise<string> => {
+    if (documentTypeId) {
+        return documentTypeId;
+    }
+
+    // Fetch user's document types for categorization
+    const userDocTypes = await db
+        .select()
+        .from(documentTypes)
+        .where(eq(documentTypes.userId, userId));
+
+    const categorization = categorizeDocument(fileName, userDocTypes);
+
+    if (categorization.documentTypeId) {
+        return categorization.documentTypeId;
+    }
+
+    // No match found - throw error with suggestion
+    throw {
+        error: 'Document type is required. Could not auto-categorize document.',
+        suggestion: categorization.suggestedTypeName,
+    };
+};
+
 const app = new Hono()
     // Get all documents (with filters)
     .get(
@@ -297,28 +330,14 @@ const app = new Hono()
             }
 
             // Auto-categorize if documentTypeId not provided
-            if (!documentTypeId) {
-                const userDocTypes = await db
-                    .select()
-                    .from(documentTypes)
-                    .where(eq(documentTypes.userId, auth.userId));
-
-                const categorization = categorizeDocument(
+            try {
+                documentTypeId = await getOrAutoCategorizeDocumentType(
+                    documentTypeId,
                     fileName,
-                    userDocTypes,
+                    auth.userId,
                 );
-
-                if (categorization.documentTypeId) {
-                    documentTypeId = categorization.documentTypeId;
-                } else {
-                    return ctx.json(
-                        {
-                            error: 'Document type is required. Could not auto-categorize document.',
-                            suggestion: categorization.suggestedTypeName,
-                        },
-                        400,
-                    );
-                }
+            } catch (err: unknown) {
+                return ctx.json(err as Record<string, unknown>, 400);
             }
 
             // Verify document type belongs to user
@@ -619,28 +638,14 @@ const app = new Hono()
             }
 
             // Auto-categorize if documentTypeId not provided
-            if (!documentTypeId) {
-                const userDocTypes = await db
-                    .select()
-                    .from(documentTypes)
-                    .where(eq(documentTypes.userId, auth.userId));
-
-                const categorization = categorizeDocument(
+            try {
+                documentTypeId = await getOrAutoCategorizeDocumentType(
+                    documentTypeId,
                     fileName,
-                    userDocTypes,
+                    auth.userId,
                 );
-
-                if (categorization.documentTypeId) {
-                    documentTypeId = categorization.documentTypeId;
-                } else {
-                    return ctx.json(
-                        {
-                            error: 'Document type is required. Could not auto-categorize document.',
-                            suggestion: categorization.suggestedTypeName,
-                        },
-                        400,
-                    );
-                }
+            } catch (err: unknown) {
+                return ctx.json(err as Record<string, unknown>, 400);
             }
 
             // Verify document type belongs to user
