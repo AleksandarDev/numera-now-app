@@ -131,7 +131,8 @@ export function DataTable<TData, TValue>({
         if (!autoPageSize) return;
 
         // Get thead element from the table wrapper since signalco Table.Header doesn't support ref forwarding
-        tableHeaderRef.current = tableWrapperRef.current?.querySelector('thead') ?? null;
+        tableHeaderRef.current =
+            tableWrapperRef.current?.querySelector('thead') ?? null;
 
         recalcPageSize();
         const handleResize = () => recalcPageSize();

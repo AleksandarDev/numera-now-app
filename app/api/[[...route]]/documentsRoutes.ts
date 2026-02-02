@@ -13,6 +13,7 @@ import {
     generateUploadUrl,
     verifyStoragePathOwnership,
 } from '@/lib/azure-storage';
+import { categorizeDocument } from '@/lib/document-categorization';
 
 const getAuthorizedTransaction = async (
     transactionId: string,
@@ -51,6 +52,56 @@ const getAuthorizedTransaction = async (
         );
 
     return transaction;
+};
+
+/**
+ * Auto-categorize a document if documentTypeId is not provided.
+ *
+ * Analyzes the filename to detect common document patterns in Croatian and English,
+ * then matches against the user's existing document types to auto-assign a category.
+ *
+ * @param documentTypeId - Optional document type ID. If provided, returns as-is.
+ * @param fileName - The filename to analyze for categorization (e.g., "racun_2024.pdf")
+ * @param userId - The user ID for fetching their document types
+ * @returns The documentTypeId (either provided or auto-assigned)
+ * @throws Object with error message and optional suggestion if categorization fails
+ *
+ * @example
+ * // Returns existing documentTypeId if provided
+ * await getOrAutoCategorizeDocumentType("existing-id", "file.pdf", "user123")
+ * // Returns: "existing-id"
+ *
+ * @example
+ * // Auto-categorizes based on filename
+ * await getOrAutoCategorizeDocumentType(undefined, "racun_2024.pdf", "user123")
+ * // Returns: "invoice-doc-type-id" (if user has an Invoice type)
+ */
+const getOrAutoCategorizeDocumentType = async (
+    documentTypeId: string | undefined,
+    fileName: string,
+    userId: string,
+): Promise<string> => {
+    if (documentTypeId) {
+        return documentTypeId;
+    }
+
+    // Fetch user's document types for categorization
+    const userDocTypes = await db
+        .select()
+        .from(documentTypes)
+        .where(eq(documentTypes.userId, userId));
+
+    const categorization = categorizeDocument(fileName, userDocTypes);
+
+    if (categorization.documentTypeId) {
+        return categorization.documentTypeId;
+    }
+
+    // No match found - throw error object with suggestion
+    throw {
+        error: 'Document type is required. Could not auto-categorize document.',
+        suggestion: categorization.suggestedTypeName,
+    };
 };
 
 const app = new Hono()
@@ -263,7 +314,7 @@ const app = new Hono()
             'json',
             z.object({
                 transactionId: z.string(),
-                documentTypeId: z.string(),
+                documentTypeId: z.string().optional(),
                 fileName: z.string(),
                 fileSize: z.number(),
                 mimeType: z.string(),
@@ -272,7 +323,7 @@ const app = new Hono()
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const {
+            let {
                 transactionId,
                 documentTypeId,
                 fileName,
@@ -293,6 +344,17 @@ const app = new Hono()
 
             if (!transaction) {
                 return ctx.json({ error: 'Transaction not found.' }, 404);
+            }
+
+            // Auto-categorize if documentTypeId not provided
+            try {
+                documentTypeId = await getOrAutoCategorizeDocumentType(
+                    documentTypeId,
+                    fileName,
+                    auth.userId,
+                );
+            } catch (err: unknown) {
+                return ctx.json(err as Record<string, unknown>, 400);
             }
 
             // Verify document type belongs to user
@@ -576,7 +638,7 @@ const app = new Hono()
         zValidator(
             'json',
             z.object({
-                documentTypeId: z.string(),
+                documentTypeId: z.string().optional(),
                 fileName: z.string(),
                 fileSize: z.number(),
                 mimeType: z.string(),
@@ -585,16 +647,22 @@ const app = new Hono()
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const {
-                documentTypeId,
-                fileName,
-                fileSize,
-                mimeType,
-                storagePath,
-            } = ctx.req.valid('json');
+            let { documentTypeId, fileName, fileSize, mimeType, storagePath } =
+                ctx.req.valid('json');
 
             if (!auth?.userId) {
                 return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            // Auto-categorize if documentTypeId not provided
+            try {
+                documentTypeId = await getOrAutoCategorizeDocumentType(
+                    documentTypeId,
+                    fileName,
+                    auth.userId,
+                );
+            } catch (err: unknown) {
+                return ctx.json(err as Record<string, unknown>, 400);
             }
 
             // Verify document type belongs to user
