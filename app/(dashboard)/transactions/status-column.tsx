@@ -90,7 +90,7 @@ export const StatusColumn = ({
         return (
             <Badge
                 variant={statusVariants[currentStatus] || 'outline'}
-                className={`${statusColors[currentStatus] || ''}`}
+                className={cn(statusColors[currentStatus])}
             >
                 {currentStatus
                     ? currentStatus.charAt(0).toUpperCase() +
@@ -187,7 +187,7 @@ export const StatusColumn = ({
                         <Badge
                             variant={statusVariants[currentStatus] || 'outline'}
                             data-row-interactive="true"
-                            className={`${statusColors[currentStatus] || ''}`}
+                            className={cn(statusColors[currentStatus])}
                         >
                             {currentStatus
                                 ? currentStatus.charAt(0).toUpperCase() +
