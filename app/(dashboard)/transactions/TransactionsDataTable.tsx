@@ -43,6 +43,11 @@ export function TransactionsDataTable({
         if (transaction.splitType === 'child') {
             return 'bg-slate-50 hover:bg-slate-100';
         }
+        const effectiveStatus =
+            transaction.splitSummary?.status ?? transaction.status;
+        if (effectiveStatus === 'reconciled') {
+            return '';
+        }
         return hasValidationIssues(transaction)
             ? 'bg-red-50 hover:bg-red-100'
             : '';
