@@ -428,13 +428,13 @@ export const UnifiedEditTransactionForm = ({
         });
     };
 
-    // Check if transaction is reconciled (fully locked)
+    // Check if transaction is reconciled (financial fields locked, tags/notes editable)
     const isReconciled = currentStatus === 'reconciled';
     // Check if transaction is completed (lock financial fields)
     const isCompleted = currentStatus === 'completed';
 
     // Determine which fields should be disabled
-    const isPending = disabled || isReconciled;
+    const isPending = disabled;
     const isFinancialFieldsLocked = isCompleted || isReconciled;
 
     return (
@@ -445,6 +445,15 @@ export const UnifiedEditTransactionForm = ({
             className="space-y-6"
         >
             {/* Status-based alerts */}
+            {isReconciled && (
+                <Alert>
+                    <Lock className="size-4" />
+                    <AlertDescription>
+                        This transaction is reconciled. Only tags and notes can
+                        be changed.
+                    </AlertDescription>
+                </Alert>
+            )}
             {isCompleted && !isReconciled && (
                 <Alert>
                     <Lock className="size-4" />
@@ -891,7 +900,7 @@ export const UnifiedEditTransactionForm = ({
                     Save changes
                 </Button>
 
-                {!!id && onDelete && (
+                {!!id && onDelete && !isReconciled && (
                     <Button
                         type="button"
                         disabled={isPending}
