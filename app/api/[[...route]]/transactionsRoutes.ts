@@ -1633,15 +1633,34 @@ const app = new Hono()
                 }
             }
 
-            // Prevent editing reconciled transactions entirely
+            // For reconciled transactions, only allow tags and notes to be changed
             if (existingTransaction.status === 'reconciled') {
-                console.error(
-                    '[PATCH /transactions/:id] Cannot edit reconciled transaction',
-                );
-                return ctx.json(
-                    { error: 'Reconciled transactions cannot be edited.' },
-                    400,
-                );
+                const financialFieldsChanged =
+                    (values.creditAccountId !== undefined &&
+                        values.creditAccountId !==
+                            existingTransaction.creditAccountId) ||
+                    (values.debitAccountId !== undefined &&
+                        values.debitAccountId !==
+                            existingTransaction.debitAccountId) ||
+                    (values.amount !== undefined &&
+                        values.amount !== existingTransaction.amount) ||
+                    (values.payeeCustomerId !== undefined &&
+                        values.payeeCustomerId !==
+                            existingTransaction.payeeCustomerId) ||
+                    (values.date !== undefined &&
+                        values.date !== existingTransaction.date);
+
+                if (financialFieldsChanged) {
+                    console.error(
+                        '[PATCH /transactions/:id] Cannot change financial fields on reconciled transaction',
+                    );
+                    return ctx.json(
+                        {
+                            error: 'Reconciled transactions can only have their tags and notes changed.',
+                        },
+                        400,
+                    );
+                }
             }
 
             // For completed transactions, prevent changes to financial fields
