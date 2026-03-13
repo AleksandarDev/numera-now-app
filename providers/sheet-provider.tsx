@@ -7,8 +7,7 @@ import { EditCustomerSheet } from '@/features/customers/components/edit-customer
 import { NewCustomerSheet } from '@/features/customers/components/new-customer-sheet';
 import { EditTagSheet } from '@/features/tags/components/edit-tag-sheet';
 import { NewTagSheet } from '@/features/tags/components/new-tag-sheet';
-import { EditTransactionSheet } from '@/features/transactions/components/edit-transaction-sheet';
-import { NewTransactionSheet } from '@/features/transactions/components/new-transaction-sheet';
+import { TransactionSheet } from '@/features/transactions/components/edit-transaction-sheet';
 
 export const SheetProvider = () => {
     const isMounted = useMountedState();
@@ -23,8 +22,7 @@ export const SheetProvider = () => {
             <NewTagSheet />
             <EditTagSheet />
 
-            <NewTransactionSheet />
-            <EditTransactionSheet />
+            <TransactionSheet />
 
             <NewCustomerSheet />
             <EditCustomerSheet />
