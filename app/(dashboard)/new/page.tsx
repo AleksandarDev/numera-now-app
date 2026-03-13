@@ -22,6 +22,7 @@ import { useCreateTag } from '@/features/tags/api/use-create-tag';
 import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 import {
+    toCreateTransactionInput,
     UnifiedEditTransactionForm,
     type UnifiedEditTransactionFormValues,
 } from '@/features/transactions/components/unified-edit-transaction-form';
@@ -60,33 +61,11 @@ function NewTransactionContent() {
     const isLoading = tagQuery.isLoading;
 
     const onSubmit = (values: UnifiedEditTransactionFormValues) => {
-        createMutation.mutate(
-            {
-                date: values.date,
-                payeeCustomerId: values.payeeCustomerId,
-                notes: values.notes,
-                tagIds: values.tagIds,
-                creditEntries: [
-                    {
-                        accountId: values.creditAccountId || '',
-                        amount: values.amount,
-                        notes: '',
-                    },
-                ],
-                debitEntries: [
-                    {
-                        accountId: values.debitAccountId || '',
-                        amount: values.amount,
-                        notes: '',
-                    },
-                ],
+        createMutation.mutate(toCreateTransactionInput(values), {
+            onSuccess: () => {
+                router.push('/transactions');
             },
-            {
-                onSuccess: () => {
-                    router.push('/transactions');
-                },
-            },
-        );
+        });
     };
 
     const handleImportComplete = () => {

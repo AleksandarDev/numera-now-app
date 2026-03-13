@@ -46,6 +46,7 @@ import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
 
 import {
     type SplitTransactionData,
+    toCreateTransactionInput,
     UnifiedEditTransactionForm,
     type UnifiedEditTransactionFormValues,
 } from './unified-edit-transaction-form';
@@ -172,26 +173,7 @@ export const TransactionSheet = () => {
     const onSubmit = (values: UnifiedEditTransactionFormValues) => {
         if (isCreate) {
             // Create mode: convert to create API format
-            createMutation.mutate({
-                date: values.date,
-                payeeCustomerId: values.payeeCustomerId,
-                notes: values.notes,
-                tagIds: values.tagIds,
-                creditEntries: [
-                    {
-                        accountId: values.creditAccountId || '',
-                        amount: values.amount,
-                        notes: '',
-                    },
-                ],
-                debitEntries: [
-                    {
-                        accountId: values.debitAccountId || '',
-                        amount: values.amount,
-                        notes: '',
-                    },
-                ],
-            });
+            createMutation.mutate(toCreateTransactionInput(values));
             return;
         }
 
