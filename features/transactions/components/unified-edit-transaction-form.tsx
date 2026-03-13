@@ -897,7 +897,7 @@ export const UnifiedEditTransactionForm = ({
 
             <SheetFooter>
                 <Button className="w-full" disabled={isPending} type="submit">
-                    Save changes
+                    {id ? 'Save changes' : 'Create transaction'}
                 </Button>
 
                 {!!id && onDelete && !isReconciled && (

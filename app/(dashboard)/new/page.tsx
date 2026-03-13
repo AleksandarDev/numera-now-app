@@ -22,9 +22,9 @@ import { useCreateTag } from '@/features/tags/api/use-create-tag';
 import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 import {
-    UnifiedTransactionForm,
-    type UnifiedTransactionFormValues,
-} from '@/features/transactions/components/unified-transaction-form';
+    UnifiedEditTransactionForm,
+    type UnifiedEditTransactionFormValues,
+} from '@/features/transactions/components/unified-edit-transaction-form';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 
 function NewTransactionContent() {
@@ -59,12 +59,34 @@ function NewTransactionContent() {
         customerMutation.isPending;
     const isLoading = tagQuery.isLoading;
 
-    const onSubmit = (values: UnifiedTransactionFormValues) => {
-        createMutation.mutate(values, {
-            onSuccess: () => {
-                router.push('/transactions');
+    const onSubmit = (values: UnifiedEditTransactionFormValues) => {
+        createMutation.mutate(
+            {
+                date: values.date,
+                payeeCustomerId: values.payeeCustomerId,
+                notes: values.notes,
+                tagIds: values.tagIds,
+                creditEntries: [
+                    {
+                        accountId: values.creditAccountId || '',
+                        amount: values.amount,
+                        notes: '',
+                    },
+                ],
+                debitEntries: [
+                    {
+                        accountId: values.debitAccountId || '',
+                        amount: values.amount,
+                        notes: '',
+                    },
+                ],
             },
-        });
+            {
+                onSuccess: () => {
+                    router.push('/transactions');
+                },
+            },
+        );
     };
 
     const handleImportComplete = () => {
@@ -108,7 +130,7 @@ function NewTransactionContent() {
                             </TabsList>
 
                             <TabsContent value="details" className="mt-6">
-                                <UnifiedTransactionForm
+                                <UnifiedEditTransactionForm
                                     disabled={isPending}
                                     tagOptions={tagOptions}
                                     onCreateTag={onCreateTag}
