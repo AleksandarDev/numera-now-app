@@ -1648,12 +1648,14 @@ const app = new Hono()
                         values.debitAccountId !==
                             existingTransaction.debitAccountId) ||
                     (values.amount !== undefined &&
-                        values.amount !== existingTransaction.amount) ||
+                        Number(values.amount) !==
+                            Number(existingTransaction.amount)) ||
                     (values.payeeCustomerId !== undefined &&
                         values.payeeCustomerId !==
                             existingTransaction.payeeCustomerId) ||
                     (values.date !== undefined &&
-                        values.date !== existingTransaction.date);
+                        new Date(values.date).getTime() !==
+                            new Date(existingTransaction.date).getTime());
 
                 if (financialFieldsChanged) {
                     console.error(
