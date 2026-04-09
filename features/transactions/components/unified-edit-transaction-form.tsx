@@ -44,6 +44,32 @@ export type UnifiedEditTransactionFormValues = {
     status?: 'draft' | 'pending' | 'completed' | 'reconciled';
 };
 
+/** Converts form values to the unified transaction create input format */
+export function toCreateTransactionInput(
+    values: UnifiedEditTransactionFormValues,
+) {
+    return {
+        date: values.date,
+        payeeCustomerId: values.payeeCustomerId,
+        notes: values.notes,
+        tagIds: values.tagIds,
+        creditEntries: [
+            {
+                accountId: values.creditAccountId || '',
+                amount: values.amount,
+                notes: '',
+            },
+        ],
+        debitEntries: [
+            {
+                accountId: values.debitAccountId || '',
+                amount: values.amount,
+                notes: '',
+            },
+        ],
+    };
+}
+
 export type SplitTransactionData = {
     splits: Array<{
         amount: number;
@@ -897,7 +923,7 @@ export const UnifiedEditTransactionForm = ({
 
             <SheetFooter>
                 <Button className="w-full" disabled={isPending} type="submit">
-                    Save changes
+                    {id ? 'Save changes' : 'Create transaction'}
                 </Button>
 
                 {!!id && onDelete && !isReconciled && (

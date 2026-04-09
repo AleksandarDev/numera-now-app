@@ -22,9 +22,10 @@ import { useCreateTag } from '@/features/tags/api/use-create-tag';
 import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 import {
-    UnifiedTransactionForm,
-    type UnifiedTransactionFormValues,
-} from '@/features/transactions/components/unified-transaction-form';
+    toCreateTransactionInput,
+    UnifiedEditTransactionForm,
+    type UnifiedEditTransactionFormValues,
+} from '@/features/transactions/components/unified-edit-transaction-form';
 import { useOpenTransaction } from '@/features/transactions/hooks/use-open-transaction';
 
 function NewTransactionContent() {
@@ -59,8 +60,8 @@ function NewTransactionContent() {
         customerMutation.isPending;
     const isLoading = tagQuery.isLoading;
 
-    const onSubmit = (values: UnifiedTransactionFormValues) => {
-        createMutation.mutate(values, {
+    const onSubmit = (values: UnifiedEditTransactionFormValues) => {
+        createMutation.mutate(toCreateTransactionInput(values), {
             onSuccess: () => {
                 router.push('/transactions');
             },
@@ -108,7 +109,7 @@ function NewTransactionContent() {
                             </TabsList>
 
                             <TabsContent value="details" className="mt-6">
-                                <UnifiedTransactionForm
+                                <UnifiedEditTransactionForm
                                     disabled={isPending}
                                     tagOptions={tagOptions}
                                     onCreateTag={onCreateTag}

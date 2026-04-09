@@ -10,6 +10,7 @@ import { Copy, ExternalLink, Loader2 } from 'lucide-react';
 import React, { Fragment, useMemo, useState } from 'react';
 import type { z } from 'zod';
 import { DocumentsTab } from '@/components/documents-tab';
+import { InvoiceImport } from '@/components/invoice-import';
 import { StatusProgression } from '@/components/status-progression';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,6 +28,7 @@ import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useCreateTag } from '@/features/tags/api/use-create-tag';
 import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useCanReconcile } from '@/features/transactions/api/use-can-reconcile';
+import { useCreateUnifiedTransaction } from '@/features/transactions/api/use-create-unified-transaction';
 import { useDeleteTransaction } from '@/features/transactions/api/use-delete-transaction';
 import { useGetDocuments } from '@/features/transactions/api/use-documents';
 import { useEditTransaction } from '@/features/transactions/api/use-edit-transaction';
@@ -44,6 +46,7 @@ import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
 
 import {
     type SplitTransactionData,
+    toCreateTransactionInput,
     UnifiedEditTransactionForm,
     type UnifiedEditTransactionFormValues,
 } from './unified-edit-transaction-form';
@@ -71,17 +74,28 @@ const STATUS_ORDER: Record<
     reconciled: 3,
 };
 
-export const EditTransactionSheet = () => {
+export const TransactionSheet = () => {
     const {
-        isOpen,
-        onClose,
+        isOpen: isEditOpen,
+        onClose: onCloseEdit,
         id,
         initialTab,
         tab,
         setTab,
         onOpen: onOpenTransaction,
     } = useOpenTransaction();
-    const { onOpen: onOpenNew } = useNewTransaction();
+    const {
+        isOpen: isNewOpen,
+        onClose: onCloseNew,
+        onOpen: onOpenNew,
+        defaultValues: newDefaultValues,
+        defaultTab: newDefaultTab,
+    } = useNewTransaction();
+
+    const isCreate = isNewOpen && !isEditOpen;
+    const isEdit = isEditOpen;
+    const isOpen = isCreate || isEdit;
+    const onClose = isEdit ? onCloseEdit : onCloseNew;
 
     const [ConfirmDialog, confirm] = useConfirm(
         'Are you sure?',
@@ -124,6 +138,12 @@ export const EditTransactionSheet = () => {
     const accountMutation = useCreateAccount();
     const customerMutation = useCreateCustomer();
 
+    // Create mode mutation
+    const createMutation = useCreateUnifiedTransaction(
+        onOpenTransaction,
+        onCloseNew,
+    );
+
     const onCreateTag = (name: string) => tagMutation.mutate({ name });
     const onCreateCustomer = (name: string) =>
         customerMutation.mutateAsync({ name }).then((response) => {
@@ -135,6 +155,7 @@ export const EditTransactionSheet = () => {
         });
 
     const isPending =
+        createMutation.isPending ||
         editMutation.isPending ||
         splitMutation.isPending ||
         deleteMutation.isPending ||
@@ -145,9 +166,17 @@ export const EditTransactionSheet = () => {
         accountMutation.isPending ||
         customerMutation.isPending;
 
-    const isLoading = transactionQuery.isLoading || tagQuery.isLoading;
+    const isLoading = isCreate
+        ? tagQuery.isLoading
+        : transactionQuery.isLoading || tagQuery.isLoading;
 
     const onSubmit = (values: UnifiedEditTransactionFormValues) => {
+        if (isCreate) {
+            // Create mode: convert to create API format
+            createMutation.mutate(toCreateTransactionInput(values));
+            return;
+        }
+
         const autoDraftToPending =
             settingsQuery.data?.autoDraftToPending ?? false;
         const doubleEntryMode = settingsQuery.data?.doubleEntryMode ?? false;
@@ -511,27 +540,52 @@ export const EditTransactionSheet = () => {
         };
 
         // Close the edit sheet before opening new transaction sheet
-        onClose();
+        onCloseEdit();
         onOpenNew(defaultValues);
     };
 
-    type TabValue = 'details' | 'documents' | 'history';
+    type TabValue = 'details' | 'documents' | 'history' | 'import';
+    const defaultTab = isCreate
+        ? newDefaultTab || 'details'
+        : tab || initialTab || 'details';
     const [activeTab, setActiveTab] = useState<TabValue>(
-        tab || initialTab || 'details',
+        defaultTab as TabValue,
     );
 
     // Reset tab when sheet opens with a new initial tab
     React.useEffect(() => {
-        if (isOpen && (tab || initialTab)) {
-            setActiveTab((tab || initialTab) as TabValue);
+        if (isOpen) {
+            if (isCreate) {
+                setActiveTab((newDefaultTab || 'details') as TabValue);
+            } else if (tab || initialTab) {
+                setActiveTab((tab || initialTab) as TabValue);
+            }
         }
-    }, [isOpen, initialTab, tab]);
+    }, [isOpen, isCreate, initialTab, tab, newDefaultTab]);
 
     const handleTabChange = (value: string) => {
         const nextTab = value as TabValue;
         setActiveTab(nextTab);
-        setTab(nextTab);
+        if (isEdit) {
+            setTab(nextTab as 'details' | 'documents' | 'history');
+        }
     };
+
+    // Convert create default values to form format
+    const createDefaultValuesForForm: Partial<UnifiedEditTransactionFormValues> =
+        newDefaultValues
+            ? {
+                  date: newDefaultValues.date,
+                  payeeCustomerId: newDefaultValues.payeeCustomerId,
+                  notes: newDefaultValues.notes,
+                  tagIds: newDefaultValues.tagIds,
+                  creditAccountId:
+                      newDefaultValues.creditEntries?.[0]?.accountId || '',
+                  debitAccountId:
+                      newDefaultValues.debitEntries?.[0]?.accountId || '',
+                  amount: newDefaultValues.creditEntries?.[0]?.amount || '0',
+              }
+            : {};
 
     return (
         <>
@@ -541,86 +595,100 @@ export const EditTransactionSheet = () => {
                     <div className="px-6 pt-6">
                         <SheetHeader>
                             <SheetTitle className="flex items-center gap-2">
-                                {displayStatus === 'reconciled'
-                                    ? 'Transaction Details'
-                                    : 'Edit Transaction'}
-                                {transactionQuery.data?.stripePaymentId && (
-                                    <Badge
-                                        variant="outline"
-                                        className="text-xs font-normal"
-                                    >
-                                        Stripe
-                                    </Badge>
-                                )}
+                                {isCreate
+                                    ? 'New Transaction'
+                                    : displayStatus === 'reconciled'
+                                      ? 'Transaction Details'
+                                      : 'Edit Transaction'}
+                                {isEdit &&
+                                    transactionQuery.data?.stripePaymentId && (
+                                        <Badge
+                                            variant="outline"
+                                            className="text-xs font-normal"
+                                        >
+                                            Stripe
+                                        </Badge>
+                                    )}
                             </SheetTitle>
                             <SheetDescription>
-                                {displayStatus === 'reconciled'
-                                    ? 'View reconciled transaction details.'
-                                    : 'Edit an existing transaction.'}
-                                {transactionQuery.data?.stripePaymentUrl && (
-                                    <a
-                                        href={
-                                            transactionQuery.data
-                                                .stripePaymentUrl
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
-                                    >
-                                        View in Stripe
-                                        <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                )}
+                                {isCreate
+                                    ? 'Add a new transaction.'
+                                    : displayStatus === 'reconciled'
+                                      ? 'View reconciled transaction details.'
+                                      : 'Edit an existing transaction.'}
+                                {isEdit &&
+                                    transactionQuery.data?.stripePaymentUrl && (
+                                        <a
+                                            href={
+                                                transactionQuery.data
+                                                    .stripePaymentUrl
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
+                                        >
+                                            View in Stripe
+                                            <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    )}
                             </SheetDescription>
                         </SheetHeader>
                     </div>
 
-                    {/* Status Progression */}
-                    <div className="px-6">
-                        {isSplitParent ? (
-                            <div className="rounded-md border p-3">
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="outline"
-                                        className={
-                                            statusColors[displayStatus] || ''
-                                        }
-                                    >
-                                        {formatStatusLabel(displayStatus)}
-                                    </Badge>
-                                    <span className="text-sm text-muted-foreground">
-                                        Derived from {splitChildren.length}{' '}
-                                        split part
-                                        {splitChildren.length === 1 ? '' : 's'}.
-                                    </span>
+                    {/* Status Progression - edit mode only */}
+                    {isEdit && (
+                        <div className="px-6">
+                            {isSplitParent ? (
+                                <div className="rounded-md border p-3">
+                                    <div className="flex items-center gap-2">
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                statusColors[displayStatus] ||
+                                                ''
+                                            }
+                                        >
+                                            {formatStatusLabel(displayStatus)}
+                                        </Badge>
+                                        <span className="text-sm text-muted-foreground">
+                                            Derived from {splitChildren.length}{' '}
+                                            split part
+                                            {splitChildren.length === 1
+                                                ? ''
+                                                : 's'}
+                                            .
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <StatusProgression
-                                currentStatus={currentStatus}
-                                onAdvance={onAdvanceStatus}
-                                onUnreconcile={onUnreconcile}
-                                onUncomplete={onUncomplete}
-                                disabled={isPending}
-                                autoDraftToPendingEnabled={
-                                    settingsQuery.data?.autoDraftToPending ??
-                                    false
-                                }
-                                canReconcile={canReconcile}
-                                reconciliationBlockers={reconciliationBlockers}
-                                hasAllRequiredDocuments={
-                                    hasAllRequiredDocuments
-                                }
-                                requiredDocumentTypes={
-                                    requiredDocTypeIds.length
-                                }
-                                attachedRequiredTypes={
-                                    attachedRequiredTypesCount
-                                }
-                                minRequiredDocuments={minRequiredDocuments}
-                            />
-                        )}
-                    </div>
+                            ) : (
+                                <StatusProgression
+                                    currentStatus={currentStatus}
+                                    onAdvance={onAdvanceStatus}
+                                    onUnreconcile={onUnreconcile}
+                                    onUncomplete={onUncomplete}
+                                    disabled={isPending}
+                                    autoDraftToPendingEnabled={
+                                        settingsQuery.data
+                                            ?.autoDraftToPending ?? false
+                                    }
+                                    canReconcile={canReconcile}
+                                    reconciliationBlockers={
+                                        reconciliationBlockers
+                                    }
+                                    hasAllRequiredDocuments={
+                                        hasAllRequiredDocuments
+                                    }
+                                    requiredDocumentTypes={
+                                        requiredDocTypeIds.length
+                                    }
+                                    attachedRequiredTypes={
+                                        attachedRequiredTypesCount
+                                    }
+                                    minRequiredDocuments={minRequiredDocuments}
+                                />
+                            )}
+                        </div>
+                    )}
 
                     {isLoading ? (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -637,12 +705,19 @@ export const EditTransactionSheet = () => {
                                     <TabsTrigger value="details">
                                         Details
                                     </TabsTrigger>
+                                    {isCreate && (
+                                        <TabsTrigger value="import">
+                                            Import
+                                        </TabsTrigger>
+                                    )}
                                     <TabsTrigger value="documents">
                                         Documents
                                     </TabsTrigger>
-                                    <TabsTrigger value="history">
-                                        History
-                                    </TabsTrigger>
+                                    {isEdit && (
+                                        <TabsTrigger value="history">
+                                            History
+                                        </TabsTrigger>
+                                    )}
                                 </TabsList>
                             </div>
 
@@ -651,7 +726,18 @@ export const EditTransactionSheet = () => {
                                     value="details"
                                     className="space-y-6 mt-0"
                                 >
-                                    {isSplitParent ? (
+                                    {isCreate ? (
+                                        <UnifiedEditTransactionForm
+                                            disabled={isPending}
+                                            defaultValues={
+                                                createDefaultValuesForForm
+                                            }
+                                            onSubmit={onSubmit}
+                                            tagOptions={tagOptions}
+                                            onCreateTag={onCreateTag}
+                                            onCreateCustomer={onCreateCustomer}
+                                        />
+                                    ) : isSplitParent ? (
                                         <div className="space-y-4">
                                             <div className="rounded-md border p-3 space-y-3">
                                                 <div className="text-sm font-semibold">
@@ -869,8 +955,34 @@ export const EditTransactionSheet = () => {
                                     )}
                                 </TabsContent>
 
+                                {/* Import tab - create mode only */}
+                                {isCreate && (
+                                    <TabsContent
+                                        value="import"
+                                        className="mt-6"
+                                    >
+                                        <InvoiceImport
+                                            onComplete={onClose}
+                                            onOpenTransaction={
+                                                onOpenTransaction
+                                            }
+                                        />
+                                    </TabsContent>
+                                )}
+
                                 <TabsContent value="documents" className="mt-0">
-                                    {isSplitParent ? (
+                                    {isCreate ? (
+                                        <div className="rounded-md border border-dashed p-8 text-center">
+                                            <div className="text-sm font-medium text-muted-foreground">
+                                                Documents can be attached after
+                                                creating the transaction
+                                            </div>
+                                            <div className="mt-2 text-xs text-muted-foreground">
+                                                Save this transaction first,
+                                                then edit it to upload documents
+                                            </div>
+                                        </div>
+                                    ) : isSplitParent ? (
                                         <div className="space-y-4">
                                             <div className="rounded-md border p-3 space-y-2">
                                                 <div className="text-sm font-semibold">
@@ -956,100 +1068,109 @@ export const EditTransactionSheet = () => {
                                     )}
                                 </TabsContent>
 
-                                <TabsContent value="history" className="mt-0">
-                                    {isSplitParent ? (
-                                        <div className="space-y-4">
-                                            <div className="rounded-md border p-3">
-                                                <div className="text-sm font-semibold">
-                                                    Split created
+                                {/* History tab - edit mode only */}
+                                {isEdit && (
+                                    <TabsContent
+                                        value="history"
+                                        className="mt-0"
+                                    >
+                                        {isSplitParent ? (
+                                            <div className="space-y-4">
+                                                <div className="rounded-md border p-3">
+                                                    <div className="text-sm font-semibold">
+                                                        Split created
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {formatDateTime(
+                                                            splitCreatedAt ??
+                                                                null,
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {formatDateTime(
-                                                        splitCreatedAt ?? null,
-                                                    )}
-                                                </div>
-                                            </div>
-                                            {splitChildren.map(
-                                                (child, index) => {
-                                                    const historyQuery =
-                                                        childHistoryQueries[
-                                                            index
-                                                        ];
-                                                    const history =
-                                                        historyQuery?.data ??
-                                                        [];
-                                                    return (
-                                                        <div
-                                                            key={child.id}
-                                                            className="space-y-2 rounded-md border p-3"
-                                                        >
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <div>
-                                                                    <div className="text-sm font-semibold">
-                                                                        {child.payeeCustomerName ||
-                                                                            child.payee ||
-                                                                            'Untitled'}
+                                                {splitChildren.map(
+                                                    (child, index) => {
+                                                        const historyQuery =
+                                                            childHistoryQueries[
+                                                                index
+                                                            ];
+                                                        const history =
+                                                            historyQuery?.data ??
+                                                            [];
+                                                        return (
+                                                            <div
+                                                                key={child.id}
+                                                                className="space-y-2 rounded-md border p-3"
+                                                            >
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div>
+                                                                        <div className="text-sm font-semibold">
+                                                                            {child.payeeCustomerName ||
+                                                                                child.payee ||
+                                                                                'Untitled'}
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground">
+                                                                            Part{' '}
+                                                                            {index +
+                                                                                1}{' '}
+                                                                            ·{' '}
+                                                                            {formatCurrency(
+                                                                                child.amount ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="text-xs text-muted-foreground">
-                                                                        Part{' '}
-                                                                        {index +
-                                                                            1}{' '}
-                                                                        ·{' '}
-                                                                        {formatCurrency(
-                                                                            child.amount ??
-                                                                                0,
-                                                                        )}
-                                                                    </div>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outlined"
+                                                                        size="sm"
+                                                                        onClick={() =>
+                                                                            onOpenTransaction(
+                                                                                child.id,
+                                                                                'history',
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Open
+                                                                    </Button>
                                                                 </div>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outlined"
-                                                                    size="sm"
-                                                                    onClick={() =>
-                                                                        onOpenTransaction(
-                                                                            child.id,
-                                                                            'history',
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    Open
-                                                                </Button>
+                                                                {historyQuery?.isLoading ? (
+                                                                    <div className="text-sm text-muted-foreground">
+                                                                        Loading
+                                                                        history...
+                                                                    </div>
+                                                                ) : (
+                                                                    renderStatusHistory(
+                                                                        history,
+                                                                    )
+                                                                )}
                                                             </div>
-                                                            {historyQuery?.isLoading ? (
-                                                                <div className="text-sm text-muted-foreground">
-                                                                    Loading
-                                                                    history...
-                                                                </div>
-                                                            ) : (
-                                                                renderStatusHistory(
-                                                                    history,
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    );
-                                                },
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2 rounded-md border p-3">
-                                            <div className="text-sm font-semibold">
-                                                Status history
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Created:{' '}
-                                                {formatDateTime(
-                                                    statusHistoryQuery.data?.[
-                                                        statusHistoryQuery.data
-                                                            .length - 1
-                                                    ]?.changedAt ?? null,
+                                                        );
+                                                    },
                                                 )}
                                             </div>
-                                            {renderStatusHistory(
-                                                statusHistoryQuery.data ?? [],
-                                            )}
-                                        </div>
-                                    )}
-                                </TabsContent>
+                                        ) : (
+                                            <div className="space-y-2 rounded-md border p-3">
+                                                <div className="text-sm font-semibold">
+                                                    Status history
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Created:{' '}
+                                                    {formatDateTime(
+                                                        statusHistoryQuery
+                                                            .data?.[
+                                                            statusHistoryQuery
+                                                                .data.length - 1
+                                                        ]?.changedAt ?? null,
+                                                    )}
+                                                </div>
+                                                {renderStatusHistory(
+                                                    statusHistoryQuery.data ??
+                                                        [],
+                                                )}
+                                            </div>
+                                        )}
+                                    </TabsContent>
+                                )}
                             </div>
                         </Tabs>
                     )}
