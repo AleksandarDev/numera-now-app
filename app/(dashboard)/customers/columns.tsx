@@ -157,14 +157,6 @@ export const columns: ColumnDef<ResponseType>[] = [
         },
     },
     {
-        accessorKey: 'pin',
-        header: 'PIN',
-        cell: ({ row }) => {
-            const pin = row.getValue('pin') as string;
-            return <div>{pin || '-'}</div>;
-        },
-    },
-    {
         accessorKey: 'vatNumber',
         header: 'VAT Number',
         cell: ({ row }) => {
@@ -178,14 +170,6 @@ export const columns: ColumnDef<ResponseType>[] = [
         cell: ({ row }) => {
             const email = row.getValue('contactEmail') as string;
             return <div>{email || '-'}</div>;
-        },
-    },
-    {
-        accessorKey: 'contactTelephone',
-        header: 'Phone',
-        cell: ({ row }) => {
-            const phone = row.getValue('contactTelephone') as string;
-            return <div>{phone || '-'}</div>;
         },
     },
     {

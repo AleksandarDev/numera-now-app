@@ -140,7 +140,6 @@ export const customers = pgTable(
     {
         id: text('id').primaryKey(),
         name: text('name').notNull(),
-        pin: text('pin'),
         vatNumber: text('vat_number'),
         address: text('address'),
         contactEmail: text('contact_email'),
@@ -155,7 +154,6 @@ export const customers = pgTable(
     (table) => [
         index('customers_userid_idx').on(table.userId),
         index('customers_name_idx').on(table.name),
-        index('customers_pin_idx').on(table.pin),
         index('customers_iscomplete_idx').on(table.isComplete),
         index('customers_isownfirm_idx').on(table.isOwnFirm),
     ],
