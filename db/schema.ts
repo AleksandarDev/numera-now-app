@@ -145,6 +145,8 @@ export const customers = pgTable(
         address: text('address'),
         contactEmail: text('contact_email'),
         contactTelephone: text('contact_telephone'),
+        // ISO 3166-1 alpha-2 country code (e.g. "HR", "DE", "US")
+        country: text('country'),
         userId: text('user_id').notNull(),
         isComplete: boolean('is_complete').notNull().default(false),
         // Flag to mark this customer as the user's own firm/company
@@ -220,6 +222,8 @@ export const settings = pgTable(
         requiredDocumentTypeIds: text('required_document_type_ids')
             .notNull()
             .default('[]'),
+        // Default country code for new customers (ISO 3166-1 alpha-2)
+        defaultCustomerCountry: text('default_customer_country'),
     },
     (table) => [index('settings_userid_idx').on(table.userId)],
 );

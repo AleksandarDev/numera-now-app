@@ -20,6 +20,7 @@ import {
 import { useDeleteCustomer } from '@/features/customers/api/use-delete-customer';
 import { useOpenCustomer } from '@/features/customers/hooks/use-open-customer';
 import { useConfirm } from '@/hooks/use-confirm';
+import { getCountryByCode } from '@/lib/countries';
 import type { client } from '@/lib/hono';
 
 export type ResponseType = InferResponseType<
@@ -185,6 +186,27 @@ export const columns: ColumnDef<ResponseType>[] = [
         cell: ({ row }) => {
             const phone = row.getValue('contactTelephone') as string;
             return <div>{phone || '-'}</div>;
+        },
+    },
+    {
+        accessorKey: 'country',
+        header: 'Country',
+        cell: ({ row }) => {
+            const code = row.getValue('country') as string | null;
+            if (!code) return <div>-</div>;
+            const country = getCountryByCode(code);
+            return (
+                <div className="flex items-center gap-1">
+                    {country ? (
+                        <>
+                            <span>{country.flag}</span>
+                            <span>{country.name}</span>
+                        </>
+                    ) : (
+                        code
+                    )}
+                </div>
+            );
         },
     },
     {

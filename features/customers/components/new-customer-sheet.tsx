@@ -11,6 +11,7 @@ import { insertCustomerSchema } from '@/db/schema';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
 import { CustomerForm } from '@/features/customers/components/customer-form';
 import { useNewCustomer } from '@/features/customers/hooks/use-new-customer';
+import { useGetSettings } from '@/features/settings/api/use-get-settings';
 
 const formSchema = insertCustomerSchema.omit({
     userId: true,
@@ -24,6 +25,7 @@ export const NewCustomerSheet = () => {
     const { isOpen, onClose } = useNewCustomer();
 
     const createMutation = useCreateCustomer();
+    const settingsQuery = useGetSettings();
 
     const onSubmit = (values: FormValues) => {
         createMutation.mutate(values, {
@@ -32,6 +34,9 @@ export const NewCustomerSheet = () => {
             },
         });
     };
+
+    const defaultCountry =
+        settingsQuery.data?.defaultCustomerCountry ?? undefined;
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
@@ -55,6 +60,7 @@ export const NewCustomerSheet = () => {
                             address: '',
                             contactEmail: '',
                             contactTelephone: '',
+                            country: defaultCountry,
                         }}
                     />
                 </div>
