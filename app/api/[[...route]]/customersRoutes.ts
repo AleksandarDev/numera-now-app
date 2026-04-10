@@ -16,7 +16,6 @@ import {
 // Helper function to check if customer data is complete
 type CustomerData = {
     name?: string | null;
-    pin?: string | null;
     vatNumber?: string | null;
     address?: string | null;
     contactEmail?: string | null;
@@ -27,7 +26,7 @@ type CustomerData = {
 const isCustomerComplete = (customer: CustomerData): boolean => {
     return !!(
         customer.name &&
-        (customer.pin || customer.vatNumber) &&
+        customer.vatNumber &&
         customer.address &&
         customer.contactEmail &&
         customer.contactTelephone &&
@@ -93,7 +92,6 @@ const app = new Hono()
                 .select({
                     id: customers.id,
                     name: customers.name,
-                    pin: customers.pin,
                     vatNumber: customers.vatNumber,
                     address: customers.address,
                     contactEmail: customers.contactEmail,
@@ -116,7 +114,7 @@ const app = new Hono()
                               eq(customers.userId, auth.userId),
                               or(
                                   ilike(customers.name, `%${escapedSearch}%`),
-                                  sql`${customers.pin} ILIKE ${`%${escapedSearch}%`}`,
+                                  ilike(customers.vatNumber, `%${escapedSearch}%`),
                               ),
                           )
                         : eq(customers.userId, auth.userId),

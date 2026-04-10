@@ -76,23 +76,6 @@ export const CustomerForm = ({
                     )}
                 />
                 <FormField
-                    name="pin"
-                    control={form.control}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>PIN</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={disabled}
-                                    placeholder="Personal Identification Number"
-                                    {...field}
-                                    value={field.value ?? ''}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <FormField
                     name="vatNumber"
                     control={form.control}
                     render={({ field }) => (

@@ -1,0 +1,1 @@
+UPDATE "customers" SET "is_complete" = false WHERE "is_complete" = true AND "country" IS NULL;

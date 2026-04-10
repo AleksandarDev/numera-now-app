@@ -35,7 +35,6 @@ export type CustomerSelectProps = {
 const ALL_CUSTOMERS_OPTION = {
     id: 'all',
     name: 'All customers',
-    pin: null,
     isComplete: true,
     isOwnFirm: false,
     vatNumber: null,
@@ -147,8 +146,7 @@ export const CustomerSelect = ({
                 ?.filter((customer) => {
                     const filter = customerFilter.toLowerCase();
                     return (
-                        customer.name.toLowerCase().includes(filter) ||
-                        customer.pin?.toLowerCase().includes(filter)
+                        customer.name.toLowerCase().includes(filter)
                     );
                 })
                 .map((customer) => ({
@@ -328,11 +326,6 @@ export const CustomerSelect = ({
                                             <span className="font-medium truncate">
                                                 {customer.name}
                                             </span>
-                                            {customer.pin && (
-                                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                                    ({customer.pin})
-                                                </span>
-                                            )}
                                             {!customer.isComplete && (
                                                 <span className="text-xs text-orange-600 font-medium whitespace-nowrap">
                                                     (Incomplete)
