@@ -74,6 +74,7 @@ export const EditCustomerSheet = () => {
               address: customerQuery.data.address,
               contactEmail: customerQuery.data.contactEmail,
               contactTelephone: customerQuery.data.contactTelephone,
+              country: customerQuery.data.country,
           }
         : {
               name: '',
@@ -82,6 +83,7 @@ export const EditCustomerSheet = () => {
               address: '',
               contactEmail: '',
               contactTelephone: '',
+              country: undefined,
           };
 
     return (

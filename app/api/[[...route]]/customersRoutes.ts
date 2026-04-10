@@ -21,6 +21,7 @@ type CustomerData = {
     address?: string | null;
     contactEmail?: string | null;
     contactTelephone?: string | null;
+    country?: string | null;
 };
 
 const isCustomerComplete = (customer: CustomerData): boolean => {
@@ -29,7 +30,8 @@ const isCustomerComplete = (customer: CustomerData): boolean => {
         (customer.pin || customer.vatNumber) &&
         customer.address &&
         customer.contactEmail &&
-        customer.contactTelephone
+        customer.contactTelephone &&
+        customer.country
     );
 };
 
@@ -96,6 +98,7 @@ const app = new Hono()
                     address: customers.address,
                     contactEmail: customers.contactEmail,
                     contactTelephone: customers.contactTelephone,
+                    country: customers.country,
                     isComplete: customers.isComplete,
                     isOwnFirm: customers.isOwnFirm,
                     transactionCount: sql<number>`count(${transactions.id})`.as(

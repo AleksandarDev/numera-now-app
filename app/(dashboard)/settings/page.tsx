@@ -11,6 +11,7 @@ import type { ColumnFiltersState } from '@tanstack/react-table';
 import { Loader2, Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { BankIntegrationCard } from '@/components/bank-integration-card';
+import { CountrySelect } from '@/components/country-select';
 import { DataTable } from '@/components/data-table';
 import { DataTableSearch } from '@/components/data-table-search';
 import { DocumentTypesSettingsCard } from '@/components/document-types-settings-card';
@@ -113,6 +114,49 @@ function TransactionStatusAutomationSettings() {
     );
 }
 
+function DefaultCustomerCountrySettings() {
+    const settingsQuery = useGetSettings();
+    const updateSettings = useUpdateSettings();
+
+    const isLoading = settingsQuery.isLoading;
+    const defaultCustomerCountry =
+        settingsQuery.data?.defaultCustomerCountry ?? null;
+
+    const handleChange = (value: string) => {
+        updateSettings.mutate({ defaultCustomerCountry: value || null });
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Default Customer Country</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Set the default country for new customers
+                </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between space-x-2">
+                    <div className="flex-1">
+                        <Label htmlFor="default-customer-country">
+                            Country
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            New customers will be assigned this country by
+                            default
+                        </p>
+                    </div>
+                    <CountrySelect
+                        value={defaultCustomerCountry}
+                        onChange={handleChange}
+                        disabled={isLoading || updateSettings.isPending}
+                        className="w-[250px]"
+                    />
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 function TagsSection() {
     const newTag = useNewTag();
     const deleteTags = useBulkDeleteTags();
@@ -168,6 +212,7 @@ export default function SettingsPage() {
             >
                 <DoubleEntrySettings />
                 <TransactionStatusAutomationSettings />
+                <DefaultCustomerCountrySettings />
                 <AccountingPeriodsSettingsCard />
                 <StripeIntegrationCard />
                 <BankIntegrationCard />

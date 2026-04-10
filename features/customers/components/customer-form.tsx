@@ -4,6 +4,7 @@ import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Input } from '@signalco/ui-primitives/Input';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
+import { CountrySelect } from '@/components/country-select';
 import {
     Form,
     FormControl,
@@ -120,6 +121,22 @@ export const CustomerForm = ({
                                     placeholder="Full address"
                                     {...field}
                                     value={field.value ?? ''}
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="country"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Country</FormLabel>
+                            <FormControl>
+                                <CountrySelect
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    disabled={disabled}
                                 />
                             </FormControl>
                         </FormItem>

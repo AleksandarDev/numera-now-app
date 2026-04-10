@@ -42,6 +42,7 @@ const ALL_CUSTOMERS_OPTION = {
     address: null,
     contactEmail: null,
     contactTelephone: null,
+    country: null,
     transactionCount: 0,
 } as const;
 

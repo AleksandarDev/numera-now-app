@@ -33,6 +33,7 @@ const app = new Hono()
                     reconciliationConditions: [],
                     minRequiredDocuments: 0,
                     requiredDocumentTypeIds: [],
+                    defaultCustomerCountry: null,
                 },
             });
         }
@@ -61,6 +62,7 @@ const app = new Hono()
                     reconciliationConditionsSchema.optional(),
                 minRequiredDocuments: z.number().int().min(0).optional(),
                 requiredDocumentTypeIds: z.array(z.string()).optional(),
+                defaultCustomerCountry: z.string().nullable().optional(),
             }),
         ),
         async (ctx) => {
@@ -77,6 +79,7 @@ const app = new Hono()
                 reconciliationConditions?: string;
                 minRequiredDocuments?: number;
                 requiredDocumentTypeIds?: string;
+                defaultCustomerCountry?: string | null;
             } = {};
 
             if (values.doubleEntryMode !== undefined) {
@@ -101,6 +104,11 @@ const app = new Hono()
                 updateValues.requiredDocumentTypeIds = JSON.stringify(
                     values.requiredDocumentTypeIds,
                 );
+            }
+
+            if (values.defaultCustomerCountry !== undefined) {
+                updateValues.defaultCustomerCountry =
+                    values.defaultCustomerCountry;
             }
 
             const [existingSettings] = await db
@@ -134,6 +142,8 @@ const app = new Hono()
                             values.requiredDocumentTypeIds !== undefined
                                 ? JSON.stringify(values.requiredDocumentTypeIds)
                                 : '[]',
+                        defaultCustomerCountry:
+                            values.defaultCustomerCountry ?? null,
                     })
                     .returning();
             }
