@@ -546,7 +546,7 @@ export default function AccountsPage() {
     }, [accountsQuery.data]);
 
     const onImport = useCallback((results: CSVResult) => {
-        if (!results || !results.data || results.data.length === 0) {
+        if (!results?.data || results.data.length === 0) {
             toast.error(
                 'No data found in the CSV file. Please check the file format.',
             );
