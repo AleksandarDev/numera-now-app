@@ -140,6 +140,8 @@ export const customers = pgTable(
     {
         id: text('id').primaryKey(),
         name: text('name').notNull(),
+        // Optional short/friendly name displayed in the app instead of the full name
+        friendlyName: text('friendly_name'),
         vatNumber: text('vat_number'),
         address: text('address'),
         contactEmail: text('contact_email'),

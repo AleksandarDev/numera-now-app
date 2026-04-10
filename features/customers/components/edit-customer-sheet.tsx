@@ -69,6 +69,7 @@ export const EditCustomerSheet = () => {
     const defaultValues = customerQuery.data
         ? {
               name: customerQuery.data.name,
+              friendlyName: customerQuery.data.friendlyName,
               vatNumber: customerQuery.data.vatNumber,
               address: customerQuery.data.address,
               contactEmail: customerQuery.data.contactEmail,
@@ -77,6 +78,7 @@ export const EditCustomerSheet = () => {
           }
         : {
               name: '',
+              friendlyName: '',
               vatNumber: '',
               address: '',
               contactEmail: '',

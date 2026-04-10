@@ -151,7 +151,9 @@ export const columns: ColumnDef<ResponseType>[] = [
                             Own Firm
                         </Badge>
                     )}
-                    <span>{row.getValue('name')}</span>
+                    <span>
+                        {row.original.friendlyName || row.getValue('name')}
+                    </span>
                 </div>
             );
         },
