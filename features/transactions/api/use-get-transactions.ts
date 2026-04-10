@@ -5,19 +5,26 @@ import { client } from '@/lib/hono';
 import { convertAmountFromMiliunits } from '@/lib/utils';
 
 export const useGetTransactions = () => {
-    const [{ from, to, accountId }] = useQueryStates({
+    const [{ from, to, accountId, customerId }] = useQueryStates({
         from: parseAsString,
         to: parseAsString,
         accountId: parseAsString,
+        customerId: parseAsString,
     });
     const queryFrom = from ?? undefined;
     const queryTo = to ?? undefined;
     const queryAccountId = accountId ?? undefined;
+    const queryCustomerId = customerId ?? undefined; // URL param 'customerId' maps to API param 'payeeCustomerId'
 
     const query = useQuery({
         queryKey: [
             'transactions',
-            { from: queryFrom, to: queryTo, accountId: queryAccountId },
+            {
+                from: queryFrom,
+                to: queryTo,
+                accountId: queryAccountId,
+                payeeCustomerId: queryCustomerId,
+            },
         ],
         placeholderData: keepPreviousData,
         queryFn: async () => {
@@ -26,6 +33,7 @@ export const useGetTransactions = () => {
                     from: queryFrom,
                     to: queryTo,
                     accountId: queryAccountId,
+                    payeeCustomerId: queryCustomerId,
                 },
             });
 

@@ -208,12 +208,14 @@ const app = new Hono()
                 from: z.string().optional(),
                 to: z.string().optional(),
                 accountId: z.string().optional(),
+                payeeCustomerId: z.string().optional(),
             }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { from, to, accountId } = ctx.req.valid('query');
+            const { from, to, accountId, payeeCustomerId } =
+                ctx.req.valid('query');
 
             if (!auth?.userId) {
                 return ctx.json({ error: 'Unauthorized.' }, 401);
@@ -298,6 +300,9 @@ const app = new Hono()
                                   eq(transactions.creditAccountId, accountId),
                                   eq(transactions.debitAccountId, accountId),
                               )
+                            : undefined,
+                        payeeCustomerId
+                            ? eq(transactions.payeeCustomerId, payeeCustomerId)
                             : undefined,
                         or(
                             eq(accounts.userId, auth.userId),
