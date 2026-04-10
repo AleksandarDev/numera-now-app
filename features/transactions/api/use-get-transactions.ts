@@ -14,7 +14,7 @@ export const useGetTransactions = () => {
     const queryFrom = from ?? undefined;
     const queryTo = to ?? undefined;
     const queryAccountId = accountId ?? undefined;
-    const queryCustomerId = customerId ?? undefined;
+    const queryCustomerId = customerId ?? undefined; // URL param 'customerId' maps to API param 'payeeCustomerId'
 
     const query = useQuery({
         queryKey: [

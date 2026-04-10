@@ -32,6 +32,19 @@ export type CustomerSelectProps = {
     selectAll?: boolean;
 };
 
+const ALL_CUSTOMERS_OPTION = {
+    id: 'all',
+    name: 'All customers',
+    pin: null,
+    isComplete: true,
+    isOwnFirm: false,
+    vatNumber: null,
+    address: null,
+    contactEmail: null,
+    contactTelephone: null,
+    transactionCount: 0,
+} as const;
+
 export const CustomerSelect = ({
     value,
     onChange,
@@ -61,17 +74,7 @@ export const CustomerSelect = ({
     });
     const selectedCustomer = useMemo(() => {
         if (selectAll && value === 'all') {
-            return {
-                id: 'all',
-                name: 'All customers',
-                pin: null,
-                isComplete: true,
-                isOwnFirm: false,
-                vatNumber: null,
-                address: null,
-                contactEmail: null,
-                contactTelephone: null,
-            };
+            return ALL_CUSTOMERS_OPTION;
         }
         return selectedCustomerFromList ?? selectedCustomerQuery.data ?? null;
     }, [
@@ -183,21 +186,7 @@ export const CustomerSelect = ({
         }
 
         if (selectAll) {
-            result = [
-                {
-                    id: 'all',
-                    name: 'All customers',
-                    pin: null,
-                    isComplete: true,
-                    isOwnFirm: false,
-                    vatNumber: null,
-                    address: null,
-                    contactEmail: null,
-                    contactTelephone: null,
-                    transactionCount: 0,
-                },
-                ...result,
-            ];
+            result = [ALL_CUSTOMERS_OPTION, ...result];
         }
 
         return result;
