@@ -195,7 +195,7 @@ const app = new Hono().get(
                 .from(accounts)
                 .where(eq(accounts.id, accountId));
 
-            if (!account || !account.accountClass) {
+            if (!account?.accountClass) {
                 // Default to debit-normal (asset-like) if no class
                 return debitTotal - creditTotal;
             }

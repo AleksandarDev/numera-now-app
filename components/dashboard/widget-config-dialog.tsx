@@ -40,7 +40,7 @@ export function WidgetConfigDialog({
     const definition = getWidgetDefinition(widget.type);
     const [config, setConfig] = useState(widget);
 
-    if (!definition || !definition.configSchema) {
+    if (!definition?.configSchema) {
         return null;
     }
 

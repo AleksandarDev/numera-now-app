@@ -319,7 +319,7 @@ export default function TransactionsPage() {
     const newTransaction = useNewTransaction();
 
     const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
-        if (!results || !results.data || results.data.length === 0) {
+        if (!results?.data || results.data.length === 0) {
             toast.error(
                 'No data found in the CSV file. Please check the file format.',
             );
