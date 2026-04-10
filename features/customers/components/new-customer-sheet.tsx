@@ -55,6 +55,7 @@ export const NewCustomerSheet = () => {
                         disabled={createMutation.isPending}
                         defaultValues={{
                             name: '',
+                            friendlyName: '',
                             vatNumber: '',
                             address: '',
                             contactEmail: '',

@@ -92,6 +92,7 @@ const app = new Hono()
                 .select({
                     id: customers.id,
                     name: customers.name,
+                    friendlyName: customers.friendlyName,
                     vatNumber: customers.vatNumber,
                     address: customers.address,
                     contactEmail: customers.contactEmail,
@@ -114,7 +115,14 @@ const app = new Hono()
                               eq(customers.userId, auth.userId),
                               or(
                                   ilike(customers.name, `%${escapedSearch}%`),
-                                  ilike(customers.vatNumber, `%${escapedSearch}%`),
+                                  ilike(
+                                      customers.friendlyName,
+                                      `%${escapedSearch}%`,
+                                  ),
+                                  ilike(
+                                      customers.vatNumber,
+                                      `%${escapedSearch}%`,
+                                  ),
                               ),
                           )
                         : eq(customers.userId, auth.userId),
@@ -335,7 +343,10 @@ const app = new Hono()
             const [ibanRecord] = await db
                 .select({
                     customerId: customerIbans.customerId,
-                    customerName: customers.name,
+                    customerName:
+                        sql<string>`coalesce(${customers.friendlyName}, ${customers.name})`.as(
+                            'customer_name',
+                        ),
                     iban: customerIbans.iban,
                     bankName: customerIbans.bankName,
                 })

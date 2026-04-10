@@ -35,6 +35,7 @@ export type CustomerSelectProps = {
 const ALL_CUSTOMERS_OPTION = {
     id: 'all',
     name: 'All customers',
+    friendlyName: null,
     isComplete: true,
     isOwnFirm: false,
     vatNumber: null,
@@ -146,7 +147,11 @@ export const CustomerSelect = ({
                 ?.filter((customer) => {
                     const filter = customerFilter.toLowerCase();
                     return (
-                        customer.name.toLowerCase().includes(filter)
+                        customer.name.toLowerCase().includes(filter) ||
+                        (customer.friendlyName
+                            ?.toLowerCase()
+                            .includes(filter) ??
+                            false)
                     );
                 })
                 .map((customer) => ({
@@ -249,7 +254,10 @@ export const CustomerSelect = ({
                     >
                         {selectedCustomer ? (
                             <div className="flex items-center gap-2">
-                                <span>{selectedCustomer.name}</span>
+                                <span>
+                                    {selectedCustomer.friendlyName ||
+                                        selectedCustomer.name}
+                                </span>
                                 {!selectedCustomer.isComplete && (
                                     <span className="text-xs text-orange-600 font-medium">
                                         (Incomplete)
@@ -324,7 +332,8 @@ export const CustomerSelect = ({
                                     <div className="flex items-center justify-between w-full gap-2">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="font-medium truncate">
-                                                {customer.name}
+                                                {customer.friendlyName ||
+                                                    customer.name}
                                             </span>
                                             {!customer.isComplete && (
                                                 <span className="text-xs text-orange-600 font-medium whitespace-nowrap">

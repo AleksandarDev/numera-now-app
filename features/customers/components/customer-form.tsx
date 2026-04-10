@@ -76,6 +76,27 @@ export const CustomerForm = ({
                     )}
                 />
                 <FormField
+                    name="friendlyName"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Friendly Name</FormLabel>
+                            <FormControl>
+                                <Input
+                                    disabled={disabled}
+                                    placeholder="Short display name (e.g. GLS HR)"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                />
+                            </FormControl>
+                            <FormDescription>
+                                Optional short name displayed in the app instead
+                                of the full name.
+                            </FormDescription>
+                        </FormItem>
+                    )}
+                />
+                <FormField
                     name="vatNumber"
                     control={form.control}
                     render={({ field }) => (

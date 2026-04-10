@@ -251,7 +251,10 @@ const app = new Hono()
                     date: transactions.date,
                     payee: transactions.payee,
                     payeeCustomerId: transactions.payeeCustomerId,
-                    payeeCustomerName: customers.name,
+                    payeeCustomerName:
+                        sql<string>`coalesce(${customers.friendlyName}, ${customers.name})`.as(
+                            'payee_customer_name',
+                        ),
                     amount: transactions.amount,
                     notes: transactions.notes,
                     account: accounts.name,
@@ -673,12 +676,18 @@ const app = new Hono()
                     .where(
                         and(
                             eq(customers.userId, auth.userId),
-                            ilike(customers.name, `%${escapedQuery}%`),
+                            or(
+                                ilike(customers.name, `%${escapedQuery}%`),
+                                ilike(
+                                    customers.friendlyName,
+                                    `%${escapedQuery}%`,
+                                ),
+                            ),
                         ),
                     )
                     .orderBy(
-                        sql<number>`position(${normalizedQuery} in lower(${customers.name}))`,
-                        sql<number>`length(${customers.name})`,
+                        sql<number>`position(${normalizedQuery} in lower(coalesce(${customers.friendlyName}, ${customers.name})))`,
+                        sql<number>`length(coalesce(${customers.friendlyName}, ${customers.name}))`,
                         asc(customers.name),
                     )
                     .limit(suggestionLimit);
@@ -729,7 +738,13 @@ const app = new Hono()
                         .where(
                             and(
                                 eq(customers.userId, auth.userId),
-                                ilike(customers.name, `%${escapedWord}%`),
+                                or(
+                                    ilike(customers.name, `%${escapedWord}%`),
+                                    ilike(
+                                        customers.friendlyName,
+                                        `%${escapedWord}%`,
+                                    ),
+                                ),
                             ),
                         )
                         .limit(suggestionLimit);
@@ -2228,7 +2243,10 @@ const app = new Hono()
                     date: transactions.date,
                     payee: transactions.payee,
                     payeeCustomerId: transactions.payeeCustomerId,
-                    payeeCustomerName: customers.name,
+                    payeeCustomerName:
+                        sql<string>`coalesce(${customers.friendlyName}, ${customers.name})`.as(
+                            'payee_customer_name',
+                        ),
                     amount: transactions.amount,
                     notes: transactions.notes,
                     account: accounts.name,
