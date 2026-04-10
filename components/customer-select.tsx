@@ -28,6 +28,8 @@ export type CustomerSelectProps = {
     suggestionQuery?: string;
     /** Notes text used for suggesting customers based on transaction history */
     suggestionNotes?: string;
+    /** When true, adds an "All customers" option at the top */
+    selectAll?: boolean;
 };
 
 export const CustomerSelect = ({
@@ -39,6 +41,7 @@ export const CustomerSelect = ({
     onCreate,
     suggestionQuery,
     suggestionNotes,
+    selectAll,
 }: CustomerSelectProps) => {
     const [open, setOpen] = useState(false);
     const [customerFilter, setCustomerFilter] = useState('');
@@ -48,16 +51,35 @@ export const CustomerSelect = ({
         useGetCustomers();
 
     const selectedCustomerFromList = useMemo(() => {
-        if (!value || !customers) return null;
+        if (!value || value === 'all' || !customers) return null;
         return customers.find((customer) => customer.id === value) ?? null;
     }, [customers, value]);
     const shouldFetchSelectedCustomer =
-        !!value && (!customers || !selectedCustomerFromList);
+        !!value && value !== 'all' && (!customers || !selectedCustomerFromList);
     const selectedCustomerQuery = useGetCustomer(value, {
         enabled: shouldFetchSelectedCustomer,
     });
-    const selectedCustomer =
-        selectedCustomerFromList ?? selectedCustomerQuery.data ?? null;
+    const selectedCustomer = useMemo(() => {
+        if (selectAll && value === 'all') {
+            return {
+                id: 'all',
+                name: 'All customers',
+                pin: null,
+                isComplete: true,
+                isOwnFirm: false,
+                vatNumber: null,
+                address: null,
+                contactEmail: null,
+                contactTelephone: null,
+            };
+        }
+        return selectedCustomerFromList ?? selectedCustomerQuery.data ?? null;
+    }, [
+        selectAll,
+        value,
+        selectedCustomerFromList,
+        selectedCustomerQuery.data,
+    ]);
 
     const normalizedSelectedCustomer = useMemo(() => {
         if (!selectedCustomer) return null;
@@ -137,6 +159,7 @@ export const CustomerSelect = ({
 
         if (
             normalizedSelectedCustomer &&
+            normalizedSelectedCustomer.id !== 'all' &&
             customerFilter.trim().length === 0 &&
             !result.some(
                 (customer) => customer.id === normalizedSelectedCustomer.id,
@@ -159,12 +182,31 @@ export const CustomerSelect = ({
             result = [...suggested, ...remaining];
         }
 
+        if (selectAll) {
+            result = [
+                {
+                    id: 'all',
+                    name: 'All customers',
+                    pin: null,
+                    isComplete: true,
+                    isOwnFirm: false,
+                    vatNumber: null,
+                    address: null,
+                    contactEmail: null,
+                    contactTelephone: null,
+                    transactionCount: 0,
+                },
+                ...result,
+            ];
+        }
+
         return result;
     }, [
         customers,
         customerFilter,
         normalizedSelectedCustomer,
         suggestedIdOrder,
+        selectAll,
     ]);
 
     // Virtualization

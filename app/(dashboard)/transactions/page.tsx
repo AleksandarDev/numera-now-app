@@ -12,6 +12,7 @@ import { Archive, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountFilter } from '@/components/account-filter';
+import { CustomerFilter } from '@/components/customer-filter';
 import { DataTableSearch } from '@/components/data-table-search';
 import { DateFilter } from '@/components/date-filter';
 import { ImportCard } from '@/components/import/import-card';
@@ -409,6 +410,7 @@ export default function TransactionsPage() {
                             onColumnFiltersChange={setColumnFilters}
                             className="w-full md:w-[220px]"
                         />
+                        <CustomerFilter />
                         <AccountFilter />
                         <DateFilter />
                     </div>
