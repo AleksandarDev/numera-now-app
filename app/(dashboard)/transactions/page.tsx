@@ -8,7 +8,7 @@ import {
     CardTitle,
 } from '@signalco/ui-primitives/Card';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-import { Archive, Loader2, MoreHorizontal, Plus } from 'lucide-react';
+import { Archive, Download, FileText, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountFilter } from '@/components/account-filter';
@@ -29,6 +29,7 @@ import { useGetCustomers } from '@/features/customers/api/use-get-customers';
 import { lookupCustomerByIban } from '@/features/customers/api/use-lookup-customer-by-iban';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useBulkCreateTransactions } from '@/features/transactions/api/use-bulk-create-transactions';
+import { useGetTransactions } from '@/features/transactions/api/use-get-transactions';
 import { useNewTransaction } from '@/features/transactions/hooks/use-new-transaction';
 import { convertAmountToMiliunits } from '@/lib/utils';
 import { TransactionsDataTable } from './TransactionsDataTable';
@@ -315,8 +316,89 @@ export default function TransactionsPage() {
     const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const transactionsQuery = useGetTransactions();
 
     const newTransaction = useNewTransaction();
+
+    const exportTransactions = (format: 'csv' | 'md') => {
+        const transactions = transactionsQuery.data || [];
+        const payeeFilter = columnFilters.find(
+            (filter) => filter.id === 'payeeCustomerName',
+        )?.value;
+        const normalizedPayeeFilter =
+            typeof payeeFilter === 'string' ? payeeFilter.toLowerCase() : '';
+        const filteredTransactions = normalizedPayeeFilter
+            ? transactions.filter((transaction) =>
+                  (transaction.payeeCustomerName || transaction.payee || '')
+                      .toLowerCase()
+                      .includes(normalizedPayeeFilter),
+              )
+            : transactions;
+
+        if (filteredTransactions.length === 0) {
+            toast.error('No transactions to export with the current filters');
+            return;
+        }
+
+        const exportRows = filteredTransactions.map((transaction) => ({
+            date: new Date(transaction.date).toISOString().split('T')[0],
+            payee: transaction.payeeCustomerName || transaction.payee || '',
+            amount: transaction.amount.toFixed(2),
+            status: transaction.splitSummary?.status ?? transaction.status,
+            account:
+                transaction.account ||
+                transaction.creditAccount ||
+                transaction.debitAccount ||
+                '',
+            notes: transaction.notes || '',
+        }));
+
+        const filenameDate = new Date().toISOString().split('T')[0];
+        if (format === 'csv') {
+            const headers = ['Date', 'Payee', 'Amount', 'Status', 'Account', 'Notes'];
+            const escape = (value: string) =>
+                value.includes(',') || value.includes('"') || value.includes('\n')
+                    ? `"${value.replace(/"/g, '""')}"`
+                    : value;
+            const content = [
+                headers.join(','),
+                ...exportRows.map((row) =>
+                    [row.date, row.payee, row.amount, row.status, row.account, row.notes]
+                        .map((item) => escape(String(item)))
+                        .join(','),
+                ),
+            ].join('\n');
+            const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `transactions-export-${filenameDate}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } else {
+            const markdown = [
+                '| Date | Payee | Amount | Status | Account | Notes |',
+                '|---|---|---:|---|---|---|',
+                ...exportRows.map(
+                    (row) =>
+                        `| ${row.date} | ${row.payee || '-'} | ${row.amount} | ${row.status} | ${row.account || '-'} | ${row.notes || '-'} |`,
+                ),
+            ].join('\n');
+            const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `transactions-export-${filenameDate}.md`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        toast.success(`Exported ${filteredTransactions.length} transactions`);
+    };
 
     const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
         if (!results?.data || results.data.length === 0) {
@@ -386,6 +468,20 @@ export default function TransactionsPage() {
                                     onUpload={onUpload}
                                     variant="menu"
                                 />
+                                <DropdownMenuItem
+                                    onClick={() => exportTransactions('csv')}
+                                    disabled={transactionsQuery.isLoading}
+                                >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export CSV
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => exportTransactions('md')}
+                                    disabled={transactionsQuery.isLoading}
+                                >
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Export Markdown
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={() =>

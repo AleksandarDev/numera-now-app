@@ -17,6 +17,7 @@ import {
     ChevronRight,
     Download,
     Expand,
+    FileText,
     EyeOff,
     Loader2,
     Minimize2,
@@ -67,9 +68,17 @@ const INITIAL_IMPORT_RESULTS = {
     meta: [] as unknown[],
 };
 
-function AccountsDataTable() {
-    const [search, setSearch] = useState('');
-    const [showClosed, setShowClosed] = useState(false);
+function AccountsDataTable({
+    search,
+    onSearchChange,
+    showClosed,
+    onShowClosedChange,
+}: {
+    search: string;
+    onSearchChange: (value: string) => void;
+    showClosed: boolean;
+    onShowClosedChange: (value: boolean) => void;
+}) {
     const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
         new Set(),
     );
@@ -198,7 +207,7 @@ function AccountsDataTable() {
                                 placeholder={`Filter accounts...`}
                                 value={search}
                                 onChange={(event) =>
-                                    setSearch(event.target.value)
+                                    onSearchChange(event.target.value)
                                 }
                                 className="max-w-sm"
                             />
@@ -215,7 +224,7 @@ function AccountsDataTable() {
                                     id="show-closed"
                                     checked={showClosed}
                                     onCheckedChange={(checked) =>
-                                        setShowClosed(checked === true)
+                                        onShowClosedChange(checked === true)
                                     }
                                 />
                             </div>
@@ -475,15 +484,18 @@ export default function AccountsPage() {
         INITIAL_IMPORT_RESULTS,
     );
     const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+    const [search, setSearch] = useState('');
+    const [showClosed, setShowClosed] = useState(false);
     const newAccount = useNewAccount();
     const yearClosingWizard = useYearClosingWizard();
     const createAccounts = useBulkCreateAccounts();
     const accountsQuery = useGetAccounts({
+        search,
         pageSize: 9999,
-        showClosed: true,
+        showClosed,
     });
 
-    const exportAccountsToCSV = useCallback(() => {
+    const exportAccounts = useCallback((format: 'csv' | 'md') => {
         const accounts = accountsQuery.data;
         if (!accounts || accounts.length === 0) {
             toast.error('No accounts to export');
@@ -497,19 +509,9 @@ export default function AccountsPage() {
             return codeA.localeCompare(codeB);
         });
 
-        // CSV header
-        const headers = [
-            'Code',
-            'Name',
-            'Status',
-            'OpeningBalance',
-            'AccountClass',
-        ];
-
-        // Convert accounts to CSV rows
         const rows = sortedAccounts.map((account) => {
             // Force code to be treated as text in Excel by using ="value" format to preserve leading zeros
-            const code = account.code ? `="${account.code}"` : '';
+            const code = account.code ?? '';
             const name =
                 account.name.includes(',') || account.name.includes('"')
                     ? `"${account.name.replace(/"/g, '""')}"`
@@ -518,31 +520,43 @@ export default function AccountsPage() {
             // Convert milliunits to units (divide by 1000)
             const openingBalance = (account.openingBalance / 1000).toFixed(2);
             const accountClass = account.accountClass ?? '';
-            return [code, name, status, openingBalance, accountClass].join(',');
+            return { code, name, status, openingBalance, accountClass };
         });
-
-        // Combine header and rows
-        const csvContent = [headers.join(','), ...rows].join('\n');
-
-        // Create and download the file with UTF-8 BOM for proper encoding
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], {
-            type: 'text/csv;charset=utf-8;',
-        });
+        const datePart = new Date().toISOString().split('T')[0];
+        let blob: Blob;
+        let extension: 'csv' | 'md';
+        if (format === 'csv') {
+            const headers = ['Code', 'Name', 'Status', 'OpeningBalance', 'AccountClass'];
+            const csvRows = rows.map((row) => {
+                const code = row.code ? `="${row.code}"` : '';
+                return [code, row.name, row.status, row.openingBalance, row.accountClass].join(',');
+            });
+            const csvContent = [headers.join(','), ...csvRows].join('\n');
+            blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            extension = 'csv';
+        } else {
+            const markdownContent = [
+                '| Code | Name | Status | Opening Balance | Account Class |',
+                '|---|---|---|---:|---|',
+                ...rows.map(
+                    (row) =>
+                        `| ${row.code || '-'} | ${row.name || '-'} | ${row.status} | ${row.openingBalance} | ${row.accountClass || '-'} |`,
+                ),
+            ].join('\n');
+            blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8;' });
+            extension = 'md';
+        }
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute(
-            'download',
-            `accounts-export-${new Date().toISOString().split('T')[0]}.csv`,
-        );
+        link.setAttribute('download', `accounts-export-${datePart}.${extension}`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        toast.success(`Exported ${accounts.length} accounts to CSV`);
+        toast.success(`Exported ${accounts.length} accounts`);
     }, [accountsQuery.data]);
 
     const onImport = useCallback((results: CSVResult) => {
@@ -650,7 +664,7 @@ export default function AccountsPage() {
                                     variant="menu"
                                 />
                                 <DropdownMenuItem
-                                    onClick={exportAccountsToCSV}
+                                    onClick={() => exportAccounts('csv')}
                                     disabled={
                                         accountsQuery.isLoading ||
                                         !accountsQuery.data?.length
@@ -658,6 +672,16 @@ export default function AccountsPage() {
                                 >
                                     <Download className="mr-2 size-4" />
                                     Export CSV
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => exportAccounts('md')}
+                                    disabled={
+                                        accountsQuery.isLoading ||
+                                        !accountsQuery.data?.length
+                                    }
+                                >
+                                    <FileText className="mr-2 size-4" />
+                                    Export Markdown
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -688,7 +712,12 @@ export default function AccountsPage() {
                             </div>
                         }
                     >
-                        <AccountsDataTable />
+                        <AccountsDataTable
+                            search={search}
+                            onSearchChange={setSearch}
+                            showClosed={showClosed}
+                            onShowClosedChange={setShowClosed}
+                        />
                     </Suspense>
                 </CardContent>
             </Card>
