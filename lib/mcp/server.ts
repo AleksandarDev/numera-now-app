@@ -6,6 +6,10 @@ import {
     MCP_SOURCE,
     type NumeraMcpContext,
 } from './context.ts';
+import {
+    type McpMutationServices,
+    registerMutationMcpTools,
+} from './mutation-tools.ts';
 import { type McpReadServices, registerReadMcpTools } from './read-tools.ts';
 
 export const NUMERA_MCP_SERVER_NAME = 'numera-now';
@@ -13,6 +17,7 @@ export const NUMERA_MCP_SERVER_VERSION = '0.1.0';
 
 export type NumeraMcpServerOptions = {
     readServices?: McpReadServices;
+    mutationServices?: McpMutationServices;
 };
 
 export const registerBaseMcpTools = (
@@ -55,6 +60,9 @@ export const createNumeraMcpServer = (
     registerBaseMcpTools(server, context);
     if (options.readServices) {
         registerReadMcpTools(server, context, options.readServices);
+    }
+    if (options.mutationServices) {
+        registerMutationMcpTools(server, context, options.mutationServices);
     }
 
     return server;

@@ -12,7 +12,18 @@ import {
     listTags,
     listTransactions,
 } from '@/lib/services/finance-entities';
+import {
+    deleteCustomerForUser,
+    deleteDocumentForUser,
+    deleteTransactionForUser,
+    purgeDocumentForUser,
+    purgeTransactionForUser,
+    restoreCustomerForUser,
+    restoreDocumentForUser,
+    restoreTransactionForUser,
+} from '@/lib/services/finance-mutations';
 
+import type { McpMutationServices } from './mutation-tools.ts';
 import type { McpReadServices } from './read-tools.ts';
 
 export const defaultMcpReadServices: McpReadServices = {
@@ -38,4 +49,15 @@ export const defaultMcpReadServices: McpReadServices = {
         getDocument(input as Parameters<typeof getDocument>[0]),
     listAuditEvents: (input) =>
         listAuditEvents(input as Parameters<typeof listAuditEvents>[0]),
+};
+
+export const defaultMcpMutationServices: McpMutationServices = {
+    deleteTransaction: deleteTransactionForUser,
+    restoreTransaction: restoreTransactionForUser,
+    purgeTransaction: purgeTransactionForUser,
+    deleteCustomer: deleteCustomerForUser,
+    restoreCustomer: restoreCustomerForUser,
+    deleteDocument: deleteDocumentForUser,
+    restoreDocument: restoreDocumentForUser,
+    purgeDocument: purgeDocumentForUser,
 };
