@@ -6,9 +6,14 @@ import {
     MCP_SOURCE,
     type NumeraMcpContext,
 } from './context.ts';
+import { type McpReadServices, registerReadMcpTools } from './read-tools.ts';
 
 export const NUMERA_MCP_SERVER_NAME = 'numera-now';
 export const NUMERA_MCP_SERVER_VERSION = '0.1.0';
+
+export type NumeraMcpServerOptions = {
+    readServices?: McpReadServices;
+};
 
 export const registerBaseMcpTools = (
     server: McpServer,
@@ -38,13 +43,19 @@ export const registerBaseMcpTools = (
     );
 };
 
-export const createNumeraMcpServer = (context: NumeraMcpContext) => {
+export const createNumeraMcpServer = (
+    context: NumeraMcpContext,
+    options: NumeraMcpServerOptions = {},
+) => {
     const server = new McpServer({
         name: NUMERA_MCP_SERVER_NAME,
         version: NUMERA_MCP_SERVER_VERSION,
     });
 
     registerBaseMcpTools(server, context);
+    if (options.readServices) {
+        registerReadMcpTools(server, context, options.readServices);
+    }
 
     return server;
 };

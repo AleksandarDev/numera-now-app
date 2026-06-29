@@ -10,12 +10,19 @@ export type NumeraMcpContext = {
 
 export type JsonToolResultData = Record<string, unknown>;
 
-export const createJsonToolResult = (data: JsonToolResultData) => ({
-    content: [
-        {
-            type: 'text' as const,
-            text: JSON.stringify(data),
-        },
-    ],
-    structuredContent: data,
-});
+const toJsonSafeData = (data: JsonToolResultData): JsonToolResultData =>
+    JSON.parse(JSON.stringify(data)) as JsonToolResultData;
+
+export const createJsonToolResult = (data: JsonToolResultData) => {
+    const jsonSafeData = toJsonSafeData(data);
+
+    return {
+        content: [
+            {
+                type: 'text' as const,
+                text: JSON.stringify(jsonSafeData),
+            },
+        ],
+        structuredContent: jsonSafeData,
+    };
+};

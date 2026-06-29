@@ -1,5 +1,5 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-
 import type { NumeraMcpContext } from './context.ts';
 import { createNumeraMcpServer } from './server.ts';
 
@@ -9,7 +9,7 @@ export type McpAuthenticator = (
 
 export type HandleMcpRequestOptions = {
     authenticate: McpAuthenticator;
-    createServer?: typeof createNumeraMcpServer;
+    createServer?: (context: NumeraMcpContext) => McpServer;
 };
 
 export const createUnauthorizedMcpResponse = () =>
