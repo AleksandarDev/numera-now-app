@@ -13,6 +13,7 @@ export const useGetCustomer = (id?: string, options?: GetCustomerOptions) => {
         queryFn: async () => {
             const response = await client.api.customers[':id'].$get({
                 param: { id },
+                query: {},
             });
 
             if (!response.ok) {

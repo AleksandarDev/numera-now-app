@@ -9,6 +9,7 @@ export const useGetCustomerIbans = (customerId?: string) => {
             if (!customerId) throw new Error('Customer ID is required');
             const response = await client.api.customers[':id'].ibans.$get({
                 param: { id: customerId },
+                query: {},
             });
 
             if (!response.ok) {

@@ -81,7 +81,11 @@ const processStripePayment = async (
         .select({ id: customers.id })
         .from(customers)
         .where(
-            and(eq(customers.userId, userId), eq(customers.isOwnFirm, true)),
+            and(
+                eq(customers.userId, userId),
+                eq(customers.isOwnFirm, true),
+                eq(customers.isDeleted, false),
+            ),
         );
 
     // Convert amount from Stripe cents to milliunits (app stores amounts * 1000)

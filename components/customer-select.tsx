@@ -43,6 +43,13 @@ const ALL_CUSTOMERS_OPTION = {
     contactEmail: null,
     contactTelephone: null,
     country: null,
+    isDeleted: false,
+    deletedAt: null,
+    deletedBy: null,
+    deleteReason: null,
+    restoredAt: null,
+    restoredBy: null,
+    restoreReason: null,
     transactionCount: 0,
 } as const;
 
