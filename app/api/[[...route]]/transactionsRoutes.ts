@@ -2,19 +2,16 @@ import { UTCDate } from '@date-fns/utc';
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { endOfDay, parse, startOfYear } from 'date-fns';
 import {
     aliasedTable,
     and,
     asc,
     desc,
     eq,
-    gte,
     ilike,
     inArray,
     isNotNull,
     isNull,
-    lte,
     or,
     sql,
 } from 'drizzle-orm';
@@ -25,7 +22,6 @@ import {
     accounts,
     createTransactionSchema,
     customers,
-    documents,
     settings,
     tags,
     transactionStatusHistory,
@@ -33,6 +29,7 @@ import {
     transactionTags,
 } from '@/db/schema';
 import { writeAuditEvent } from '@/lib/audit';
+import { listTransactions } from '@/lib/services/finance-entities';
 import {
     createTransactionRestorePatch,
     createTransactionSoftDeletePatch,
@@ -410,223 +407,13 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const startDate = from
-                ? parse(from, 'yyyy-MM-dd', new UTCDate())
-                : startOfYear(new UTCDate());
-            const endDate = to
-                ? endOfDay(parse(to, 'yyyy-MM-dd', new UTCDate()))
-                : new UTCDate();
-
-            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
-            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
-
-            // Get user settings for required document types
-            const [userSettings] = await db
-                .select({
-                    minRequiredDocuments: settings.minRequiredDocuments,
-                    requiredDocumentTypeIds: settings.requiredDocumentTypeIds,
-                })
-                .from(settings)
-                .where(eq(settings.userId, auth.userId));
-
-            const minRequiredDocs = userSettings?.minRequiredDocuments ?? 0;
-            const requiredDocTypeIds = userSettings?.requiredDocumentTypeIds
-                ? JSON.parse(userSettings.requiredDocumentTypeIds)
-                : [];
-
-            const data = await db
-                .select({
-                    id: transactions.id,
-                    date: transactions.date,
-                    payee: transactions.payee,
-                    payeeCustomerId: transactions.payeeCustomerId,
-                    payeeCustomerName:
-                        sql<string>`coalesce(${customers.friendlyName}, ${customers.name})`.as(
-                            'payee_customer_name',
-                        ),
-                    amount: transactions.amount,
-                    notes: transactions.notes,
-                    account: accounts.name,
-                    accountCode: accounts.code,
-                    accountId: transactions.accountId,
-                    accountIsOpen: accounts.isOpen,
-                    accountClass: accounts.accountClass,
-                    creditAccount: creditAccounts.name,
-                    creditAccountCode: creditAccounts.code,
-                    creditAccountId: transactions.creditAccountId,
-                    creditAccountIsOpen: creditAccounts.isOpen,
-                    creditAccountType: creditAccounts.accountType,
-                    creditAccountClass: creditAccounts.accountClass,
-                    debitAccount: debitAccounts.name,
-                    debitAccountCode: debitAccounts.code,
-                    debitAccountId: transactions.debitAccountId,
-                    debitAccountIsOpen: debitAccounts.isOpen,
-                    debitAccountType: debitAccounts.accountType,
-                    debitAccountClass: debitAccounts.accountClass,
-                    status: transactions.status,
-                    statusChangedAt: transactions.statusChangedAt,
-                    statusChangedBy: transactions.statusChangedBy,
-                    splitGroupId: transactions.splitGroupId,
-                    splitType: transactions.splitType,
-                    stripePaymentId: transactions.stripePaymentId,
-                    deletedAt: transactions.deletedAt,
-                    deletedBy: transactions.deletedBy,
-                    deleteReason: transactions.deleteReason,
-                    restoredAt: transactions.restoredAt,
-                    restoredBy: transactions.restoredBy,
-                    restoreReason: transactions.restoreReason,
-                })
-                .from(transactions)
-                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-                .leftJoin(
-                    creditAccounts,
-                    eq(transactions.creditAccountId, creditAccounts.id),
-                )
-                .leftJoin(
-                    debitAccounts,
-                    eq(transactions.debitAccountId, debitAccounts.id),
-                )
-                .leftJoin(
-                    customers,
-                    eq(transactions.payeeCustomerId, customers.id),
-                )
-                .where(
-                    and(
-                        accountId
-                            ? or(
-                                  eq(transactions.accountId, accountId),
-                                  eq(transactions.creditAccountId, accountId),
-                                  eq(transactions.debitAccountId, accountId),
-                              )
-                            : undefined,
-                        payeeCustomerId
-                            ? eq(transactions.payeeCustomerId, payeeCustomerId)
-                            : undefined,
-                        or(
-                            eq(accounts.userId, auth.userId),
-                            eq(creditAccounts.userId, auth.userId),
-                            eq(debitAccounts.userId, auth.userId),
-                            and(
-                                isNull(transactions.accountId),
-                                isNull(transactions.creditAccountId),
-                                isNull(transactions.debitAccountId),
-                                eq(transactions.statusChangedBy, auth.userId),
-                            ),
-                        ),
-                        gte(transactions.date, startDate),
-                        lte(transactions.date, endDate),
-                        transactionDeletedFilter(deleted),
-                    ),
-                )
-                .orderBy(desc(transactions.date));
-
-            // Get document counts and required documents status for each transaction
-            const transactionIds = data.map((t) => t.id);
-            const documentCounts: Map<
-                string,
-                { total: number; requiredTypes: string[] }
-            > = new Map();
-
-            if (transactionIds.length > 0) {
-                const docsData = await db
-                    .select({
-                        transactionId: documents.transactionId,
-                        documentTypeId: documents.documentTypeId,
-                    })
-                    .from(documents)
-                    .where(
-                        and(
-                            inArray(documents.transactionId, transactionIds),
-                            eq(documents.isDeleted, false),
-                        ),
-                    );
-
-                // Group by transaction and count
-                docsData.forEach((doc) => {
-                    if (!doc.transactionId) return;
-                    const existing = documentCounts.get(doc.transactionId) || {
-                        total: 0,
-                        requiredTypes: [],
-                    };
-                    existing.total++;
-                    if (requiredDocTypeIds.includes(doc.documentTypeId)) {
-                        if (
-                            !existing.requiredTypes.includes(doc.documentTypeId)
-                        ) {
-                            existing.requiredTypes.push(doc.documentTypeId);
-                        }
-                    }
-                    documentCounts.set(doc.transactionId, existing);
-                });
-            }
-
-            // Get tags for each transaction
-            const transactionTagsMap: Map<
-                string,
-                Array<{ id: string; name: string; color: string | null }>
-            > = new Map();
-
-            if (transactionIds.length > 0) {
-                const tagsData = await db
-                    .select({
-                        transactionId: transactionTags.transactionId,
-                        tagId: tags.id,
-                        tagName: tags.name,
-                        tagColor: tags.color,
-                    })
-                    .from(transactionTags)
-                    .innerJoin(tags, eq(transactionTags.tagId, tags.id))
-                    .where(
-                        inArray(transactionTags.transactionId, transactionIds),
-                    );
-
-                // Group by transaction
-                tagsData.forEach((tagData) => {
-                    const existing =
-                        transactionTagsMap.get(tagData.transactionId) || [];
-                    existing.push({
-                        id: tagData.tagId,
-                        name: tagData.tagName,
-                        color: tagData.tagColor,
-                    });
-                    transactionTagsMap.set(tagData.transactionId, existing);
-                });
-            }
-
-            // Combine data with document info and tags
-            // If minRequiredDocs is 0, all required types must be attached
-            // If minRequiredDocs > 0, at least that many required types must be attached
-            const dataWithDocs = data.map((transaction) => {
-                const attachedRequiredCount =
-                    documentCounts.get(transaction.id)?.requiredTypes.length ??
-                    0;
-                const totalRequiredTypes = requiredDocTypeIds.length;
-
-                // Determine if documents requirement is met
-                let hasAllRequiredDocuments = true;
-                if (totalRequiredTypes > 0) {
-                    if (minRequiredDocs === 0) {
-                        // All required document types must be attached
-                        hasAllRequiredDocuments =
-                            attachedRequiredCount >= totalRequiredTypes;
-                    } else {
-                        // At least minRequiredDocs of the required types must be attached
-                        hasAllRequiredDocuments =
-                            attachedRequiredCount >=
-                            Math.min(minRequiredDocs, totalRequiredTypes);
-                    }
-                }
-
-                return {
-                    ...transaction,
-                    tags: transactionTagsMap.get(transaction.id) ?? [],
-                    documentCount:
-                        documentCounts.get(transaction.id)?.total ?? 0,
-                    hasAllRequiredDocuments,
-                    requiredDocumentTypes: totalRequiredTypes,
-                    attachedRequiredTypes: attachedRequiredCount,
-                    minRequiredDocuments: minRequiredDocs,
-                };
+            const dataWithDocs = await listTransactions({
+                userId: auth.userId,
+                from,
+                to,
+                accountId,
+                payeeCustomerId,
+                deleted,
             });
 
             return ctx.json({ data: dataWithDocs });

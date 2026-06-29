@@ -1,18 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import {
-    and,
-    asc,
-    desc,
-    eq,
-    ilike,
-    inArray,
-    isNull,
-    ne,
-    or,
-    sql,
-} from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 
@@ -22,7 +11,6 @@ import {
     customerIbans,
     customers,
     insertCustomerSchema,
-    transactions,
 } from '@/db/schema';
 import { type AuditAction, writeAuditEvent } from '@/lib/audit';
 import {
@@ -36,6 +24,7 @@ import {
     getCustomerProfileRevertConflicts,
     type SnapshotRecord,
 } from '@/lib/customer-lifecycle';
+import { listCustomers } from '@/lib/services/finance-entities';
 
 type DeletedMode = 'include' | 'only';
 type CustomerRow = typeof customers.$inferSelect;
@@ -82,9 +71,6 @@ const isCustomerComplete = (customer: CustomerData): boolean => {
         customer.country
     );
 };
-
-const escapeLikePattern = (value: string): string =>
-    value.replace(/[\\%_]/g, '\\\\$&');
 
 const normalizeIban = (iban: string) => iban.toUpperCase().replace(/\s/g, '');
 
@@ -651,59 +637,11 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const escapedSearch = search ? escapeLikePattern(search) : '';
-            const data = await db
-                .select({
-                    id: customers.id,
-                    name: customers.name,
-                    friendlyName: customers.friendlyName,
-                    vatNumber: customers.vatNumber,
-                    address: customers.address,
-                    contactEmail: customers.contactEmail,
-                    contactTelephone: customers.contactTelephone,
-                    country: customers.country,
-                    isComplete: customers.isComplete,
-                    isOwnFirm: customers.isOwnFirm,
-                    isDeleted: customers.isDeleted,
-                    deletedAt: customers.deletedAt,
-                    deletedBy: customers.deletedBy,
-                    deleteReason: customers.deleteReason,
-                    restoredAt: customers.restoredAt,
-                    restoredBy: customers.restoredBy,
-                    restoreReason: customers.restoreReason,
-                    transactionCount: sql<number>`count(${transactions.id})`.as(
-                        'transaction_count',
-                    ),
-                })
-                .from(customers)
-                .leftJoin(
-                    transactions,
-                    and(
-                        eq(customers.id, transactions.payeeCustomerId),
-                        isNull(transactions.deletedAt),
-                    ),
-                )
-                .where(
-                    and(
-                        eq(customers.userId, auth.userId),
-                        customerDeletedFilter(deleted),
-                        search
-                            ? or(
-                                  ilike(customers.name, `%${escapedSearch}%`),
-                                  ilike(
-                                      customers.friendlyName,
-                                      `%${escapedSearch}%`,
-                                  ),
-                                  ilike(
-                                      customers.vatNumber,
-                                      `%${escapedSearch}%`,
-                                  ),
-                              )
-                            : undefined,
-                    ),
-                )
-                .groupBy(customers.id)
-                .orderBy(desc(customers.name));
+            const data = await listCustomers({
+                userId: auth.userId,
+                search,
+                deleted,
+            });
 
             return ctx.json({ data });
         },

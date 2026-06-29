@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
 import { insertTagSchema, tags } from '@/db/schema';
+import { getTag, listTags } from '@/lib/services/finance-entities';
 
 const app = new Hono()
     .get('/', clerkMiddleware(), async (ctx) => {
@@ -16,15 +17,7 @@ const app = new Hono()
             return ctx.json({ error: 'Unauthorized.' }, 401);
         }
 
-        const data = await db
-            .select({
-                id: tags.id,
-                name: tags.name,
-                color: tags.color,
-                tagType: tags.tagType,
-            })
-            .from(tags)
-            .where(eq(tags.userId, auth.userId));
+        const data = await listTags({ userId: auth.userId });
 
         return ctx.json({ data });
     })
@@ -49,15 +42,7 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const [data] = await db
-                .select({
-                    id: tags.id,
-                    name: tags.name,
-                    color: tags.color,
-                    tagType: tags.tagType,
-                })
-                .from(tags)
-                .where(and(eq(tags.userId, auth.userId), eq(tags.id, id)));
+            const data = await getTag({ userId: auth.userId, id });
 
             if (!data) {
                 return ctx.json({ error: 'Not found.' }, 404);
