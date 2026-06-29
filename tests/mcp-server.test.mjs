@@ -24,6 +24,34 @@ const createTestContext = () => ({
     },
 });
 
+const createMockReadServices = () => {
+    const calls = [];
+    const createService = (name, result) => async (input) => {
+        calls.push({ name, input });
+        return result;
+    };
+
+    return {
+        calls,
+        services: {
+            listTransactions: createService('listTransactions', []),
+            getTransaction: createService('getTransaction', null),
+            listCustomers: createService('listCustomers', [
+                { id: 'customer_1', name: 'ACME' },
+            ]),
+            getCustomer: createService('getCustomer', null),
+            listCustomerIbans: createService('listCustomerIbans', []),
+            listAccounts: createService('listAccounts', []),
+            getAccount: createService('getAccount', null),
+            listTags: createService('listTags', []),
+            getTag: createService('getTag', null),
+            listDocuments: createService('listDocuments', []),
+            getDocument: createService('getDocument', null),
+            listAuditEvents: createService('listAuditEvents', []),
+        },
+    };
+};
+
 test('unauthorized MCP response is a JSON-RPC error response', async () => {
     const response = createUnauthorizedMcpResponse();
 
@@ -50,7 +78,10 @@ test('MCP request handler rejects unauthenticated requests before transport hand
 });
 
 test('base MCP server registers authenticated whoami tool', async () => {
-    const server = createNumeraMcpServer(createTestContext());
+    const { calls, services } = createMockReadServices();
+    const server = createNumeraMcpServer(createTestContext(), {
+        readServices: services,
+    });
     const client = new Client({
         name: 'numera-test-client',
         version: '0.1.0',
@@ -67,6 +98,10 @@ test('base MCP server registers authenticated whoami tool', async () => {
             tools.tools.some((tool) => tool.name === 'numera_whoami'),
             'expected numera_whoami to be listed',
         );
+        assert.ok(
+            tools.tools.some((tool) => tool.name === 'numera_list_customers'),
+            'expected numera_list_customers to be listed',
+        );
 
         const result = await client.callTool({
             name: 'numera_whoami',
@@ -77,6 +112,29 @@ test('base MCP server registers authenticated whoami tool', async () => {
             userId: 'user_test_123',
             source: MCP_SOURCE,
         });
+
+        const customersResult = await client.callTool({
+            name: 'numera_list_customers',
+            arguments: {
+                search: 'ACME',
+                limit: 5,
+            },
+        });
+
+        assert.deepEqual(customersResult.structuredContent, {
+            entity: 'customers',
+            data: [{ id: 'customer_1', name: 'ACME' }],
+        });
+        assert.deepEqual(calls, [
+            {
+                name: 'listCustomers',
+                input: {
+                    userId: 'user_test_123',
+                    search: 'ACME',
+                    limit: 5,
+                },
+            },
+        ]);
     } finally {
         await client.close();
         await server.close();
