@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { aliasedTable, and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
+import { aliasedTable, and, eq, isNull, or } from 'drizzle-orm';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 
@@ -21,6 +21,7 @@ import {
     createDocumentSoftDeletePatch,
     DOCUMENT_SOFT_DELETE_BLOB_POLICY,
 } from '@/lib/document-lifecycle';
+import { listDocuments } from '@/lib/services/finance-entities';
 
 const getAuthorizedTransaction = async (
     transactionId: string,
@@ -263,76 +264,14 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const conditions = [eq(documents.uploadedBy, auth.userId)];
-            const deletedFilter = documentDeletedFilter(deleted);
-            if (deletedFilter) conditions.push(deletedFilter);
-
-            if (!deleted) {
-                const activeTransactionFilter = or(
-                    isNull(documents.transactionId),
-                    isNull(transactions.deletedAt),
-                );
-                if (activeTransactionFilter) {
-                    conditions.push(activeTransactionFilter);
-                }
-            }
-
-            if (documentTypeId) {
-                conditions.push(eq(documents.documentTypeId, documentTypeId));
-            }
-
-            if (from) {
-                conditions.push(gte(documents.uploadedAt, new Date(from)));
-            }
-
-            if (to) {
-                conditions.push(lte(documents.uploadedAt, new Date(to)));
-            }
-
-            if (unattached === 'true') {
-                conditions.push(isNull(documents.transactionId));
-            }
-
-            // Use LEFT JOIN to fetch transaction data alongside documents (avoids N+1 query)
-            const data = await db
-                .select({
-                    id: documents.id,
-                    fileName: documents.fileName,
-                    fileSize: documents.fileSize,
-                    mimeType: documents.mimeType,
-                    documentTypeId: documents.documentTypeId,
-                    documentTypeName: documentTypes.name,
-                    transactionId: documents.transactionId,
-                    uploadedBy: documents.uploadedBy,
-                    uploadedAt: documents.uploadedAt,
-                    storagePath: documents.storagePath,
-                    isDeleted: documents.isDeleted,
-                    deletedAt: documents.deletedAt,
-                    deletedBy: documents.deletedBy,
-                    deleteReason: documents.deleteReason,
-                    restoredAt: documents.restoredAt,
-                    restoredBy: documents.restoredBy,
-                    restoreReason: documents.restoreReason,
-                    transactionDate: transactions.date,
-                    transactionPayee: transactions.payee,
-                })
-                .from(documents)
-                .leftJoin(
-                    documentTypes,
-                    eq(documents.documentTypeId, documentTypes.id),
-                )
-                .leftJoin(
-                    transactions,
-                    eq(documents.transactionId, transactions.id),
-                )
-                .where(and(...conditions))
-                .orderBy(desc(documents.uploadedAt));
-
-            // Generate download URLs
-            const documentsWithUrls = data.map((doc) => ({
-                ...doc,
-                downloadUrl: generateDownloadUrl(doc.storagePath),
-            }));
+            const documentsWithUrls = await listDocuments({
+                userId: auth.userId,
+                documentTypeId,
+                from,
+                to,
+                unattached: unattached === 'true',
+                deleted,
+            });
 
             return ctx.json({ data: documentsWithUrls });
         },

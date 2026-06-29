@@ -23,6 +23,7 @@ import {
     insertAccountSchema,
     transactions,
 } from '@/db/schema';
+import { getAccount, listAccounts } from '@/lib/services/finance-entities';
 
 const app = new Hono()
     .get(
@@ -56,64 +57,13 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            // Split keywords by space, group when in quotes
-            const keywords = search?.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-            const searchAccountNameSql = keywords.map((keyword) =>
-                or(
-                    ilike(accounts.name, `%${keyword.replace(/"/g, '')}%`),
-                    ilike(accounts.code, `%${keyword.replace(/"/g, '')}%`),
-                ),
-            );
-
-            const data = await db
-                .select({
-                    id: accounts.id,
-                    name: accounts.name,
-                    code: accounts.code,
-                    isOpen: accounts.isOpen,
-                    isReadOnly: accounts.isReadOnly,
-                    accountType: accounts.accountType,
-                    accountClass: accounts.accountClass,
-                    openingBalance: accounts.openingBalance,
-                })
-                .from(accounts)
-                .where(
-                    and(
-                        and(...searchAccountNameSql),
-                        eq(accounts.userId, auth.userId),
-                        accountId ? eq(accounts.id, accountId) : undefined,
-                        // If showClosed is not explicitly true, only show open accounts
-                        showClosed ? undefined : eq(accounts.isOpen, true),
-                    ),
-                )
-                .offset(page ? Number(page) * Number(pageSize) : 0)
-                .limit(pageSize ? Number(pageSize) : 10);
-
-            // Add validation warnings for accounts with invalid configurations
-            const dataWithValidation = data.map((account) => {
-                let hasInvalidConfig = false;
-
-                // Check if account is open but any parent is closed
-                if (account.isOpen && account.code && account.code.length > 1) {
-                    const parentCodes: string[] = [];
-                    for (let i = 1; i < account.code.length; i++) {
-                        parentCodes.push(account.code.substring(0, i));
-                    }
-
-                    // Check if any parent is closed (this would be invalid)
-                    const closedParents = data.filter(
-                        (a) =>
-                            a.code && parentCodes.includes(a.code) && !a.isOpen,
-                    );
-
-                    hasInvalidConfig = closedParents.length > 0;
-                }
-
-                return {
-                    ...account,
-                    accountType: account.accountType,
-                    hasInvalidConfig,
-                };
+            const dataWithValidation = await listAccounts({
+                userId: auth.userId,
+                accountId,
+                search,
+                showClosed,
+                offset: page ? Number(page) * Number(pageSize) : 0,
+                limit: pageSize ? Number(pageSize) : 10,
             });
 
             return ctx.json({ data: dataWithValidation });
@@ -140,21 +90,7 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const [data] = await db
-                .select({
-                    id: accounts.id,
-                    name: accounts.name,
-                    code: accounts.code,
-                    isOpen: accounts.isOpen,
-                    isReadOnly: accounts.isReadOnly,
-                    accountType: accounts.accountType,
-                    accountClass: accounts.accountClass,
-                    openingBalance: accounts.openingBalance,
-                })
-                .from(accounts)
-                .where(
-                    and(eq(accounts.userId, auth.userId), eq(accounts.id, id)),
-                );
+            const data = await getAccount({ userId: auth.userId, id });
 
             if (!data) {
                 return ctx.json({ error: 'Not found.' }, 404);
