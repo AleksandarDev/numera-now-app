@@ -11,6 +11,7 @@ import {
     transactions,
     transactionTags,
 } from '@/db/schema';
+import { writeAuditEvent } from '@/lib/audit';
 import { safeDecrypt } from '@/lib/crypto';
 
 // Verify cron secret to prevent unauthorized access
@@ -118,6 +119,26 @@ const processStripeCharge = async (
         userId,
         'Transaction created from Stripe hourly sync',
     );
+
+    await writeAuditEvent(db, {
+        userId,
+        actorType: 'integration',
+        action: 'create',
+        resourceType: 'transaction',
+        resourceId: transactionId,
+        resourceLabel: payee,
+        after: {
+            id: transactionId,
+            amount,
+            payee,
+            status: 'pending',
+            stripePaymentId: charge.id,
+        },
+        sourceMetadata: {
+            source: 'stripe_cron',
+            stripePaymentId: charge.id,
+        },
+    });
 
     return { id: transactionId, created: true };
 };
@@ -230,6 +251,24 @@ export async function GET(request: NextRequest) {
                     .update(stripeSettings)
                     .set(updateData)
                     .where(eq(stripeSettings.userId, settings.userId));
+
+                await writeAuditEvent(db, {
+                    userId: settings.userId,
+                    actorType: 'integration',
+                    action: 'sync',
+                    resourceType: 'stripe',
+                    resourceId: `stripe-cron:${settings.userId}`,
+                    after: {
+                        created,
+                        skipped,
+                        lastSyncAt: updateData.lastSyncAt,
+                        syncFromDate: updateData.syncFromDate ?? null,
+                    },
+                    sourceMetadata: {
+                        source: 'stripe_cron',
+                        syncStartTime,
+                    },
+                });
 
                 totalCreated += created;
                 totalSkipped += skipped;

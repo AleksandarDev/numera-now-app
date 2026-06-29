@@ -11,6 +11,7 @@ import {
     transactions,
     transactionTags,
 } from '@/db/schema';
+import { writeAuditEvent } from '@/lib/audit';
 import { safeDecrypt } from '@/lib/crypto';
 
 // Helper function to record status change
@@ -126,6 +127,26 @@ const processStripePayment = async (
         userId,
         'Transaction created from Stripe payment',
     );
+
+    await writeAuditEvent(db, {
+        userId,
+        actorType: 'integration',
+        action: 'create',
+        resourceType: 'transaction',
+        resourceId: transactionId,
+        resourceLabel: payee,
+        after: {
+            id: transactionId,
+            amount,
+            payee,
+            status: 'pending',
+            stripePaymentId: charge.id,
+        },
+        sourceMetadata: {
+            source: 'stripe_webhook',
+            stripePaymentId: charge.id,
+        },
+    });
 
     console.log(
         `[Stripe Webhook] Created transaction ${transactionId} for payment ${charge.id}`,
@@ -305,6 +326,27 @@ export async function POST(request: NextRequest) {
                         'Refund transaction created from Stripe',
                     );
 
+                    await writeAuditEvent(db, {
+                        userId: verifiedSettings.userId,
+                        actorType: 'integration',
+                        action: 'create',
+                        resourceType: 'transaction',
+                        resourceId: transactionId,
+                        resourceLabel: existingTransaction.payee,
+                        after: {
+                            id: transactionId,
+                            amount: -refundAmount,
+                            payee: existingTransaction.payee,
+                            status: 'pending',
+                            stripePaymentId: `refund_${charge.id}`,
+                        },
+                        sourceMetadata: {
+                            source: 'stripe_webhook',
+                            stripeEventType: event.type,
+                            stripePaymentId: charge.id,
+                        },
+                    });
+
                     console.log(
                         `[Stripe Webhook] Created refund transaction ${transactionId} for payment ${charge.id}`,
                     );
@@ -319,10 +361,29 @@ export async function POST(request: NextRequest) {
         }
 
         // Update last sync timestamp
+        const lastSyncAt = new Date();
+
         await db
             .update(stripeSettings)
-            .set({ lastSyncAt: new Date() })
+            .set({ lastSyncAt })
             .where(eq(stripeSettings.userId, verifiedSettings.userId));
+
+        await writeAuditEvent(db, {
+            userId: verifiedSettings.userId,
+            actorType: 'integration',
+            action: 'integration_event',
+            resourceType: 'stripe',
+            resourceId: event.id,
+            resourceLabel: event.type,
+            after: {
+                lastSyncAt,
+            },
+            sourceMetadata: {
+                source: 'stripe_webhook',
+                stripeEventId: event.id,
+                stripeEventType: event.type,
+            },
+        });
 
         return NextResponse.json({ received: true });
     } catch (error) {

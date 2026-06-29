@@ -2,6 +2,8 @@ import { Redis } from '@upstash/redis';
 import { type Context, Hono } from 'hono';
 import { handle } from 'hono/vercel';
 
+import { auditMutationMiddleware } from '@/lib/audit-hono';
+
 import accountingPeriodsRoutes from './accountingPeriodsRoutes';
 import accountsRoutes from './accountsRoutes';
 import bankingRoutes from './bankingRoutes';
@@ -84,6 +86,8 @@ app.use('*', async (ctx, next) => {
 
     await next();
 });
+
+app.use('*', auditMutationMiddleware);
 
 const routes = app
     .route('/accounting-periods', accountingPeriodsRoutes)
