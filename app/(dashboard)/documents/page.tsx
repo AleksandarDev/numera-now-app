@@ -32,6 +32,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AuditHistoryPanel } from '@/features/audit/components/audit-history-panel';
 import { useCreateStandaloneDocument } from '@/features/documents/api/use-create-standalone-document';
 import { useGetAllDocuments } from '@/features/documents/api/use-get-all-documents';
 import {
@@ -44,6 +45,9 @@ import { getColumns, type ResponseType } from './columns';
 
 export default function DocumentsPage() {
     const [showUploadSheet, setShowUploadSheet] = useState(false);
+    const [historyDocumentId, setHistoryDocumentId] = useState<string | null>(
+        null,
+    );
     const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
     const [showUnattachedOnly, setShowUnattachedOnly] = useState(false);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -113,14 +117,19 @@ export default function DocumentsPage() {
         }
     };
 
+    const handleHistory = useCallback((documentId: string) => {
+        setHistoryDocumentId(documentId);
+    }, []);
+
     const columns = useMemo(
         () =>
             getColumns({
                 onDownload: handleDownload,
                 onDelete: handleDelete,
+                onHistory: handleHistory,
                 isDeleting,
             }),
-        [isDeleting, handleDownload, handleDelete],
+        [isDeleting, handleDownload, handleDelete, handleHistory],
     );
 
     const skeletonColumns = useMemo(
@@ -228,7 +237,44 @@ export default function DocumentsPage() {
                 onOpenChange={setShowUploadSheet}
                 documentTypes={documentTypes}
             />
+            <DocumentHistorySheet
+                documentId={historyDocumentId}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setHistoryDocumentId(null);
+                    }
+                }}
+            />
         </div>
+    );
+}
+
+function DocumentHistorySheet({
+    documentId,
+    onOpenChange,
+}: {
+    documentId: string | null;
+    onOpenChange: (open: boolean) => void;
+}) {
+    return (
+        <Sheet open={Boolean(documentId)} onOpenChange={onOpenChange}>
+            <SheetContent className="flex h-full flex-col p-0">
+                <div className="px-6 pt-6">
+                    <SheetHeader>
+                        <SheetTitle>Document History</SheetTitle>
+                        <SheetDescription>
+                            Audit events for this document.
+                        </SheetDescription>
+                    </SheetHeader>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <AuditHistoryPanel
+                        resourceType="document"
+                        resourceId={documentId}
+                    />
+                </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 

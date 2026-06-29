@@ -1,12 +1,13 @@
 'use client';
 
 import { Button } from '@signalco/ui-primitives/Button';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, History, Trash2 } from 'lucide-react';
 
 interface DocumentActionsProps {
     documentId: string;
     onDownload: (documentId: string) => void;
     onDelete: (documentId: string) => void;
+    onHistory: (documentId: string) => void;
     isDeleting?: boolean;
 }
 
@@ -14,6 +15,7 @@ export function DocumentActions({
     documentId,
     onDownload,
     onDelete,
+    onHistory,
     isDeleting,
 }: DocumentActionsProps) {
     return (
@@ -31,6 +33,17 @@ export function DocumentActions({
                 title="Download"
             >
                 <Download className="h-4 w-4" />
+            </Button>
+            <Button
+                size="sm"
+                variant="plain"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onHistory(documentId);
+                }}
+                title="History"
+            >
+                <History className="h-4 w-4" />
             </Button>
             <Button
                 size="sm"
