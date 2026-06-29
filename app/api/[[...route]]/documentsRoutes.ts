@@ -2,18 +2,25 @@ import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
 import { aliasedTable, and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
 import { accounts, documents, documentTypes, transactions } from '@/db/schema';
+import { writeAuditEvent } from '@/lib/audit';
 import {
+    deleteDocument,
     generateDownloadUrl,
     generateStandaloneUploadUrl,
     generateUploadUrl,
     verifyStoragePathOwnership,
 } from '@/lib/azure-storage';
 import { categorizeDocument } from '@/lib/document-categorization';
+import {
+    createDocumentRestorePatch,
+    createDocumentSoftDeletePatch,
+    DOCUMENT_SOFT_DELETE_BLOB_POLICY,
+} from '@/lib/document-lifecycle';
 
 const getAuthorizedTransaction = async (
     transactionId: string,
@@ -53,6 +60,133 @@ const getAuthorizedTransaction = async (
         );
 
     return transaction;
+};
+
+const documentLifecycleSchema = z.object({
+    reason: z.string().max(500).optional(),
+});
+
+const documentPurgeSchema = documentLifecycleSchema.extend({
+    confirm: z.literal(true),
+});
+
+const readJsonPayload = async (ctx: Context) => {
+    const contentType = ctx.req.header('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        return {};
+    }
+
+    try {
+        return await ctx.req.json();
+    } catch {
+        return {};
+    }
+};
+
+const readLifecycleReason = async (ctx: Context) => {
+    const parsed = documentLifecycleSchema.safeParse(
+        await readJsonPayload(ctx),
+    );
+    return parsed.success ? (parsed.data.reason ?? null) : null;
+};
+
+const readPurgePayload = async (ctx: Context) =>
+    documentPurgeSchema.safeParse(await readJsonPayload(ctx));
+
+const parseDeletedMode = (ctx: Context) => {
+    const parsed = z
+        .enum(['include', 'only'])
+        .optional()
+        .safeParse(ctx.req.query('deleted'));
+    return parsed.success ? parsed.data : undefined;
+};
+
+const documentDeletedFilter = (deleted?: 'include' | 'only') => {
+    if (deleted === 'include') {
+        return undefined;
+    }
+
+    if (deleted === 'only') {
+        return eq(documents.isDeleted, true);
+    }
+
+    return eq(documents.isDeleted, false);
+};
+
+const getAuthorizedDocument = async ({
+    id,
+    userId,
+    deleted,
+}: {
+    id: string;
+    userId: string;
+    deleted?: 'include' | 'only';
+}) => {
+    const [doc] = await db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.id, id), documentDeletedFilter(deleted)));
+
+    if (!doc) {
+        return null;
+    }
+
+    if (doc.uploadedBy === userId) {
+        return doc;
+    }
+
+    if (doc.transactionId) {
+        const transaction = await getAuthorizedTransaction(
+            doc.transactionId,
+            userId,
+        );
+        return transaction ? doc : null;
+    }
+
+    return null;
+};
+
+const writeDocumentAuditEvent = async ({
+    action,
+    userId,
+    before,
+    after,
+    reason,
+    source,
+}: {
+    action:
+        | 'create'
+        | 'update'
+        | 'delete'
+        | 'restore'
+        | 'purge'
+        | 'link'
+        | 'unlink';
+    userId: string;
+    before?: typeof documents.$inferSelect | null;
+    after?: typeof documents.$inferSelect | null;
+    reason?: string | null;
+    source: string;
+}) => {
+    const resource = after ?? before;
+    if (!resource) return;
+
+    await writeAuditEvent(db, {
+        userId,
+        actorUserId: userId,
+        actorType: 'user',
+        action,
+        resourceType: 'document',
+        resourceId: resource.id,
+        resourceLabel: resource.fileName,
+        before: before ?? null,
+        after: after ?? null,
+        sourceMetadata: {
+            source,
+            reason: reason ?? null,
+            blobPolicy: DOCUMENT_SOFT_DELETE_BLOB_POLICY,
+        },
+    });
 };
 
 /**
@@ -117,25 +251,31 @@ const app = new Hono()
                 from: z.string().optional(),
                 to: z.string().optional(),
                 unattached: z.string().optional(),
+                deleted: z.enum(['include', 'only']).optional(),
             }),
         ),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { documentTypeId, from, to, unattached } =
+            const { documentTypeId, from, to, unattached, deleted } =
                 ctx.req.valid('query');
 
             if (!auth?.userId) {
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const conditions = [
-                eq(documents.uploadedBy, auth.userId),
-                eq(documents.isDeleted, false),
-                or(
+            const conditions = [eq(documents.uploadedBy, auth.userId)];
+            const deletedFilter = documentDeletedFilter(deleted);
+            if (deletedFilter) conditions.push(deletedFilter);
+
+            if (!deleted) {
+                const activeTransactionFilter = or(
                     isNull(documents.transactionId),
                     isNull(transactions.deletedAt),
-                ),
-            ];
+                );
+                if (activeTransactionFilter) {
+                    conditions.push(activeTransactionFilter);
+                }
+            }
 
             if (documentTypeId) {
                 conditions.push(eq(documents.documentTypeId, documentTypeId));
@@ -166,6 +306,13 @@ const app = new Hono()
                     uploadedBy: documents.uploadedBy,
                     uploadedAt: documents.uploadedAt,
                     storagePath: documents.storagePath,
+                    isDeleted: documents.isDeleted,
+                    deletedAt: documents.deletedAt,
+                    deletedBy: documents.deletedBy,
+                    deleteReason: documents.deleteReason,
+                    restoredAt: documents.restoredAt,
+                    restoredBy: documents.restoredBy,
+                    restoreReason: documents.restoreReason,
                     transactionDate: transactions.date,
                     transactionPayee: transactions.payee,
                 })
@@ -194,6 +341,7 @@ const app = new Hono()
     .get('/transaction/:transactionId', clerkMiddleware(), async (ctx) => {
         const auth = getAuth(ctx);
         const { transactionId } = ctx.req.param();
+        const deleted = parseDeletedMode(ctx);
 
         if (!auth?.userId) {
             return ctx.json({ error: 'Unauthorized.' }, 401);
@@ -220,6 +368,13 @@ const app = new Hono()
                 uploadedBy: documents.uploadedBy,
                 uploadedAt: documents.uploadedAt,
                 storagePath: documents.storagePath,
+                isDeleted: documents.isDeleted,
+                deletedAt: documents.deletedAt,
+                deletedBy: documents.deletedBy,
+                deleteReason: documents.deleteReason,
+                restoredAt: documents.restoredAt,
+                restoredBy: documents.restoredBy,
+                restoreReason: documents.restoreReason,
             })
             .from(documents)
             .leftJoin(
@@ -229,7 +384,7 @@ const app = new Hono()
             .where(
                 and(
                     eq(documents.transactionId, transactionId),
-                    eq(documents.isDeleted, false),
+                    documentDeletedFilter(deleted),
                 ),
             );
 
@@ -397,6 +552,13 @@ const app = new Hono()
                     })
                     .returning();
 
+                await writeDocumentAuditEvent({
+                    action: 'create',
+                    userId: auth.userId,
+                    after: data,
+                    source: 'documents_upload',
+                });
+
                 return ctx.json({ data }, 201);
             } catch (error) {
                 console.error('Error saving document metadata:', error);
@@ -409,40 +571,21 @@ const app = new Hono()
     .get('/:id/download-url', clerkMiddleware(), async (ctx) => {
         const auth = getAuth(ctx);
         const { id } = ctx.req.param();
+        const deleted = parseDeletedMode(ctx);
 
         if (!auth?.userId) {
             return ctx.json({ error: 'Unauthorized.' }, 401);
         }
 
         try {
-            const [doc] = await db
-                .select({
-                    storagePath: documents.storagePath,
-                    fileName: documents.fileName,
-                    transactionId: documents.transactionId,
-                })
-                .from(documents)
-                .where(eq(documents.id, id));
+            const doc = await getAuthorizedDocument({
+                id,
+                userId: auth.userId,
+                deleted,
+            });
 
             if (!doc) {
                 return ctx.json({ error: 'Document not found.' }, 404);
-            }
-
-            // Verify ownership through transaction
-            if (!doc.transactionId) {
-                return ctx.json(
-                    { error: 'Document not linked to a transaction.' },
-                    400,
-                );
-            }
-
-            const transaction = await getAuthorizedTransaction(
-                doc.transactionId,
-                auth.userId,
-            );
-
-            if (!transaction) {
-                return ctx.json({ error: 'Unauthorized.' }, 403);
             }
 
             const downloadUrl = generateDownloadUrl(doc.storagePath);
@@ -479,32 +622,13 @@ const app = new Hono()
             }
 
             try {
-                const [doc] = await db
-                    .select({
-                        transactionId: documents.transactionId,
-                    })
-                    .from(documents)
-                    .where(eq(documents.id, id));
+                const doc = await getAuthorizedDocument({
+                    id,
+                    userId: auth.userId,
+                });
 
                 if (!doc) {
                     return ctx.json({ error: 'Document not found.' }, 404);
-                }
-
-                // Verify ownership through transaction
-                if (!doc.transactionId) {
-                    return ctx.json(
-                        { error: 'Document not linked to a transaction.' },
-                        400,
-                    );
-                }
-
-                const transaction = await getAuthorizedTransaction(
-                    doc.transactionId,
-                    auth.userId,
-                );
-
-                if (!transaction) {
-                    return ctx.json({ error: 'Unauthorized.' }, 403);
                 }
 
                 // If updating document type, verify it belongs to user
@@ -536,6 +660,14 @@ const app = new Hono()
                     .where(eq(documents.id, id))
                     .returning();
 
+                await writeDocumentAuditEvent({
+                    action: 'update',
+                    userId: auth.userId,
+                    before: doc,
+                    after: updatedDoc,
+                    source: 'documents_update',
+                });
+
                 return ctx.json({ data: updatedDoc });
             } catch (error) {
                 console.error('Error updating document:', error);
@@ -554,43 +686,141 @@ const app = new Hono()
         }
 
         try {
-            const [doc] = await db
-                .select({
-                    storagePath: documents.storagePath,
-                    transactionId: documents.transactionId,
-                    uploadedBy: documents.uploadedBy,
-                })
-                .from(documents)
-                .where(eq(documents.id, id));
+            const doc = await getAuthorizedDocument({
+                id,
+                userId: auth.userId,
+            });
 
             if (!doc) {
                 return ctx.json({ error: 'Document not found.' }, 404);
             }
 
-            // Verify ownership - either through transaction or uploadedBy for standalone docs
-            if (doc.transactionId) {
-                const transaction = await getAuthorizedTransaction(
-                    doc.transactionId,
-                    auth.userId,
-                );
-
-                if (!transaction) {
-                    return ctx.json({ error: 'Unauthorized.' }, 403);
-                }
-            } else if (doc.uploadedBy !== auth.userId) {
-                return ctx.json({ error: 'Unauthorized.' }, 403);
-            }
+            const reason = await readLifecycleReason(ctx);
 
             // Soft delete the document (retain blob to avoid inconsistency)
-            await db
+            const [updatedDoc] = await db
                 .update(documents)
-                .set({ isDeleted: true })
-                .where(eq(documents.id, id));
+                .set(
+                    createDocumentSoftDeletePatch({
+                        userId: auth.userId,
+                        reason,
+                    }),
+                )
+                .where(eq(documents.id, id))
+                .returning();
 
-            return ctx.json({ data: { id } });
+            await writeDocumentAuditEvent({
+                action: 'delete',
+                userId: auth.userId,
+                before: doc,
+                after: updatedDoc,
+                reason,
+                source: 'documents_delete',
+            });
+
+            return ctx.json({ data: updatedDoc });
         } catch (error) {
             console.error('Error deleting document:', error);
             return ctx.json({ error: 'Failed to delete document' }, 500);
+        }
+    })
+
+    // Restore a deleted document
+    .post('/:id/restore', clerkMiddleware(), async (ctx) => {
+        const auth = getAuth(ctx);
+        const { id } = ctx.req.param();
+
+        if (!auth?.userId) {
+            return ctx.json({ error: 'Unauthorized.' }, 401);
+        }
+
+        try {
+            const doc = await getAuthorizedDocument({
+                id,
+                userId: auth.userId,
+                deleted: 'only',
+            });
+
+            if (!doc) {
+                return ctx.json({ error: 'Document not found.' }, 404);
+            }
+
+            const reason = await readLifecycleReason(ctx);
+            const [updatedDoc] = await db
+                .update(documents)
+                .set(
+                    createDocumentRestorePatch({
+                        userId: auth.userId,
+                        reason,
+                    }),
+                )
+                .where(eq(documents.id, id))
+                .returning();
+
+            await writeDocumentAuditEvent({
+                action: 'restore',
+                userId: auth.userId,
+                before: doc,
+                after: updatedDoc,
+                reason,
+                source: 'documents_restore',
+            });
+
+            return ctx.json({ data: updatedDoc });
+        } catch (error) {
+            console.error('Error restoring document:', error);
+            return ctx.json({ error: 'Failed to restore document' }, 500);
+        }
+    })
+
+    // Permanently purge a deleted document and its blob
+    .post('/:id/purge', clerkMiddleware(), async (ctx) => {
+        const auth = getAuth(ctx);
+        const { id } = ctx.req.param();
+
+        if (!auth?.userId) {
+            return ctx.json({ error: 'Unauthorized.' }, 401);
+        }
+
+        try {
+            const parsedPayload = await readPurgePayload(ctx);
+            if (!parsedPayload.success) {
+                return ctx.json(
+                    { error: 'Permanent purge requires confirm: true.' },
+                    400,
+                );
+            }
+
+            const doc = await getAuthorizedDocument({
+                id,
+                userId: auth.userId,
+                deleted: 'only',
+            });
+
+            if (!doc) {
+                return ctx.json({ error: 'Document not found.' }, 404);
+            }
+
+            await deleteDocument(doc.storagePath);
+
+            const [purgedDoc] = await db
+                .delete(documents)
+                .where(eq(documents.id, id))
+                .returning();
+
+            await writeDocumentAuditEvent({
+                action: 'purge',
+                userId: auth.userId,
+                before: doc,
+                after: null,
+                reason: parsedPayload.data.reason ?? null,
+                source: 'documents_purge',
+            });
+
+            return ctx.json({ data: purgedDoc });
+        } catch (error) {
+            console.error('Error purging document:', error);
+            return ctx.json({ error: 'Failed to purge document' }, 500);
         }
     })
 
@@ -705,6 +935,13 @@ const app = new Hono()
                     })
                     .returning();
 
+                await writeDocumentAuditEvent({
+                    action: 'create',
+                    userId: auth.userId,
+                    after: data,
+                    source: 'documents_standalone_upload',
+                });
+
                 return ctx.json({ data }, 201);
             } catch (error) {
                 console.error(
@@ -743,20 +980,13 @@ const app = new Hono()
 
             try {
                 // Verify document exists and belongs to user
-                const [doc] = await db
-                    .select({
-                        uploadedBy: documents.uploadedBy,
-                        transactionId: documents.transactionId,
-                    })
-                    .from(documents)
-                    .where(eq(documents.id, id));
+                const doc = await getAuthorizedDocument({
+                    id,
+                    userId: auth.userId,
+                });
 
                 if (!doc) {
                     return ctx.json({ error: 'Document not found.' }, 404);
-                }
-
-                if (doc.uploadedBy !== auth.userId) {
-                    return ctx.json({ error: 'Unauthorized.' }, 403);
                 }
 
                 if (doc.transactionId) {
@@ -785,10 +1015,75 @@ const app = new Hono()
                     .where(eq(documents.id, id))
                     .returning();
 
+                await writeDocumentAuditEvent({
+                    action: 'link',
+                    userId: auth.userId,
+                    before: doc,
+                    after: updatedDoc,
+                    source: 'documents_link',
+                });
+
                 return ctx.json({ data: updatedDoc });
             } catch (error) {
                 console.error('Error linking document:', error);
                 return ctx.json({ error: 'Failed to link document' }, 500);
+            }
+        },
+    )
+
+    // Unlink a document from its transaction
+    .post(
+        '/:id/unlink',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            try {
+                const doc = await getAuthorizedDocument({
+                    id,
+                    userId: auth.userId,
+                });
+
+                if (!doc) {
+                    return ctx.json({ error: 'Document not found.' }, 404);
+                }
+
+                if (!doc.transactionId) {
+                    return ctx.json(
+                        { error: 'Document is not attached to a transaction.' },
+                        400,
+                    );
+                }
+
+                const [updatedDoc] = await db
+                    .update(documents)
+                    .set({ transactionId: null })
+                    .where(eq(documents.id, id))
+                    .returning();
+
+                await writeDocumentAuditEvent({
+                    action: 'unlink',
+                    userId: auth.userId,
+                    before: doc,
+                    after: updatedDoc,
+                    source: 'documents_unlink',
+                });
+
+                return ctx.json({ data: updatedDoc });
+            } catch (error) {
+                console.error('Error unlinking document:', error);
+                return ctx.json({ error: 'Failed to unlink document' }, 500);
             }
         },
     );

@@ -281,12 +281,20 @@ export const documents = pgTable(
             .defaultNow(),
         // For managing document lifecycle
         isDeleted: boolean('is_deleted').notNull().default(false),
+        deletedAt: timestamp('deleted_at', { mode: 'date' }),
+        deletedBy: text('deleted_by'),
+        deleteReason: text('delete_reason'),
+        restoredAt: timestamp('restored_at', { mode: 'date' }),
+        restoredBy: text('restored_by'),
+        restoreReason: text('restore_reason'),
     },
     (table) => [
         index('documents_transactionid_idx').on(table.transactionId),
         index('documents_documenttypeid_idx').on(table.documentTypeId),
         index('documents_uploadedby_idx').on(table.uploadedBy),
         index('documents_isdeleted_idx').on(table.isDeleted),
+        index('documents_deletedat_idx').on(table.deletedAt),
+        index('documents_deletedby_idx').on(table.deletedBy),
     ],
 );
 
