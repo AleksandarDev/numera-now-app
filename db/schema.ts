@@ -154,12 +154,23 @@ export const customers = pgTable(
         isComplete: boolean('is_complete').notNull().default(false),
         // Flag to mark this customer as the user's own firm/company
         isOwnFirm: boolean('is_own_firm').notNull().default(false),
+        // Soft-delete lifecycle fields
+        isDeleted: boolean('is_deleted').notNull().default(false),
+        deletedAt: timestamp('deleted_at', { mode: 'date' }),
+        deletedBy: text('deleted_by'),
+        deleteReason: text('delete_reason'),
+        restoredAt: timestamp('restored_at', { mode: 'date' }),
+        restoredBy: text('restored_by'),
+        restoreReason: text('restore_reason'),
     },
     (table) => [
         index('customers_userid_idx').on(table.userId),
         index('customers_name_idx').on(table.name),
         index('customers_iscomplete_idx').on(table.isComplete),
         index('customers_isownfirm_idx').on(table.isOwnFirm),
+        index('customers_isdeleted_idx').on(table.isDeleted),
+        index('customers_deletedat_idx').on(table.deletedAt),
+        index('customers_deletedby_idx').on(table.deletedBy),
     ],
 );
 
@@ -185,10 +196,21 @@ export const customerIbans = pgTable(
         createdAt: timestamp('created_at', { mode: 'date' })
             .notNull()
             .defaultNow(),
+        // Soft-delete lifecycle fields
+        isDeleted: boolean('is_deleted').notNull().default(false),
+        deletedAt: timestamp('deleted_at', { mode: 'date' }),
+        deletedBy: text('deleted_by'),
+        deleteReason: text('delete_reason'),
+        restoredAt: timestamp('restored_at', { mode: 'date' }),
+        restoredBy: text('restored_by'),
+        restoreReason: text('restore_reason'),
     },
     (table) => [
         index('customer_ibans_customerid_idx').on(table.customerId),
         index('customer_ibans_iban_idx').on(table.iban),
+        index('customer_ibans_isdeleted_idx').on(table.isDeleted),
+        index('customer_ibans_deletedat_idx').on(table.deletedAt),
+        index('customer_ibans_deletedby_idx').on(table.deletedBy),
     ],
 );
 

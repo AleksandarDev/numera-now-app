@@ -656,6 +656,7 @@ const app = new Hono()
                     and(
                         eq(customers.id, customerId),
                         eq(customers.userId, auth.userId),
+                        eq(customers.isDeleted, false),
                     ),
                 );
 
@@ -875,6 +876,7 @@ const app = new Hono()
                     .where(
                         and(
                             eq(customers.userId, auth.userId),
+                            eq(customers.isDeleted, false),
                             or(
                                 ilike(customers.name, `%${escapedQuery}%`),
                                 ilike(
@@ -937,6 +939,7 @@ const app = new Hono()
                         .where(
                             and(
                                 eq(customers.userId, auth.userId),
+                                eq(customers.isDeleted, false),
                                 or(
                                     ilike(customers.name, `%${escapedWord}%`),
                                     ilike(
@@ -983,6 +986,7 @@ const app = new Hono()
                     .where(
                         and(
                             eq(customers.userId, auth.userId),
+                            eq(customers.isDeleted, false),
                             isNotNull(transactions.payeeCustomerId),
                             isNull(transactions.deletedAt),
                             or(
@@ -1046,6 +1050,7 @@ const app = new Hono()
                     and(
                         eq(customers.id, customerId),
                         eq(customers.userId, auth.userId),
+                        eq(customers.isDeleted, false),
                     ),
                 );
 
