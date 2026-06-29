@@ -219,6 +219,7 @@ const app = new Hono()
                     isNull(transactions.splitType),
                     eq(transactions.splitType, 'child'),
                 ),
+                isNull(transactions.deletedAt),
             ];
 
             if (from) {
@@ -326,6 +327,7 @@ const app = new Hono()
                             isNull(transactions.splitType),
                             eq(transactions.splitType, 'child'),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .groupBy(transactions.debitAccountId);
@@ -348,6 +350,7 @@ const app = new Hono()
                             isNull(transactions.splitType),
                             eq(transactions.splitType, 'child'),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .groupBy(transactions.creditAccountId);

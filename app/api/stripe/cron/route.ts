@@ -54,13 +54,18 @@ const processStripeCharge = async (
 ): Promise<{ id: string; created: boolean }> => {
     const userId = settings.userId;
 
-    // Check if transaction already exists for this payment
+    // Dedupe across active and soft-deleted rows so sync does not silently recreate deleted transactions.
     const [existingTransaction] = await db
-        .select({ id: transactions.id })
+        .select({ id: transactions.id, deletedAt: transactions.deletedAt })
         .from(transactions)
         .where(eq(transactions.stripePaymentId, charge.id));
 
     if (existingTransaction) {
+        if (existingTransaction.deletedAt) {
+            console.log(
+                `[Stripe Cron] Skipping soft-deleted transaction ${existingTransaction.id} for payment ${charge.id}`,
+            );
+        }
         return { id: existingTransaction.id, created: false };
     }
 

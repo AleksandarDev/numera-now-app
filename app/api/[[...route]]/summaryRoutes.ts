@@ -167,6 +167,7 @@ const app = new Hono().get(
                             eq(transactions.splitType, 'child'),
                         ),
                         ne(transactions.status, 'draft'), // Exclude draft transactions
+                        isNull(transactions.deletedAt),
                         gte(transactions.date, startDate),
                         lte(transactions.date, endDate),
                     ),
@@ -313,6 +314,7 @@ const app = new Hono().get(
                     ),
                     ne(transactions.amount, 0),
                     ne(transactions.status, 'draft'), // Exclude draft transactions
+                    isNull(transactions.deletedAt),
                     gte(transactions.date, startDate),
                     lte(transactions.date, endDate),
                 ),
@@ -412,6 +414,7 @@ const app = new Hono().get(
                         eq(debitAccounts.userId, auth.userId),
                     ),
                     ne(transactions.status, 'draft'), // Exclude draft transactions
+                    isNull(transactions.deletedAt),
                     gte(transactions.date, startDate),
                     lte(transactions.date, endDate),
                 ),

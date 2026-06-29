@@ -1,5 +1,5 @@
 import { createId } from '@paralleldrive/cuid2';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -58,9 +58,9 @@ const processStripePayment = async (
 ) => {
     const userId = settings.userId;
 
-    // Check if transaction already exists for this payment
+    // Dedupe across active and soft-deleted rows so webhooks do not silently recreate deleted transactions.
     const [existingTransaction] = await db
-        .select({ id: transactions.id })
+        .select({ id: transactions.id, deletedAt: transactions.deletedAt })
         .from(transactions)
         .where(eq(transactions.stripePaymentId, charge.id));
 
@@ -68,6 +68,11 @@ const processStripePayment = async (
         console.log(
             `[Stripe Webhook] Transaction already exists for payment ${charge.id}`,
         );
+        if (existingTransaction.deletedAt) {
+            console.log(
+                `[Stripe Webhook] Existing transaction ${existingTransaction.id} is soft-deleted; leaving it deleted.`,
+            );
+        }
         return existingTransaction;
     }
 
@@ -281,7 +286,12 @@ export async function POST(request: NextRequest) {
                 const [existingTransaction] = await db
                     .select()
                     .from(transactions)
-                    .where(eq(transactions.stripePaymentId, charge.id));
+                    .where(
+                        and(
+                            eq(transactions.stripePaymentId, charge.id),
+                            isNull(transactions.deletedAt),
+                        ),
+                    );
 
                 if (existingTransaction) {
                     // Create a refund transaction

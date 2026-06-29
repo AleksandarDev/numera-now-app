@@ -346,6 +346,13 @@ export const transactions = pgTable(
         gocardlessTransactionId: text('gocardless_transaction_id'), // GoCardless internal transaction ID
         // Closing period tracking
         closingPeriodId: text('closing_period_id'), // Links closing entries to accounting periods
+        // Soft-delete lifecycle fields
+        deletedAt: timestamp('deleted_at', { mode: 'date' }),
+        deletedBy: text('deleted_by'),
+        deleteReason: text('delete_reason'),
+        restoredAt: timestamp('restored_at', { mode: 'date' }),
+        restoredBy: text('restored_by'),
+        restoreReason: text('restore_reason'),
     },
     (table) => [
         index('transactions_accountid_idx').on(table.accountId),
@@ -361,6 +368,8 @@ export const transactions = pgTable(
             table.gocardlessTransactionId,
         ),
         index('transactions_closingperiodid_idx').on(table.closingPeriodId),
+        index('transactions_deletedat_idx').on(table.deletedAt),
+        index('transactions_deletedby_idx').on(table.deletedBy),
     ],
 );
 
@@ -408,6 +417,12 @@ export const createTransactionSchema = insertTransactionSchema
         id: true,
         statusChangedAt: true,
         statusChangedBy: true,
+        deletedAt: true,
+        deletedBy: true,
+        deleteReason: true,
+        restoredAt: true,
+        restoredBy: true,
+        restoreReason: true,
     })
     .refine(
         (data) => {

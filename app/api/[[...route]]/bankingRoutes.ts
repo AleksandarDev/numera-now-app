@@ -163,13 +163,18 @@ const processEnableBankingTransaction = async (
 
     const providerTransactionId = `${bankAccount.gocardlessAccountId}:${transactionIdFromProvider}`;
 
-    // Check if transaction already exists
+    // Dedupe across active and soft-deleted rows so sync does not silently recreate deleted transactions.
     const [existingTransaction] = await db
-        .select({ id: transactions.id })
+        .select({ id: transactions.id, deletedAt: transactions.deletedAt })
         .from(transactions)
         .where(eq(transactions.gocardlessTransactionId, providerTransactionId));
 
     if (existingTransaction) {
+        if (existingTransaction.deletedAt) {
+            console.log(
+                `[Banking Sync] Skipping soft-deleted transaction ${existingTransaction.id} for provider transaction ${providerTransactionId}`,
+            );
+        }
         return { id: existingTransaction.id, created: false };
     }
 

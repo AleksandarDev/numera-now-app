@@ -90,6 +90,7 @@ const app = new Hono()
                                 eq(transactions.splitType, 'child'),
                             ),
                             ne(transactions.status, 'draft'),
+                            isNull(transactions.deletedAt),
                             gte(transactions.date, startDate),
                             lte(transactions.date, endDate),
                         ),
@@ -116,6 +117,7 @@ const app = new Hono()
                                 eq(transactions.splitType, 'child'),
                             ),
                             ne(transactions.status, 'draft'),
+                            isNull(transactions.deletedAt),
                             gte(transactions.date, startDate),
                             lte(transactions.date, endDate),
                         ),
@@ -333,6 +335,7 @@ const app = new Hono()
                                 eq(transactions.splitType, 'child'),
                             ),
                             ne(transactions.status, 'draft'),
+                            isNull(transactions.deletedAt),
                             lte(transactions.date, asOfDate),
                         ),
                     )
@@ -358,6 +361,7 @@ const app = new Hono()
                                 eq(transactions.splitType, 'child'),
                             ),
                             ne(transactions.status, 'draft'),
+                            isNull(transactions.deletedAt),
                             lte(transactions.date, asOfDate),
                         ),
                     )

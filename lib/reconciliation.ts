@@ -39,6 +39,7 @@ const hasTransactionAccess = async (
                         eq(transactions.statusChangedBy, userId),
                     ),
                 ),
+                isNull(transactions.deletedAt),
             ),
         );
 
@@ -120,6 +121,7 @@ export async function areSplitTransactionsReconciled(
             and(
                 eq(transactions.splitGroupId, splitGroupId),
                 eq(transactions.splitType, 'child'),
+                isNull(transactions.deletedAt),
             ),
         );
 

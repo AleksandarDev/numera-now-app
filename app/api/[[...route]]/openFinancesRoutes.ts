@@ -181,6 +181,7 @@ const app = new Hono()
                         eq(transactions.splitType, 'child'),
                     ),
                     ne(transactions.status, 'draft'), // Exclude draft transactions
+                    isNull(transactions.deletedAt),
                 ),
             );
 
@@ -237,6 +238,7 @@ const app = new Hono()
                         eq(transactions.splitType, 'child'),
                     ),
                     ne(transactions.status, 'draft'),
+                    isNull(transactions.deletedAt),
                 ),
             )
             .leftJoin(
