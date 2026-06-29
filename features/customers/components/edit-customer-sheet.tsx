@@ -5,6 +5,7 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import type { z } from 'zod';
 import {
     Sheet,
@@ -14,6 +15,12 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { insertCustomerSchema } from '@/db/schema';
+import {
+    type CustomerHistoryEvent,
+    useGetCustomerHistory,
+} from '@/features/audit/api/use-get-customer-history';
+import { useRevertCustomerAuditEvent } from '@/features/audit/api/use-revert-customer-audit-event';
+import { AuditEventList } from '@/features/audit/components/audit-event-list';
 import { useDeleteCustomer } from '@/features/customers/api/use-delete-customer';
 import { useEditCustomer } from '@/features/customers/api/use-edit-customer';
 import { useGetCustomer } from '@/features/customers/api/use-get-customer';
@@ -26,23 +33,38 @@ const formSchema = insertCustomerSchema.omit({
     userId: true,
     id: true,
     isComplete: true,
+    isDeleted: true,
+    deletedAt: true,
+    deletedBy: true,
+    deleteReason: true,
+    restoredAt: true,
+    restoredBy: true,
+    restoreReason: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
 
 export const EditCustomerSheet = () => {
     const { isOpen, onClose, id } = useOpenCustomer();
+    const [revertingEventId, setRevertingEventId] = useState<string | null>(
+        null,
+    );
 
     const [ConfirmDialog, confirm] = useConfirm(
         'Are you sure?',
-        'You are about to delete this customer. This action cannot be undone.',
+        'You are about to move this customer to trash.',
     );
 
     const customerQuery = useGetCustomer(id);
+    const customerHistoryQuery = useGetCustomerHistory(id);
     const editMutation = useEditCustomer(id);
     const deleteMutation = useDeleteCustomer(id);
+    const revertCustomerAuditEvent = useRevertCustomerAuditEvent();
 
-    const isPending = editMutation.isPending || deleteMutation.isPending;
+    const isPending =
+        editMutation.isPending ||
+        deleteMutation.isPending ||
+        revertCustomerAuditEvent.isPending;
 
     const isLoading = customerQuery.isLoading;
 
@@ -63,6 +85,26 @@ export const EditCustomerSheet = () => {
                     onClose();
                 },
             });
+        }
+    };
+
+    const onRevertCustomerEvent = async (
+        event: CustomerHistoryEvent,
+        customerId: string,
+    ) => {
+        if (!window.confirm('Revert this customer change?')) {
+            return;
+        }
+
+        setRevertingEventId(event.id);
+        try {
+            await revertCustomerAuditEvent.mutateAsync({
+                customerId,
+                auditEventId: event.id,
+                reason: 'Reverted from customer history',
+            });
+        } finally {
+            setRevertingEventId(null);
         }
     };
 
@@ -122,6 +164,12 @@ export const EditCustomerSheet = () => {
                                     >
                                         Bank Accounts
                                     </TabsTrigger>
+                                    <TabsTrigger
+                                        value="history"
+                                        className="flex-1"
+                                    >
+                                        History
+                                    </TabsTrigger>
                                 </TabsList>
                             </div>
                             <TabsContent
@@ -153,6 +201,21 @@ export const EditCustomerSheet = () => {
                                         </p>
                                     </div>
                                 )}
+                            </TabsContent>
+                            <TabsContent
+                                value="history"
+                                className="flex-1 overflow-y-auto px-6 mt-0"
+                            >
+                                <AuditEventList
+                                    events={customerHistoryQuery.data}
+                                    isLoading={customerHistoryQuery.isLoading}
+                                    isError={customerHistoryQuery.isError}
+                                    emptyMessage="No customer history recorded."
+                                    onRevertCustomerEvent={
+                                        onRevertCustomerEvent
+                                    }
+                                    revertingEventId={revertingEventId}
+                                />
                             </TabsContent>
                         </Tabs>
                     )}

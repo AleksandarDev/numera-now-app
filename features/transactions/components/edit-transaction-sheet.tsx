@@ -23,6 +23,7 @@ import {
 import { UserAvatar } from '@/components/user-avatar';
 import { insertTransactionSchema } from '@/db/schema';
 import { useCreateAccount } from '@/features/accounts/api/use-create-account';
+import { AuditHistoryPanel } from '@/features/audit/components/audit-history-panel';
 import { useCreateCustomer } from '@/features/customers/api/use-create-customer';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useCreateTag } from '@/features/tags/api/use-create-tag';
@@ -1147,26 +1148,48 @@ export const TransactionSheet = () => {
                                                         );
                                                     },
                                                 )}
+                                                <div className="space-y-2">
+                                                    <div className="text-sm font-semibold">
+                                                        Audit history
+                                                    </div>
+                                                    <AuditHistoryPanel
+                                                        resourceType="transaction"
+                                                        resourceId={id}
+                                                    />
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className="space-y-2 rounded-md border p-3">
-                                                <div className="text-sm font-semibold">
-                                                    Status history
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    Created:{' '}
-                                                    {formatDateTime(
-                                                        statusHistoryQuery
-                                                            .data?.[
+                                            <div className="space-y-4">
+                                                <div className="space-y-2 rounded-md border p-3">
+                                                    <div className="text-sm font-semibold">
+                                                        Status history
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Created:{' '}
+                                                        {formatDateTime(
                                                             statusHistoryQuery
-                                                                .data.length - 1
-                                                        ]?.changedAt ?? null,
+                                                                .data?.[
+                                                                statusHistoryQuery
+                                                                    .data
+                                                                    .length - 1
+                                                            ]?.changedAt ??
+                                                                null,
+                                                        )}
+                                                    </div>
+                                                    {renderStatusHistory(
+                                                        statusHistoryQuery.data ??
+                                                            [],
                                                     )}
                                                 </div>
-                                                {renderStatusHistory(
-                                                    statusHistoryQuery.data ??
-                                                        [],
-                                                )}
+                                                <div className="space-y-2">
+                                                    <div className="text-sm font-semibold">
+                                                        Audit history
+                                                    </div>
+                                                    <AuditHistoryPanel
+                                                        resourceType="transaction"
+                                                        resourceId={id}
+                                                    />
+                                                </div>
                                             </div>
                                         )}
                                     </TabsContent>

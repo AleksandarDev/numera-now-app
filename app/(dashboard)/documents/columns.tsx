@@ -24,12 +24,14 @@ const MAX_PAYEE_LENGTH = 15;
 interface GetColumnsProps {
     onDownload: (documentId: string) => void;
     onDelete: (documentId: string) => void;
+    onHistory: (documentId: string) => void;
     isDeleting?: boolean;
 }
 
 export const getColumns = ({
     onDownload,
     onDelete,
+    onHistory,
     isDeleting,
 }: GetColumnsProps): ColumnDef<ResponseType>[] => [
     {
@@ -149,6 +151,7 @@ export const getColumns = ({
                     documentId={row.original.id}
                     onDownload={onDownload}
                     onDelete={onDelete}
+                    onHistory={onHistory}
                     isDeleting={isDeleting}
                 />
             );

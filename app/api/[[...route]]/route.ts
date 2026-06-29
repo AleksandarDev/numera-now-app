@@ -6,6 +6,7 @@ import { auditMutationMiddleware } from '@/lib/audit-hono';
 
 import accountingPeriodsRoutes from './accountingPeriodsRoutes';
 import accountsRoutes from './accountsRoutes';
+import auditEventsRoutes from './auditEventsRoutes';
 import bankingRoutes from './bankingRoutes';
 import customersRoutes from './customersRoutes';
 import dashboardRoutes from './dashboardRoutes';
@@ -92,6 +93,7 @@ app.use('*', auditMutationMiddleware);
 const routes = app
     .route('/accounting-periods', accountingPeriodsRoutes)
     .route('/accounts', accountsRoutes)
+    .route('/audit-events', auditEventsRoutes)
     .route('/customers', customersRoutes)
     .route('/dashboard', dashboardRoutes)
     .route('/summary', summaryRoutes)

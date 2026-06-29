@@ -5,6 +5,7 @@ import {
     ArrowLeftRight,
     BarChart3,
     FileText,
+    History,
     Landmark,
     LayoutDashboard,
     Menu,
@@ -49,6 +50,11 @@ const routes = [
         href: '/customers',
         label: 'Customers',
         icon: Users,
+    },
+    {
+        href: '/audit',
+        label: 'Audit',
+        icon: History,
     },
     {
         href: '/accounts',
