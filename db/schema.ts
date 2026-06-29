@@ -1,8 +1,10 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
+    check,
     index,
     integer,
+    jsonb,
     pgTable,
     text,
     timestamp,
@@ -805,3 +807,52 @@ export const bankAccountsRelations = relations(bankAccounts, ({ one }) => ({
 }));
 
 export const insertBankAccountSchema = createInsertSchema(bankAccounts);
+
+export const auditEvents = pgTable(
+    'audit_events',
+    {
+        id: text('id').primaryKey(),
+        userId: text('user_id').notNull(),
+        actorUserId: text('actor_user_id'),
+        actorType: text('actor_type', {
+            enum: ['user', 'system', 'integration'],
+        }).notNull(),
+        action: text('action').notNull(),
+        resourceType: text('resource_type').notNull(),
+        resourceId: text('resource_id').notNull(),
+        resourceLabel: text('resource_label'),
+        before: jsonb('before'),
+        after: jsonb('after'),
+        fieldDelta: jsonb('field_delta'),
+        sourceMetadata: jsonb('source_metadata'),
+        requestId: text('request_id'),
+        revertedFromEventId: text('reverted_from_event_id'),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        index('audit_events_userid_idx').on(table.userId),
+        index('audit_events_actoruserid_idx').on(table.actorUserId),
+        index('audit_events_action_idx').on(table.action),
+        index('audit_events_resource_idx').on(
+            table.resourceType,
+            table.resourceId,
+        ),
+        index('audit_events_createdat_idx').on(table.createdAt),
+        index('audit_events_requestid_idx').on(table.requestId),
+        index('audit_events_revertedfromeventid_idx').on(
+            table.revertedFromEventId,
+        ),
+        check(
+            'audit_events_actor_type_check',
+            sql`${table.actorType} in ('user', 'system', 'integration')`,
+        ),
+        check(
+            'audit_events_action_check',
+            sql`${table.action} in ('create', 'update', 'delete', 'restore', 'purge', 'import', 'sync', 'status_change', 'link', 'unlink', 'settings_update', 'integration_event')`,
+        ),
+    ],
+);
+
+export const insertAuditEventSchema = createInsertSchema(auditEvents);
