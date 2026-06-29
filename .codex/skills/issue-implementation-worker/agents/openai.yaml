@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue Implementation Worker"
+  short_description: "Implement one issue through a verified PR"
+  default_prompt: "Use $issue-implementation-worker to implement this GitHub issue through a tested pull request."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue PR Coordinator"
+  short_description: "Coordinate issue trees into verified PRs"
+  default_prompt: "Use $issue-pr-coordinator to plan and drive a GitHub issue tree through reviewed, passing PRs."
