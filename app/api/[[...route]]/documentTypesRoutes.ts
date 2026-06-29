@@ -7,6 +7,37 @@ import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
 import { documentTypes, insertDocumentTypeSchema } from '@/db/schema';
+import { writeAuditEvent } from '@/lib/audit';
+
+const writeDocumentTypeAuditEvent = async ({
+    action,
+    userId,
+    before,
+    after,
+    source,
+}: {
+    action: 'create' | 'update' | 'delete';
+    userId: string;
+    before?: typeof documentTypes.$inferSelect | null;
+    after?: typeof documentTypes.$inferSelect | null;
+    source: string;
+}) => {
+    const resource = after ?? before;
+    if (!resource) return;
+
+    await writeAuditEvent(db, {
+        userId,
+        actorUserId: userId,
+        actorType: 'user',
+        action,
+        resourceType: 'document_type',
+        resourceId: resource.id,
+        resourceLabel: resource.name,
+        before: before ?? null,
+        after: after ?? null,
+        sourceMetadata: { source },
+    });
+};
 
 const app = new Hono()
     // Get all document types for user
@@ -75,6 +106,13 @@ const app = new Hono()
                     })
                     .returning();
 
+                await writeDocumentTypeAuditEvent({
+                    action: 'create',
+                    userId: auth.userId,
+                    after: data,
+                    source: 'document_types_create',
+                });
+
                 return ctx.json({ data }, 201);
             } catch (error) {
                 console.error('Error creating document type:', error);
@@ -108,6 +146,20 @@ const app = new Hono()
             }
 
             try {
+                const [before] = await db
+                    .select()
+                    .from(documentTypes)
+                    .where(
+                        and(
+                            eq(documentTypes.id, id),
+                            eq(documentTypes.userId, auth.userId),
+                        ),
+                    );
+
+                if (!before) {
+                    return ctx.json({ error: 'Document type not found.' }, 404);
+                }
+
                 const [data] = await db
                     .update(documentTypes)
                     .set(values)
@@ -119,9 +171,13 @@ const app = new Hono()
                     )
                     .returning();
 
-                if (!data) {
-                    return ctx.json({ error: 'Document type not found.' }, 404);
-                }
+                await writeDocumentTypeAuditEvent({
+                    action: 'update',
+                    userId: auth.userId,
+                    before,
+                    after: data,
+                    source: 'document_types_update',
+                });
 
                 return ctx.json({ data });
             } catch (error) {
@@ -146,6 +202,20 @@ const app = new Hono()
         try {
             // Check if document type is in use
             // This would require a check in the documents table
+            const [before] = await db
+                .select()
+                .from(documentTypes)
+                .where(
+                    and(
+                        eq(documentTypes.id, id),
+                        eq(documentTypes.userId, auth.userId),
+                    ),
+                );
+
+            if (!before) {
+                return ctx.json({ error: 'Document type not found.' }, 404);
+            }
+
             const [data] = await db
                 .delete(documentTypes)
                 .where(
@@ -156,9 +226,13 @@ const app = new Hono()
                 )
                 .returning();
 
-            if (!data) {
-                return ctx.json({ error: 'Document type not found.' }, 404);
-            }
+            await writeDocumentTypeAuditEvent({
+                action: 'delete',
+                userId: auth.userId,
+                before,
+                after: null,
+                source: 'document_types_delete',
+            });
 
             return ctx.json({ data });
         } catch (error) {
