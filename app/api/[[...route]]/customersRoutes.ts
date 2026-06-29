@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -107,7 +107,10 @@ const app = new Hono()
                 .from(customers)
                 .leftJoin(
                     transactions,
-                    eq(customers.id, transactions.payeeCustomerId),
+                    and(
+                        eq(customers.id, transactions.payeeCustomerId),
+                        isNull(transactions.deletedAt),
+                    ),
                 )
                 .where(
                     search
@@ -562,7 +565,12 @@ const app = new Hono()
             const [linkedTransaction] = await db
                 .select({ id: transactions.id })
                 .from(transactions)
-                .where(eq(transactions.payeeCustomerId, id))
+                .where(
+                    and(
+                        eq(transactions.payeeCustomerId, id),
+                        isNull(transactions.deletedAt),
+                    ),
+                )
                 .limit(1);
 
             if (linkedTransaction) {

@@ -48,6 +48,7 @@ const getAuthorizedTransaction = async (
                         eq(transactions.statusChangedBy, userId),
                     ),
                 ),
+                isNull(transactions.deletedAt),
             ),
         );
 
@@ -130,6 +131,10 @@ const app = new Hono()
             const conditions = [
                 eq(documents.uploadedBy, auth.userId),
                 eq(documents.isDeleted, false),
+                or(
+                    isNull(documents.transactionId),
+                    isNull(transactions.deletedAt),
+                ),
             ];
 
             if (documentTypeId) {

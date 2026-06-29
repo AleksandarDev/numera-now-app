@@ -18,7 +18,7 @@ import {
     or,
     sql,
 } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { type ZodIssue, z } from 'zod';
 import { db } from '@/db/drizzle';
 import {
@@ -32,6 +32,13 @@ import {
     transactions,
     transactionTags,
 } from '@/db/schema';
+import { writeAuditEvent } from '@/lib/audit';
+import {
+    createTransactionRestorePatch,
+    createTransactionSoftDeletePatch,
+    expandTransactionLifecycleTargetIds,
+    TRANSACTION_SPLIT_LIFECYCLE_POLICY,
+} from '@/lib/transaction-lifecycle';
 import { AMOUNT_TOLERANCE } from '@/lib/utils';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -53,6 +60,187 @@ const logValidationIssues = (issues: ZodIssue[]) => {
         '[PATCH /transactions/:id] Validation failed:',
         JSON.stringify(issues, null, 2),
     );
+};
+
+const transactionLifecycleSchema = z.object({
+    reason: z.string().max(500).optional(),
+});
+
+const transactionPurgeSchema = transactionLifecycleSchema.extend({
+    confirm: z.literal(true),
+});
+
+const readJsonPayload = async (ctx: Context) => {
+    const contentType = ctx.req.header('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        return {};
+    }
+
+    try {
+        return await ctx.req.json();
+    } catch {
+        return {};
+    }
+};
+
+const readLifecycleReason = async (ctx: Context) => {
+    const parsed = transactionLifecycleSchema.safeParse(
+        await readJsonPayload(ctx),
+    );
+    return parsed.success ? (parsed.data.reason ?? null) : null;
+};
+
+const readPurgePayload = async (ctx: Context) =>
+    transactionPurgeSchema.safeParse(await readJsonPayload(ctx));
+
+const transactionDeletedFilter = (deleted?: 'include' | 'only') => {
+    if (deleted === 'include') {
+        return undefined;
+    }
+
+    if (deleted === 'only') {
+        return isNotNull(transactions.deletedAt);
+    }
+
+    return isNull(transactions.deletedAt);
+};
+
+const transactionAccessFilter = (
+    userId: string,
+    creditAccounts: ReturnType<typeof aliasedTable<typeof accounts>>,
+    debitAccounts: ReturnType<typeof aliasedTable<typeof accounts>>,
+) =>
+    or(
+        eq(accounts.userId, userId),
+        eq(creditAccounts.userId, userId),
+        eq(debitAccounts.userId, userId),
+        and(
+            isNull(transactions.accountId),
+            isNull(transactions.creditAccountId),
+            isNull(transactions.debitAccountId),
+            eq(transactions.statusChangedBy, userId),
+        ),
+        eq(transactions.deletedBy, userId),
+    );
+
+const getAuthorizedTransactionLifecycleRows = async ({
+    ids,
+    userId,
+    deleted,
+}: {
+    ids: string[];
+    userId: string;
+    deleted?: 'include' | 'only';
+}) => {
+    if (ids.length === 0) {
+        return [];
+    }
+
+    const uniqueIds = [...new Set(ids)];
+    const creditAccounts = aliasedTable(accounts, 'creditAccounts');
+    const debitAccounts = aliasedTable(accounts, 'debitAccounts');
+    const selectedRows = await db
+        .select({ transaction: transactions })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(
+            creditAccounts,
+            eq(transactions.creditAccountId, creditAccounts.id),
+        )
+        .leftJoin(
+            debitAccounts,
+            eq(transactions.debitAccountId, debitAccounts.id),
+        )
+        .where(
+            and(
+                inArray(transactions.id, uniqueIds),
+                transactionAccessFilter(userId, creditAccounts, debitAccounts),
+                transactionDeletedFilter(deleted),
+            ),
+        );
+
+    const splitGroupIds = [
+        ...new Set(
+            selectedRows
+                .map(({ transaction }) => transaction.splitGroupId)
+                .filter(Boolean) as string[],
+        ),
+    ];
+
+    if (splitGroupIds.length === 0) {
+        return selectedRows.map(({ transaction }) => transaction);
+    }
+
+    const expandedRows = await db
+        .select({ transaction: transactions })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(
+            creditAccounts,
+            eq(transactions.creditAccountId, creditAccounts.id),
+        )
+        .leftJoin(
+            debitAccounts,
+            eq(transactions.debitAccountId, debitAccounts.id),
+        )
+        .where(
+            and(
+                or(
+                    inArray(transactions.id, uniqueIds),
+                    inArray(transactions.splitGroupId, splitGroupIds),
+                ),
+                transactionAccessFilter(userId, creditAccounts, debitAccounts),
+                transactionDeletedFilter(deleted),
+            ),
+        );
+
+    const targetIds = new Set(
+        expandTransactionLifecycleTargetIds(
+            uniqueIds,
+            expandedRows.map(({ transaction }) => transaction),
+        ),
+    );
+
+    return expandedRows
+        .map(({ transaction }) => transaction)
+        .filter((transaction) => targetIds.has(transaction.id));
+};
+
+const writeTransactionLifecycleAuditEvents = async ({
+    action,
+    userId,
+    beforeRows,
+    afterRows,
+    reason,
+    source,
+}: {
+    action: 'delete' | 'restore' | 'purge';
+    userId: string;
+    beforeRows: (typeof transactions.$inferSelect)[];
+    afterRows?: (typeof transactions.$inferSelect)[];
+    reason?: string | null;
+    source: string;
+}) => {
+    const afterById = new Map(afterRows?.map((row) => [row.id, row]) ?? []);
+
+    for (const before of beforeRows) {
+        await writeAuditEvent(db, {
+            userId,
+            actorUserId: userId,
+            actorType: 'user',
+            action,
+            resourceType: 'transaction',
+            resourceId: before.id,
+            resourceLabel: before.payee,
+            before,
+            after: afterById.get(before.id) ?? null,
+            sourceMetadata: {
+                source,
+                reason: reason ?? null,
+                splitPolicy: TRANSACTION_SPLIT_LIFECYCLE_POLICY,
+            },
+        });
+    }
 };
 
 // Helper function to record status change
@@ -209,12 +397,13 @@ const app = new Hono()
                 to: z.string().optional(),
                 accountId: z.string().optional(),
                 payeeCustomerId: z.string().optional(),
+                deleted: z.enum(['include', 'only']).optional(),
             }),
         ),
         clerkMiddleware(),
         async (ctx) => {
             const auth = getAuth(ctx);
-            const { from, to, accountId, payeeCustomerId } =
+            const { from, to, accountId, payeeCustomerId, deleted } =
                 ctx.req.valid('query');
 
             if (!auth?.userId) {
@@ -280,6 +469,12 @@ const app = new Hono()
                     splitGroupId: transactions.splitGroupId,
                     splitType: transactions.splitType,
                     stripePaymentId: transactions.stripePaymentId,
+                    deletedAt: transactions.deletedAt,
+                    deletedBy: transactions.deletedBy,
+                    deleteReason: transactions.deleteReason,
+                    restoredAt: transactions.restoredAt,
+                    restoredBy: transactions.restoredBy,
+                    restoreReason: transactions.restoreReason,
                 })
                 .from(transactions)
                 .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -320,6 +515,7 @@ const app = new Hono()
                         ),
                         gte(transactions.date, startDate),
                         lte(transactions.date, endDate),
+                        transactionDeletedFilter(deleted),
                     ),
                 )
                 .orderBy(desc(transactions.date));
@@ -492,6 +688,7 @@ const app = new Hono()
                         eq(customers.userId, auth.userId),
                         eq(accounts.userId, auth.userId),
                         isNotNull(transactions.creditAccountId),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .groupBy(transactions.creditAccountId)
@@ -524,6 +721,7 @@ const app = new Hono()
                         eq(customers.userId, auth.userId),
                         eq(accounts.userId, auth.userId),
                         isNotNull(transactions.debitAccountId),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .groupBy(transactions.debitAccountId)
@@ -553,6 +751,7 @@ const app = new Hono()
                         eq(customers.userId, auth.userId),
                         eq(accounts.userId, auth.userId),
                         isNotNull(transactions.accountId),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .groupBy(transactions.accountId)
@@ -785,6 +984,7 @@ const app = new Hono()
                         and(
                             eq(customers.userId, auth.userId),
                             isNotNull(transactions.payeeCustomerId),
+                            isNull(transactions.deletedAt),
                             or(
                                 ilike(transactions.notes, `%${escapedSearch}%`),
                                 ilike(transactions.payee, `%${escapedSearch}%`),
@@ -874,6 +1074,7 @@ const app = new Hono()
                     and(
                         eq(transactions.payeeCustomerId, customerId),
                         eq(tags.userId, auth.userId),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .groupBy(transactionTags.tagId)
@@ -898,6 +1099,13 @@ const app = new Hono()
         async (ctx) => {
             const auth = getAuth(ctx);
             const { id } = ctx.req.valid('param');
+            const parsedDeleted = z
+                .enum(['include', 'only'])
+                .optional()
+                .safeParse(ctx.req.query('deleted'));
+            const deleted = parsedDeleted.success
+                ? parsedDeleted.data
+                : undefined;
 
             if (!id) {
                 return ctx.json({ error: 'Missing id.' }, 400);
@@ -929,6 +1137,12 @@ const app = new Hono()
                     splitType: transactions.splitType,
                     stripePaymentId: transactions.stripePaymentId,
                     stripePaymentUrl: transactions.stripePaymentUrl,
+                    deletedAt: transactions.deletedAt,
+                    deletedBy: transactions.deletedBy,
+                    deleteReason: transactions.deleteReason,
+                    restoredAt: transactions.restoredAt,
+                    restoredBy: transactions.restoredBy,
+                    restoreReason: transactions.restoreReason,
                 })
                 .from(transactions)
                 .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -954,6 +1168,7 @@ const app = new Hono()
                                 eq(transactions.statusChangedBy, auth.userId),
                             ),
                         ),
+                        transactionDeletedFilter(deleted),
                     ),
                 );
 
@@ -1420,6 +1635,7 @@ const app = new Hono()
             'json',
             z.object({
                 ids: z.array(z.string()),
+                reason: z.string().max(500).optional(),
             }),
         ),
         async (ctx) => {
@@ -1430,46 +1646,17 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            // First, get the transactions to check their dates
-            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
-            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
-            const transactionsToCheck = await db
-                .select({
-                    id: transactions.id,
-                    date: transactions.date,
-                })
-                .from(transactions)
-                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-                .leftJoin(
-                    creditAccounts,
-                    eq(transactions.creditAccountId, creditAccounts.id),
-                )
-                .leftJoin(
-                    debitAccounts,
-                    eq(transactions.debitAccountId, debitAccounts.id),
-                )
-                .where(
-                    and(
-                        inArray(transactions.id, values.ids),
-                        or(
-                            eq(accounts.userId, auth.userId),
-                            eq(creditAccounts.userId, auth.userId),
-                            eq(debitAccounts.userId, auth.userId),
-                            and(
-                                isNull(transactions.accountId),
-                                isNull(transactions.creditAccountId),
-                                isNull(transactions.debitAccountId),
-                                eq(transactions.statusChangedBy, auth.userId),
-                            ),
-                        ),
-                    ),
-                );
+            const transactionsToDelete =
+                await getAuthorizedTransactionLifecycleRows({
+                    ids: values.ids,
+                    userId: auth.userId,
+                });
 
             // Check if any transaction date is in a closed period
             const { validateDateNotInClosedPeriod } = await import(
                 '@/lib/accounting-periods'
             );
-            for (const transaction of transactionsToCheck) {
+            for (const transaction of transactionsToDelete) {
                 const periodError = await validateDateNotInClosedPeriod(
                     transaction.date,
                     auth.userId,
@@ -1484,52 +1671,169 @@ const app = new Hono()
                 }
             }
 
-            const transactionsToDelete = db.$with('transactions_to_delete').as(
-                db
-                    .select({ id: transactions.id })
-                    .from(transactions)
-                    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-                    .leftJoin(
-                        creditAccounts,
-                        eq(transactions.creditAccountId, creditAccounts.id),
-                    )
-                    .leftJoin(
-                        debitAccounts,
-                        eq(transactions.debitAccountId, debitAccounts.id),
-                    )
-                    .where(
-                        and(
-                            inArray(transactions.id, values.ids),
-                            or(
-                                eq(accounts.userId, auth.userId),
-                                eq(creditAccounts.userId, auth.userId),
-                                eq(debitAccounts.userId, auth.userId),
-                                and(
-                                    isNull(transactions.accountId),
-                                    isNull(transactions.creditAccountId),
-                                    isNull(transactions.debitAccountId),
-                                    eq(
-                                        transactions.statusChangedBy,
-                                        auth.userId,
-                                    ),
-                                ),
-                            ),
-                        ),
-                    ),
-            );
+            if (transactionsToDelete.length === 0) {
+                return ctx.json({ data: [] });
+            }
 
             const data = await db
-                .with(transactionsToDelete)
+                .update(transactions)
+                .set(
+                    createTransactionSoftDeletePatch({
+                        userId: auth.userId,
+                        reason: values.reason ?? null,
+                        now: new UTCDate(),
+                    }),
+                )
+                .where(
+                    inArray(
+                        transactions.id,
+                        transactionsToDelete.map(
+                            (transaction) => transaction.id,
+                        ),
+                    ),
+                )
+                .returning();
+
+            await writeTransactionLifecycleAuditEvents({
+                action: 'delete',
+                userId: auth.userId,
+                beforeRows: transactionsToDelete,
+                afterRows: data,
+                reason: values.reason ?? null,
+                source: 'transactions_bulk_delete',
+            });
+
+            return ctx.json({ data });
+        },
+    )
+    .post(
+        '/bulk-restore',
+        clerkMiddleware(),
+        zValidator(
+            'json',
+            z.object({
+                ids: z.array(z.string()),
+                reason: z.string().max(500).optional(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const values = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const transactionsToRestore =
+                await getAuthorizedTransactionLifecycleRows({
+                    ids: values.ids,
+                    userId: auth.userId,
+                    deleted: 'only',
+                });
+
+            const { validateDateNotInClosedPeriod } = await import(
+                '@/lib/accounting-periods'
+            );
+            for (const transaction of transactionsToRestore) {
+                const periodError = await validateDateNotInClosedPeriod(
+                    transaction.date,
+                    auth.userId,
+                );
+                if (periodError) {
+                    return ctx.json(
+                        {
+                            error: `Cannot restore transaction ${transaction.id}: ${periodError}`,
+                        },
+                        400,
+                    );
+                }
+            }
+
+            if (transactionsToRestore.length === 0) {
+                return ctx.json({ data: [] });
+            }
+
+            const data = await db
+                .update(transactions)
+                .set(
+                    createTransactionRestorePatch({
+                        userId: auth.userId,
+                        reason: values.reason ?? null,
+                        now: new UTCDate(),
+                    }),
+                )
+                .where(
+                    inArray(
+                        transactions.id,
+                        transactionsToRestore.map(
+                            (transaction) => transaction.id,
+                        ),
+                    ),
+                )
+                .returning();
+
+            await writeTransactionLifecycleAuditEvents({
+                action: 'restore',
+                userId: auth.userId,
+                beforeRows: transactionsToRestore,
+                afterRows: data,
+                reason: values.reason ?? null,
+                source: 'transactions_bulk_restore',
+            });
+
+            return ctx.json({ data });
+        },
+    )
+    .post(
+        '/bulk-purge',
+        clerkMiddleware(),
+        zValidator(
+            'json',
+            z.object({
+                ids: z.array(z.string()),
+                confirm: z.literal(true),
+                reason: z.string().max(500).optional(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const values = ctx.req.valid('json');
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const transactionsToPurge =
+                await getAuthorizedTransactionLifecycleRows({
+                    ids: values.ids,
+                    userId: auth.userId,
+                    deleted: 'only',
+                });
+
+            if (transactionsToPurge.length === 0) {
+                return ctx.json({ data: [] });
+            }
+
+            const data = await db
                 .delete(transactions)
                 .where(
                     inArray(
                         transactions.id,
-                        sql`(select id from ${transactionsToDelete})`,
+                        transactionsToPurge.map(
+                            (transaction) => transaction.id,
+                        ),
                     ),
                 )
-                .returning({
-                    id: transactions.id,
-                });
+                .returning();
+
+            await writeTransactionLifecycleAuditEvents({
+                action: 'purge',
+                userId: auth.userId,
+                beforeRows: transactionsToPurge,
+                afterRows: [],
+                reason: values.reason ?? null,
+                source: 'transactions_bulk_purge',
+            });
 
             return ctx.json({ data });
         },
@@ -1623,6 +1927,7 @@ const app = new Hono()
                                 eq(transactions.statusChangedBy, auth.userId),
                             ),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 );
 
@@ -1857,6 +2162,7 @@ const app = new Hono()
                                     ),
                                 ),
                             ),
+                            isNull(transactions.deletedAt),
                         ),
                     ),
             );
@@ -2033,97 +2339,199 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            // First, get the transaction to check its date
-            const creditAccounts = aliasedTable(accounts, 'creditAccounts');
-            const debitAccounts = aliasedTable(accounts, 'debitAccounts');
-            const [transactionToDelete] = await db
-                .select({
-                    id: transactions.id,
-                    date: transactions.date,
-                })
-                .from(transactions)
-                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
-                .leftJoin(
-                    creditAccounts,
-                    eq(transactions.creditAccountId, creditAccounts.id),
-                )
-                .leftJoin(
-                    debitAccounts,
-                    eq(transactions.debitAccountId, debitAccounts.id),
-                )
-                .where(
-                    and(
-                        eq(transactions.id, id),
-                        or(
-                            eq(accounts.userId, auth.userId),
-                            eq(creditAccounts.userId, auth.userId),
-                            eq(debitAccounts.userId, auth.userId),
-                        ),
-                    ),
-                );
+            const reason = await readLifecycleReason(ctx);
+            const transactionsToDelete =
+                await getAuthorizedTransactionLifecycleRows({
+                    ids: [id],
+                    userId: auth.userId,
+                });
 
-            if (!transactionToDelete) {
+            if (transactionsToDelete.length === 0) {
                 return ctx.json({ error: 'Not found.' }, 404);
             }
 
-            // Check if the transaction date is in a closed period
+            // Check if any affected transaction date is in a closed period
             const { validateDateNotInClosedPeriod } = await import(
                 '@/lib/accounting-periods'
             );
-            const periodError = await validateDateNotInClosedPeriod(
-                transactionToDelete.date,
-                auth.userId,
-            );
-            if (periodError) {
-                return ctx.json({ error: periodError }, 400);
+            for (const transaction of transactionsToDelete) {
+                const periodError = await validateDateNotInClosedPeriod(
+                    transaction.date,
+                    auth.userId,
+                );
+                if (periodError) {
+                    return ctx.json({ error: periodError }, 400);
+                }
             }
 
-            const transactionsToDeleteCTE = db
-                .$with('transactions_to_delete')
-                .as(
-                    db
-                        .select({ id: transactions.id })
-                        .from(transactions)
-                        .leftJoin(
-                            accounts,
-                            eq(transactions.accountId, accounts.id),
-                        )
-                        .leftJoin(
-                            creditAccounts,
-                            eq(transactions.creditAccountId, creditAccounts.id),
-                        )
-                        .leftJoin(
-                            debitAccounts,
-                            eq(transactions.debitAccountId, debitAccounts.id),
-                        )
-                        .where(
-                            and(
-                                eq(transactions.id, id),
-                                or(
-                                    eq(accounts.userId, auth.userId),
-                                    eq(creditAccounts.userId, auth.userId),
-                                    eq(debitAccounts.userId, auth.userId),
-                                ),
-                            ),
+            const data = await db
+                .update(transactions)
+                .set(
+                    createTransactionSoftDeletePatch({
+                        userId: auth.userId,
+                        reason,
+                        now: new UTCDate(),
+                    }),
+                )
+                .where(
+                    inArray(
+                        transactions.id,
+                        transactionsToDelete.map(
+                            (transaction) => transaction.id,
                         ),
-                );
+                    ),
+                )
+                .returning();
 
-            const [data] = await db
-                .with(transactionsToDeleteCTE)
+            await writeTransactionLifecycleAuditEvents({
+                action: 'delete',
+                userId: auth.userId,
+                beforeRows: transactionsToDelete,
+                afterRows: data,
+                reason,
+                source: 'transactions_delete',
+            });
+
+            return ctx.json({ data });
+        },
+    )
+    .post(
+        '/:id/restore',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string().optional(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+
+            if (!id) {
+                return ctx.json({ error: 'Missing id.' }, 400);
+            }
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const reason = await readLifecycleReason(ctx);
+            const transactionsToRestore =
+                await getAuthorizedTransactionLifecycleRows({
+                    ids: [id],
+                    userId: auth.userId,
+                    deleted: 'only',
+                });
+
+            if (transactionsToRestore.length === 0) {
+                return ctx.json({ error: 'Not found.' }, 404);
+            }
+
+            const { validateDateNotInClosedPeriod } = await import(
+                '@/lib/accounting-periods'
+            );
+            for (const transaction of transactionsToRestore) {
+                const periodError = await validateDateNotInClosedPeriod(
+                    transaction.date,
+                    auth.userId,
+                );
+                if (periodError) {
+                    return ctx.json({ error: periodError }, 400);
+                }
+            }
+
+            const data = await db
+                .update(transactions)
+                .set(
+                    createTransactionRestorePatch({
+                        userId: auth.userId,
+                        reason,
+                        now: new UTCDate(),
+                    }),
+                )
+                .where(
+                    inArray(
+                        transactions.id,
+                        transactionsToRestore.map(
+                            (transaction) => transaction.id,
+                        ),
+                    ),
+                )
+                .returning();
+
+            await writeTransactionLifecycleAuditEvents({
+                action: 'restore',
+                userId: auth.userId,
+                beforeRows: transactionsToRestore,
+                afterRows: data,
+                reason,
+                source: 'transactions_restore',
+            });
+
+            return ctx.json({ data });
+        },
+    )
+    .post(
+        '/:id/purge',
+        clerkMiddleware(),
+        zValidator(
+            'param',
+            z.object({
+                id: z.string().optional(),
+            }),
+        ),
+        async (ctx) => {
+            const auth = getAuth(ctx);
+            const { id } = ctx.req.valid('param');
+
+            if (!id) {
+                return ctx.json({ error: 'Missing id.' }, 400);
+            }
+
+            if (!auth?.userId) {
+                return ctx.json({ error: 'Unauthorized.' }, 401);
+            }
+
+            const parsedPayload = await readPurgePayload(ctx);
+            if (!parsedPayload.success) {
+                return ctx.json(
+                    { error: 'Permanent purge requires confirm: true.' },
+                    400,
+                );
+            }
+
+            const transactionsToPurge =
+                await getAuthorizedTransactionLifecycleRows({
+                    ids: [id],
+                    userId: auth.userId,
+                    deleted: 'only',
+                });
+
+            if (transactionsToPurge.length === 0) {
+                return ctx.json({ error: 'Not found.' }, 404);
+            }
+
+            const data = await db
                 .delete(transactions)
                 .where(
                     inArray(
                         transactions.id,
-                        sql`(select id from ${transactionsToDeleteCTE})`,
+                        transactionsToPurge.map(
+                            (transaction) => transaction.id,
+                        ),
                     ),
                 )
-                .returning({
-                    id: transactions.id,
-                });
+                .returning();
 
-            if (!data) {
-                return ctx.json({ error: 'Not found.' }, 404);
-            }
+            await writeTransactionLifecycleAuditEvents({
+                action: 'purge',
+                userId: auth.userId,
+                beforeRows: transactionsToPurge,
+                afterRows: [],
+                reason: parsedPayload.data.reason ?? null,
+                source: 'transactions_purge',
+            });
 
             return ctx.json({ data });
         },
@@ -2168,6 +2576,7 @@ const app = new Hono()
                             eq(creditAccounts.userId, auth.userId),
                             eq(debitAccounts.userId, auth.userId),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 );
 
@@ -2281,6 +2690,7 @@ const app = new Hono()
                             eq(creditAccounts.userId, auth.userId),
                             eq(debitAccounts.userId, auth.userId),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 )
                 .orderBy(
@@ -2605,6 +3015,7 @@ const app = new Hono()
                                 eq(transactions.statusChangedBy, auth.userId),
                             ),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 );
 
@@ -2784,7 +3195,12 @@ const app = new Hono()
                     splitGroupId,
                     splitType: 'parent',
                 })
-                .where(eq(transactions.id, id));
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        isNull(transactions.deletedAt),
+                    ),
+                );
 
             // Record status change
             await recordStatusChange(
@@ -2916,6 +3332,7 @@ const app = new Hono()
                                 eq(transactions.statusChangedBy, auth.userId),
                             ),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 );
 
@@ -2941,7 +3358,12 @@ const app = new Hono()
                     statusChangedAt: new UTCDate(),
                     statusChangedBy: auth.userId,
                 })
-                .where(eq(transactions.id, id))
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        isNull(transactions.deletedAt),
+                    ),
+                )
                 .returning();
 
             // Record the unreconcile action in history with the reason
@@ -3022,6 +3444,7 @@ const app = new Hono()
                                 eq(transactions.statusChangedBy, auth.userId),
                             ),
                         ),
+                        isNull(transactions.deletedAt),
                     ),
                 );
 
@@ -3047,7 +3470,12 @@ const app = new Hono()
                     statusChangedAt: new UTCDate(),
                     statusChangedBy: auth.userId,
                 })
-                .where(eq(transactions.id, id))
+                .where(
+                    and(
+                        eq(transactions.id, id),
+                        isNull(transactions.deletedAt),
+                    ),
+                )
                 .returning();
 
             // Record the uncomplete action in history with the reason
