@@ -1,5 +1,8 @@
 import { authenticateMcpRequest } from '@/lib/mcp/auth';
-import { defaultMcpReadServices } from '@/lib/mcp/default-services';
+import {
+    defaultMcpMutationServices,
+    defaultMcpReadServices,
+} from '@/lib/mcp/default-services';
 import { handleMcpRequest } from '@/lib/mcp/http';
 import { createNumeraMcpServer } from '@/lib/mcp/server';
 
@@ -12,6 +15,7 @@ const handleAuthenticatedMcpRequest = (request: Request) =>
         createServer: (context) =>
             createNumeraMcpServer(context, {
                 readServices: defaultMcpReadServices,
+                mutationServices: defaultMcpMutationServices,
             }),
     });
 

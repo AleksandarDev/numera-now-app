@@ -52,6 +52,53 @@ const createMockReadServices = () => {
     };
 };
 
+const createMockMutationServices = () => {
+    const calls = [];
+    const createService = (name, result) => async (input) => {
+        calls.push({ name, input });
+        return result;
+    };
+
+    return {
+        calls,
+        services: {
+            deleteTransaction: createService('deleteTransaction', {
+                ok: true,
+                data: [{ id: 'transaction_1', deletedAt: '2026-06-30' }],
+            }),
+            restoreTransaction: createService('restoreTransaction', {
+                ok: true,
+                data: [{ id: 'transaction_1', deletedAt: null }],
+            }),
+            purgeTransaction: createService('purgeTransaction', {
+                ok: false,
+                status: 400,
+                error: 'Permanent purge requires confirm: true.',
+            }),
+            deleteCustomer: createService('deleteCustomer', {
+                ok: true,
+                data: { id: 'customer_1', isDeleted: true },
+            }),
+            restoreCustomer: createService('restoreCustomer', {
+                ok: true,
+                data: { id: 'customer_1', isDeleted: false },
+            }),
+            deleteDocument: createService('deleteDocument', {
+                ok: true,
+                data: { id: 'document_1', isDeleted: true },
+            }),
+            restoreDocument: createService('restoreDocument', {
+                ok: true,
+                data: { id: 'document_1', isDeleted: false },
+            }),
+            purgeDocument: createService('purgeDocument', {
+                ok: true,
+                data: { id: 'document_1' },
+            }),
+        },
+    };
+};
+
 test('unauthorized MCP response is a JSON-RPC error response', async () => {
     const response = createUnauthorizedMcpResponse();
 
@@ -78,9 +125,11 @@ test('MCP request handler rejects unauthenticated requests before transport hand
 });
 
 test('base MCP server registers authenticated whoami tool', async () => {
-    const { calls, services } = createMockReadServices();
+    const read = createMockReadServices();
+    const mutations = createMockMutationServices();
     const server = createNumeraMcpServer(createTestContext(), {
-        readServices: services,
+        readServices: read.services,
+        mutationServices: mutations.services,
     });
     const client = new Client({
         name: 'numera-test-client',
@@ -101,6 +150,12 @@ test('base MCP server registers authenticated whoami tool', async () => {
         assert.ok(
             tools.tools.some((tool) => tool.name === 'numera_list_customers'),
             'expected numera_list_customers to be listed',
+        );
+        assert.ok(
+            tools.tools.some(
+                (tool) => tool.name === 'numera_delete_transaction',
+            ),
+            'expected numera_delete_transaction to be listed',
         );
 
         const result = await client.callTool({
@@ -125,7 +180,7 @@ test('base MCP server registers authenticated whoami tool', async () => {
             entity: 'customers',
             data: [{ id: 'customer_1', name: 'ACME' }],
         });
-        assert.deepEqual(calls, [
+        assert.deepEqual(read.calls, [
             {
                 name: 'listCustomers',
                 input: {
@@ -135,6 +190,44 @@ test('base MCP server registers authenticated whoami tool', async () => {
                 },
             },
         ]);
+
+        const deleteResult = await client.callTool({
+            name: 'numera_delete_transaction',
+            arguments: {
+                id: 'transaction_1',
+                reason: 'Duplicate imported transaction',
+            },
+        });
+
+        assert.deepEqual(deleteResult.structuredContent, {
+            entity: 'transaction',
+            ok: true,
+            data: [{ id: 'transaction_1', deletedAt: '2026-06-30' }],
+        });
+        assert.deepEqual(mutations.calls[0], {
+            name: 'deleteTransaction',
+            input: {
+                userId: 'user_test_123',
+                id: 'transaction_1',
+                reason: 'Duplicate imported transaction',
+            },
+        });
+
+        const purgeResult = await client.callTool({
+            name: 'numera_purge_transaction',
+            arguments: {
+                id: 'transaction_1',
+                confirm: true,
+            },
+        });
+
+        assert.equal(purgeResult.isError, true);
+        assert.deepEqual(purgeResult.structuredContent, {
+            entity: 'transaction',
+            ok: false,
+            status: 400,
+            error: 'Permanent purge requires confirm: true.',
+        });
     } finally {
         await client.close();
         await server.close();

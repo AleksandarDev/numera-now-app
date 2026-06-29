@@ -26,3 +26,8 @@ export const createJsonToolResult = (data: JsonToolResultData) => {
         structuredContent: jsonSafeData,
     };
 };
+
+export const createJsonErrorToolResult = (data: JsonToolResultData) => ({
+    ...createJsonToolResult(data),
+    isError: true,
+});
