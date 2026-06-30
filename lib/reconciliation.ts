@@ -1,6 +1,12 @@
 import { aliasedTable, and, count, eq, inArray, isNull, or } from 'drizzle-orm';
 import { db } from '@/db/drizzle';
-import { accounts, documents, settings, transactions } from '@/db/schema';
+import {
+    accounts,
+    documents,
+    documentTransactionLinks,
+    settings,
+    transactions,
+} from '@/db/schema';
 
 export type ReconciliationCondition =
     | 'hasReceipt'
@@ -120,7 +126,26 @@ const hasReceipt = async (transactionId: string, userId: string) => {
             ),
         );
 
-    return docCount.count > 0;
+    if (docCount.count > 0) return true;
+
+    const [linkedDocCount] = await db
+        .select({ count: count() })
+        .from(documentTransactionLinks)
+        .innerJoin(
+            documents,
+            eq(documentTransactionLinks.documentId, documents.id),
+        )
+        .where(
+            and(
+                inArray(
+                    documentTransactionLinks.transactionId,
+                    documentTargetIds,
+                ),
+                eq(documents.isDeleted, false),
+            ),
+        );
+
+    return linkedDocCount.count > 0;
 };
 
 /**
