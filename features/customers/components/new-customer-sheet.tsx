@@ -17,6 +17,7 @@ const formSchema = insertCustomerSchema.omit({
     userId: true,
     id: true,
     isComplete: true,
+    avatarImage: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -56,6 +57,7 @@ export const NewCustomerSheet = () => {
                         defaultValues={{
                             name: '',
                             friendlyName: '',
+                            website: '',
                             vatNumber: '',
                             address: '',
                             contactEmail: '',

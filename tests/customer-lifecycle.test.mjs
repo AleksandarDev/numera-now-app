@@ -55,6 +55,8 @@ test('customer profile revert patch is limited to editable customer fields', () 
         id: 'cus_1',
         name: 'Before',
         friendlyName: null,
+        website: 'https://example.com/',
+        avatarImage: 'data:image/svg+xml;base64,PHN2Zy8+',
         vatNumber: 'HR123',
         address: 'Old address',
         contactEmail: 'old@example.com',
@@ -69,6 +71,8 @@ test('customer profile revert patch is limited to editable customer fields', () 
     assert.deepEqual(patch, {
         name: 'Before',
         friendlyName: null,
+        website: 'https://example.com/',
+        avatarImage: 'data:image/svg+xml;base64,PHN2Zy8+',
         vatNumber: 'HR123',
         address: 'Old address',
         contactEmail: 'old@example.com',

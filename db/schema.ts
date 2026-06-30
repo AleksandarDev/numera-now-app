@@ -145,6 +145,8 @@ export const customers = pgTable(
         name: text('name').notNull(),
         // Optional short/friendly name displayed in the app instead of the full name
         friendlyName: text('friendly_name'),
+        website: text('website'),
+        avatarImage: text('avatar_image'),
         vatNumber: text('vat_number'),
         address: text('address'),
         contactEmail: text('contact_email'),

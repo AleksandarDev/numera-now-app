@@ -36,6 +36,8 @@ const ALL_CUSTOMERS_OPTION = {
     id: 'all',
     name: 'All customers',
     friendlyName: null,
+    website: null,
+    avatarImage: null,
     isComplete: true,
     isOwnFirm: false,
     vatNumber: null,

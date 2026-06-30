@@ -40,6 +40,7 @@ const formSchema = insertCustomerSchema.omit({
     restoredAt: true,
     restoredBy: true,
     restoreReason: true,
+    avatarImage: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -112,6 +113,7 @@ export const EditCustomerSheet = () => {
         ? {
               name: customerQuery.data.name,
               friendlyName: customerQuery.data.friendlyName,
+              website: customerQuery.data.website,
               vatNumber: customerQuery.data.vatNumber,
               address: customerQuery.data.address,
               contactEmail: customerQuery.data.contactEmail,
@@ -121,6 +123,7 @@ export const EditCustomerSheet = () => {
         : {
               name: '',
               friendlyName: '',
+              website: '',
               vatNumber: '',
               address: '',
               contactEmail: '',

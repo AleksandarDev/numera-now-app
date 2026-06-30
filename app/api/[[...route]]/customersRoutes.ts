@@ -14,6 +14,10 @@ import {
 } from '@/db/schema';
 import { type AuditAction, writeAuditEvent } from '@/lib/audit';
 import {
+    fetchCustomerAvatarImage,
+    normalizeCustomerWebsite,
+} from '@/lib/customer-favicon';
+import {
     createCustomerIbanRestorePatch,
     createCustomerIbanSoftDeletePatch,
     createCustomerProfileRevertPatch,
@@ -33,6 +37,8 @@ type CustomerUpdate = Partial<typeof customers.$inferInsert>;
 
 type CustomerData = {
     name?: string | null;
+    website?: string | null;
+    avatarImage?: string | null;
     vatNumber?: string | null;
     address?: string | null;
     contactEmail?: string | null;
@@ -48,18 +54,30 @@ const customerRevertSchema = customerLifecycleSchema.extend({
     auditEventId: z.string().min(1),
 });
 
-const customerPayloadSchema = insertCustomerSchema.omit({
-    id: true,
-    userId: true,
-    isComplete: true,
-    isDeleted: true,
-    deletedAt: true,
-    deletedBy: true,
-    deleteReason: true,
-    restoredAt: true,
-    restoredBy: true,
-    restoreReason: true,
-});
+const customerPayloadSchema = insertCustomerSchema
+    .omit({
+        id: true,
+        userId: true,
+        isComplete: true,
+        isDeleted: true,
+        deletedAt: true,
+        deletedBy: true,
+        deleteReason: true,
+        restoredAt: true,
+        restoredBy: true,
+        restoreReason: true,
+        avatarImage: true,
+    })
+    .extend({
+        name: z.string().min(1),
+        website: z.string().max(2048).nullable().optional(),
+    });
+
+type CustomerPayload = z.infer<typeof customerPayloadSchema>;
+type CustomerWriteValues = CustomerPayload & {
+    website: string | null;
+    avatarImage: string | null;
+};
 
 const isCustomerComplete = (customer: CustomerData): boolean => {
     return !!(
@@ -70,6 +88,47 @@ const isCustomerComplete = (customer: CustomerData): boolean => {
         customer.contactTelephone &&
         customer.country
     );
+};
+
+const prepareCustomerWriteValues = async (
+    values: CustomerPayload,
+    existingCustomer?: CustomerRow | null,
+): Promise<
+    | {
+          ok: true;
+          values: CustomerWriteValues;
+      }
+    | {
+          ok: false;
+          error: string;
+      }
+> => {
+    const submittedWebsite = values.website?.trim() ?? '';
+    const website = normalizeCustomerWebsite(submittedWebsite);
+
+    if (submittedWebsite && !website) {
+        return {
+            ok: false,
+            error: 'Website must be a public http or https URL.',
+        };
+    }
+
+    const shouldFetchAvatar =
+        !!website &&
+        (website !== existingCustomer?.website ||
+            !existingCustomer.avatarImage);
+    const avatarImage = shouldFetchAvatar
+        ? await fetchCustomerAvatarImage(website)
+        : (existingCustomer?.avatarImage ?? null);
+
+    return {
+        ok: true,
+        values: {
+            ...values,
+            website,
+            avatarImage: website ? avatarImage : null,
+        },
+    };
 };
 
 const normalizeIban = (iban: string) => iban.toUpperCase().replace(/\s/g, '');
@@ -1078,7 +1137,12 @@ const app = new Hono()
                 return ctx.json({ error: 'Unauthorized.' }, 401);
             }
 
-            const isComplete = isCustomerComplete(values);
+            const preparedValues = await prepareCustomerWriteValues(values);
+            if (!preparedValues.ok) {
+                return ctx.json({ error: preparedValues.error }, 400);
+            }
+
+            const isComplete = isCustomerComplete(preparedValues.values);
 
             if (values.isOwnFirm) {
                 await unmarkOtherOwnFirmCustomers({
@@ -1093,7 +1157,7 @@ const app = new Hono()
                     id: createId(),
                     userId: auth.userId,
                     isComplete,
-                    ...values,
+                    ...preparedValues.values,
                 })
                 .returning();
 
@@ -1140,7 +1204,15 @@ const app = new Hono()
                 return ctx.json({ error: 'Not found.' }, 404);
             }
 
-            const isComplete = isCustomerComplete(values);
+            const preparedValues = await prepareCustomerWriteValues(
+                values,
+                existingCustomer,
+            );
+            if (!preparedValues.ok) {
+                return ctx.json({ error: preparedValues.error }, 400);
+            }
+
+            const isComplete = isCustomerComplete(preparedValues.values);
 
             if (values.isOwnFirm) {
                 await unmarkOtherOwnFirmCustomers({
@@ -1154,7 +1226,7 @@ const app = new Hono()
                 .update(customers)
                 .set({
                     isComplete,
-                    ...values,
+                    ...preparedValues.values,
                 })
                 .where(eq(customers.id, id))
                 .returning();

@@ -317,6 +317,8 @@ export const listCustomers = async (
             id: customers.id,
             name: customers.name,
             friendlyName: customers.friendlyName,
+            website: customers.website,
+            avatarImage: customers.avatarImage,
             vatNumber: customers.vatNumber,
             address: customers.address,
             contactEmail: customers.contactEmail,
@@ -351,6 +353,7 @@ export const listCustomers = async (
                     ? or(
                           ilike(customers.name, `%${escapedSearch}%`),
                           ilike(customers.friendlyName, `%${escapedSearch}%`),
+                          ilike(customers.website, `%${escapedSearch}%`),
                           ilike(customers.vatNumber, `%${escapedSearch}%`),
                       )
                     : undefined,
