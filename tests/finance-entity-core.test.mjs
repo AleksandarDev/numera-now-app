@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+    buildTransactionDocumentCounts,
     DEFAULT_ENTITY_LIMIT,
     escapeLikePattern,
     MAX_ENTITY_LIMIT,
@@ -55,4 +56,38 @@ test('entity normalization helpers handle dates and IBANs', () => {
         '2026-06-30T12:00:00.000Z',
     );
     assert.equal(normalizeIban('hr12 3456'), 'HR123456');
+});
+
+test('document counts apply split group documents to every group member', () => {
+    const counts = buildTransactionDocumentCounts(
+        [
+            { id: 'parent_1', splitGroupId: 'split_1' },
+            { id: 'child_1', splitGroupId: 'split_1' },
+            { id: 'child_2', splitGroupId: 'split_1' },
+            { id: 'solo_1', splitGroupId: null },
+        ],
+        [
+            { transactionId: 'parent_1', documentTypeId: 'invoice' },
+            { transactionId: 'child_1', documentTypeId: 'receipt' },
+            { transactionId: 'solo_1', documentTypeId: 'receipt' },
+        ],
+        ['invoice', 'receipt'],
+    );
+
+    assert.deepEqual(counts.get('parent_1'), {
+        total: 2,
+        requiredTypes: ['invoice', 'receipt'],
+    });
+    assert.deepEqual(counts.get('child_1'), {
+        total: 2,
+        requiredTypes: ['invoice', 'receipt'],
+    });
+    assert.deepEqual(counts.get('child_2'), {
+        total: 2,
+        requiredTypes: ['invoice', 'receipt'],
+    });
+    assert.deepEqual(counts.get('solo_1'), {
+        total: 1,
+        requiredTypes: ['receipt'],
+    });
 });

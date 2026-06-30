@@ -377,10 +377,13 @@ export const TransactionSheet = () => {
             : [],
     });
 
-    const totalSplitDocuments = childDocumentQueries.reduce(
-        (sum, query) => sum + (query.data?.length ?? 0),
-        0,
-    );
+    const splitDocumentIds = new Set<string>();
+    for (const query of childDocumentQueries) {
+        for (const document of query.data ?? []) {
+            splitDocumentIds.add(document.id);
+        }
+    }
+    const totalSplitDocuments = splitDocumentIds.size;
 
     const statusColors: Record<typeof currentStatus, string> = {
         draft: 'text-muted-foreground',
@@ -990,9 +993,9 @@ export const TransactionSheet = () => {
                                                     Documents
                                                 </div>
                                                 <div className="text-xs text-muted-foreground">
-                                                    Documents are stored on
-                                                    split parts. Open a part to
-                                                    manage its documents.
+                                                    Documents attached anywhere
+                                                    in this split group are
+                                                    visible on each part.
                                                 </div>
                                                 <div className="text-sm">
                                                     {totalSplitDocuments}{' '}

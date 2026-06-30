@@ -107,9 +107,7 @@ export function DocumentUpload({
 
             if (successCount > 0) {
                 // Invalidate documents query to refresh the list
-                queryClient.invalidateQueries({
-                    queryKey: ['documents', transactionId],
-                });
+                queryClient.invalidateQueries({ queryKey: ['documents'] });
                 // Invalidate transaction queries to refresh validation status in transaction table
                 queryClient.invalidateQueries({
                     queryKey: ['transaction', { id: transactionId }],
@@ -233,9 +231,7 @@ export function DocumentList({
 
         try {
             await deleteDocument.mutateAsync(documentId);
-            queryClient.invalidateQueries({
-                queryKey: ['documents', transactionId],
-            });
+            queryClient.invalidateQueries({ queryKey: ['documents'] });
             // Invalidate transaction queries to refresh validation status in transaction table
             queryClient.invalidateQueries({
                 queryKey: ['transaction', { id: transactionId }],
@@ -254,9 +250,7 @@ export function DocumentList({
                 id: documentId,
                 documentTypeId: newTypeId,
             });
-            queryClient.invalidateQueries({
-                queryKey: ['documents', transactionId],
-            });
+            queryClient.invalidateQueries({ queryKey: ['documents'] });
             // Invalidate transaction queries to refresh validation status in transaction table
             queryClient.invalidateQueries({
                 queryKey: ['transaction', { id: transactionId }],
@@ -400,9 +394,7 @@ function UnattachedDocuments({ transactionId }: UnattachedDocumentsProps) {
                 documentId,
                 transactionId,
             });
-            queryClient.invalidateQueries({
-                queryKey: ['documents', transactionId],
-            });
+            queryClient.invalidateQueries({ queryKey: ['documents'] });
         } catch (error) {
             console.error('Link error:', error);
         }

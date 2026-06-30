@@ -1,4 +1,4 @@
-import { aliasedTable, and, count, eq, isNull, or } from 'drizzle-orm';
+import { aliasedTable, and, count, eq, inArray, isNull, or } from 'drizzle-orm';
 import { db } from '@/db/drizzle';
 import { accounts, documents, settings, transactions } from '@/db/schema';
 
@@ -46,6 +46,83 @@ const hasTransactionAccess = async (
     return Boolean(transaction);
 };
 
+const getTransactionDocumentTargetIds = async (
+    transactionId: string,
+    userId: string,
+) => {
+    const [transaction] = await db
+        .select({
+            id: transactions.id,
+            splitGroupId: transactions.splitGroupId,
+        })
+        .from(transactions)
+        .where(
+            and(
+                eq(transactions.id, transactionId),
+                isNull(transactions.deletedAt),
+            ),
+        );
+
+    if (!transaction?.splitGroupId) {
+        return [transactionId];
+    }
+
+    const creditAccounts = aliasedTable(accounts, 'documentCreditAccounts');
+    const debitAccounts = aliasedTable(accounts, 'documentDebitAccounts');
+
+    const splitGroupMembers = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(
+            creditAccounts,
+            eq(transactions.creditAccountId, creditAccounts.id),
+        )
+        .leftJoin(
+            debitAccounts,
+            eq(transactions.debitAccountId, debitAccounts.id),
+        )
+        .where(
+            and(
+                eq(transactions.splitGroupId, transaction.splitGroupId),
+                or(
+                    eq(accounts.userId, userId),
+                    eq(creditAccounts.userId, userId),
+                    eq(debitAccounts.userId, userId),
+                    and(
+                        isNull(transactions.accountId),
+                        isNull(transactions.creditAccountId),
+                        isNull(transactions.debitAccountId),
+                        eq(transactions.statusChangedBy, userId),
+                    ),
+                ),
+                isNull(transactions.deletedAt),
+            ),
+        );
+
+    return splitGroupMembers.length > 0
+        ? splitGroupMembers.map((member) => member.id)
+        : [transaction.id];
+};
+
+const hasReceipt = async (transactionId: string, userId: string) => {
+    const documentTargetIds = await getTransactionDocumentTargetIds(
+        transactionId,
+        userId,
+    );
+    const [docCount] = await db
+        .select({ count: count() })
+        .from(documents)
+        .where(
+            and(
+                inArray(documents.transactionId, documentTargetIds),
+                eq(documents.isDeleted, false),
+            ),
+        );
+
+    return docCount.count > 0;
+};
+
 /**
  * Check if a transaction meets the reconciliation conditions
  */
@@ -75,17 +152,7 @@ export async function isTransactionReconciled(
     for (const condition of conditions) {
         switch (condition) {
             case 'hasReceipt': {
-                const [docCount] = await db
-                    .select({ count: count() })
-                    .from(documents)
-                    .where(
-                        and(
-                            eq(documents.transactionId, transactionId),
-                            eq(documents.isDeleted, false),
-                        ),
-                    );
-
-                if (docCount.count === 0) return false;
+                if (!(await hasReceipt(transactionId, userId))) return false;
                 break;
             }
 
@@ -186,17 +253,7 @@ export async function getReconciliationStatus(
 
             switch (condition) {
                 case 'hasReceipt': {
-                    const [docCount] = await db
-                        .select({ count: count() })
-                        .from(documents)
-                        .where(
-                            and(
-                                eq(documents.transactionId, transactionId),
-                                eq(documents.isDeleted, false),
-                            ),
-                        );
-
-                    met = docCount.count > 0;
+                    met = await hasReceipt(transactionId, userId);
                     break;
                 }
 
