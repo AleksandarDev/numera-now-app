@@ -45,6 +45,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { client } from '@/lib/hono';
 import { convertAmountToMiliunits, formatCurrency } from '@/lib/utils';
 
+import { SplitTransactionSummary } from './split-transaction-summary';
 import {
     type SplitTransactionData,
     toCreateTransactionInput,
@@ -116,6 +117,9 @@ export const TransactionSheet = () => {
                 (transaction) => transaction.splitType === 'child',
             ),
         [splitGroupTransactions],
+    );
+    const splitParentTransaction = splitGroupTransactions.find(
+        (transaction) => transaction.splitType === 'parent',
     );
     const canReconcileQuery = useCanReconcile(id);
     const editMutation = useEditTransaction(id);
@@ -304,23 +308,6 @@ export const TransactionSheet = () => {
 
     const displayStatus = isSplitParent ? derivedStatus : currentStatus;
 
-    const splitCustomers = useMemo(() => {
-        const customers = new Set<string>();
-        for (const child of splitChildren) {
-            const name = child.payeeCustomerName || child.payee;
-            if (name) customers.add(name);
-        }
-        return [...customers];
-    }, [splitChildren]);
-
-    const splitCustomerLabel = splitCustomers.length
-        ? `${splitCustomers[0]}${
-              splitCustomers.length > 1
-                  ? ` +${splitCustomers.length - 1} more`
-                  : ''
-          }`
-        : '—';
-
     const totalSplitAmount = useMemo(
         () =>
             splitChildren.reduce((sum, child) => sum + (child.amount ?? 0), 0),
@@ -394,10 +381,6 @@ export const TransactionSheet = () => {
 
     const formatStatusLabel = (status?: string | null) =>
         status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending';
-
-    const transactionDateLabel = transactionQuery.data?.date
-        ? new Date(transactionQuery.data.date).toLocaleDateString()
-        : '—';
 
     const splitCreatedAt = useMemo(() => {
         if (!statusHistoryQuery.data || statusHistoryQuery.data.length === 0) {
@@ -742,135 +725,16 @@ export const TransactionSheet = () => {
                                             onCreateCustomer={onCreateCustomer}
                                         />
                                     ) : isSplitParent ? (
-                                        <div className="space-y-4">
-                                            <div className="rounded-md border p-3 space-y-3">
-                                                <div className="text-sm font-semibold">
-                                                    Split summary
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    This parent only groups
-                                                    split parts. Edit parts to
-                                                    update amounts, accounts,
-                                                    tags, status, and documents.
-                                                </div>
-                                                <div className="grid gap-2 text-sm">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-muted-foreground">
-                                                            Date
-                                                        </span>
-                                                        <span>
-                                                            {
-                                                                transactionDateLabel
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-muted-foreground">
-                                                            Status
-                                                        </span>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={
-                                                                statusColors[
-                                                                    displayStatus
-                                                                ] || ''
-                                                            }
-                                                        >
-                                                            {formatStatusLabel(
-                                                                displayStatus,
-                                                            )}
-                                                        </Badge>
-                                                    </div>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-muted-foreground">
-                                                            Customers
-                                                        </span>
-                                                        <span>
-                                                            {splitCustomerLabel}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-muted-foreground">
-                                                            Total amount
-                                                        </span>
-                                                        <span>
-                                                            {formatCurrency(
-                                                                totalSplitAmount,
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-muted-foreground">
-                                                            Parts
-                                                        </span>
-                                                        <span>
-                                                            {
-                                                                splitChildren.length
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2 rounded-md border p-3">
-                                                <div className="text-sm font-semibold">
-                                                    Split parts
-                                                </div>
-                                                {splitChildren.length === 0 ? (
-                                                    <div className="text-sm text-muted-foreground">
-                                                        No parts found for this
-                                                        split group.
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-2 text-sm">
-                                                        {splitChildren.map(
-                                                            (child) => (
-                                                                <div
-                                                                    key={
-                                                                        child.id
-                                                                    }
-                                                                    className="flex items-center justify-between gap-3 rounded bg-muted/40 px-2 py-1"
-                                                                >
-                                                                    <div>
-                                                                        <div className="font-medium">
-                                                                            {child.payeeCustomerName ||
-                                                                                child.payee ||
-                                                                                'Untitled'}
-                                                                        </div>
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            {formatStatusLabel(
-                                                                                child.status ??
-                                                                                    'pending',
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            {formatCurrency(
-                                                                                child.amount ??
-                                                                                    0,
-                                                                            )}
-                                                                        </span>
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outlined"
-                                                                            size="sm"
-                                                                            onClick={() =>
-                                                                                onOpenTransaction(
-                                                                                    child.id,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            Open
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                        <SplitTransactionSummary
+                                            transaction={transactionQuery.data}
+                                            parts={splitChildren}
+                                            status={displayStatus}
+                                            totalAmount={totalSplitAmount}
+                                            currentTransactionId={id}
+                                            onOpenTransaction={
+                                                onOpenTransaction
+                                            }
+                                        />
                                     ) : (
                                         <>
                                             <UnifiedEditTransactionForm
@@ -897,46 +761,28 @@ export const TransactionSheet = () => {
                                                 }
                                             />
 
-                                            {splitGroupQuery.data &&
-                                                splitGroupQuery.data.length >
+                                            {transactionQuery.data
+                                                ?.splitGroupId &&
+                                                splitGroupTransactions.length >
                                                     0 && (
-                                                    <div className="space-y-2 rounded-md border p-3">
-                                                        <div className="text-sm font-semibold">
-                                                            Split group
-                                                        </div>
-                                                        <div className="space-y-1 text-sm">
-                                                            {splitGroupQuery.data.map(
-                                                                (split) => (
-                                                                    <div
-                                                                        key={
-                                                                            split.id
-                                                                        }
-                                                                        className="flex items-center justify-between rounded bg-muted/40 px-2 py-1"
-                                                                    >
-                                                                        <div>
-                                                                            <div className="font-medium">
-                                                                                {split.splitType ===
-                                                                                'parent'
-                                                                                    ? 'Parent'
-                                                                                    : 'Child'}
-                                                                            </div>
-                                                                            <div className="text-xs text-muted-foreground">
-                                                                                {split.payeeCustomerName ||
-                                                                                    split.payee ||
-                                                                                    ''}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            {formatCurrency(
-                                                                                split.amount ??
-                                                                                    0,
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                    <SplitTransactionSummary
+                                                        transaction={
+                                                            splitParentTransaction ??
+                                                            transactionQuery.data
+                                                        }
+                                                        parts={splitChildren}
+                                                        status={derivedStatus}
+                                                        totalAmount={
+                                                            totalSplitAmount
+                                                        }
+                                                        currentTransactionId={
+                                                            transactionQuery
+                                                                .data.id
+                                                        }
+                                                        onOpenTransaction={
+                                                            onOpenTransaction
+                                                        }
+                                                    />
                                                 )}
 
                                             {/* Duplicate button */}
