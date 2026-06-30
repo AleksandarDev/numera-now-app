@@ -49,6 +49,7 @@ export type TransactionDocumentCountTarget = {
 };
 
 export type TransactionDocumentReference = {
+    documentId?: string | null;
     transactionId?: string | null;
     documentTypeId: string;
 };
@@ -80,8 +81,9 @@ export const buildTransactionDocumentCounts = (
     }
 
     const documentCounts = new Map<string, TransactionDocumentCount>();
+    const seenDocumentsByTarget = new Map<string, Set<string>>();
 
-    for (const document of documents) {
+    for (const [index, document] of documents.entries()) {
         if (!document.transactionId) continue;
 
         const attachedTransaction = transactionById.get(document.transactionId);
@@ -94,6 +96,13 @@ export const buildTransactionDocumentCounts = (
             : [attachedTransaction.id];
 
         for (const targetId of targetIds) {
+            const documentKey = document.documentId ?? `reference_${index}`;
+            const seenDocuments =
+                seenDocumentsByTarget.get(targetId) ?? new Set<string>();
+            if (seenDocuments.has(documentKey)) continue;
+            seenDocuments.add(documentKey);
+            seenDocumentsByTarget.set(targetId, seenDocuments);
+
             const existing = documentCounts.get(targetId) ?? {
                 total: 0,
                 requiredTypes: [],

@@ -8,6 +8,7 @@ import {
     pgTable,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -320,7 +321,33 @@ export const documents = pgTable(
     ],
 );
 
-export const documentRelations = relations(documents, ({ one }) => ({
+export const documentTransactionLinks = pgTable(
+    'document_transaction_links',
+    {
+        id: text('id').primaryKey(),
+        documentId: text('document_id')
+            .notNull()
+            .references(() => documents.id, { onDelete: 'cascade' }),
+        transactionId: text('transaction_id')
+            .notNull()
+            .references(() => transactions.id, { onDelete: 'cascade' }),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('document_transaction_links_unique_idx').on(
+            table.documentId,
+            table.transactionId,
+        ),
+        index('document_transaction_links_documentid_idx').on(table.documentId),
+        index('document_transaction_links_transactionid_idx').on(
+            table.transactionId,
+        ),
+    ],
+);
+
+export const documentRelations = relations(documents, ({ one, many }) => ({
     documentType: one(documentTypes, {
         fields: [documents.documentTypeId],
         references: [documentTypes.id],
@@ -330,7 +357,22 @@ export const documentRelations = relations(documents, ({ one }) => ({
         references: [transactions.id],
         relationName: 'documents',
     }),
+    transactionLinks: many(documentTransactionLinks),
 }));
+
+export const documentTransactionLinksRelations = relations(
+    documentTransactionLinks,
+    ({ one }) => ({
+        document: one(documents, {
+            fields: [documentTransactionLinks.documentId],
+            references: [documents.id],
+        }),
+        transaction: one(transactions, {
+            fields: [documentTransactionLinks.transactionId],
+            references: [transactions.id],
+        }),
+    }),
+);
 
 export const insertDocumentSchema = createInsertSchema(documents);
 
@@ -429,6 +471,7 @@ export const transactionsRelations = relations(
         documents: many(documents, {
             relationName: 'documents',
         }),
+        documentLinks: many(documentTransactionLinks),
         transactionTags: many(transactionTags),
     }),
 );

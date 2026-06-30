@@ -21,7 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useGetUnattachedDocuments } from '@/features/documents/api/use-get-unattached-documents';
+import { useGetAllDocuments } from '@/features/documents/api/use-get-all-documents';
 import { useLinkDocumentToTransaction } from '@/features/documents/api/use-link-document-to-transaction';
 import {
     useDeleteDocument,
@@ -383,10 +383,20 @@ interface UnattachedDocumentsProps {
 }
 
 function UnattachedDocuments({ transactionId }: UnattachedDocumentsProps) {
-    const { data: unattachedDocs, isLoading } = useGetUnattachedDocuments();
+    const { data: documents, isLoading } = useGetAllDocuments();
     const { data: documentTypes = [] } = useGetDocumentTypes();
     const linkDocument = useLinkDocumentToTransaction();
     const queryClient = useQueryClient();
+    const availableDocuments = [
+        ...new Map(
+            (documents ?? [])
+                .filter(
+                    (doc) =>
+                        !(doc.transactionIds ?? []).includes(transactionId),
+                )
+                .map((doc) => [doc.id, doc]),
+        ).values(),
+    ];
 
     const handleLink = async (documentId: string) => {
         try {
@@ -409,7 +419,7 @@ function UnattachedDocuments({ transactionId }: UnattachedDocumentsProps) {
         );
     }
 
-    if (!unattachedDocs || unattachedDocs.length === 0) {
+    if (availableDocuments.length === 0) {
         return null;
     }
 
@@ -419,12 +429,12 @@ function UnattachedDocuments({ transactionId }: UnattachedDocumentsProps) {
                 Link Existing Document
             </h4>
             <p className="text-xs text-muted-foreground">
-                You have {unattachedDocs.length} unattached document
-                {unattachedDocs.length > 1 ? 's' : ''} that can be linked to
+                You have {availableDocuments.length} document
+                {availableDocuments.length > 1 ? 's' : ''} that can be linked to
                 this transaction.
             </p>
             <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {unattachedDocs.map((doc) => (
+                {availableDocuments.map((doc) => (
                     <div
                         key={doc.id}
                         className="flex items-center justify-between rounded-lg border bg-card p-2 text-sm"

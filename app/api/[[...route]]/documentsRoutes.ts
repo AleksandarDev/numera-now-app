@@ -6,7 +6,13 @@ import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 
 import { db } from '@/db/drizzle';
-import { accounts, documents, documentTypes, transactions } from '@/db/schema';
+import {
+    accounts,
+    documents,
+    documentTransactionLinks,
+    documentTypes,
+    transactions,
+} from '@/db/schema';
 import { writeAuditEvent } from '@/lib/audit';
 import {
     deleteDocument,
@@ -114,6 +120,38 @@ const getDocumentTransactionIds = async (
         : [transaction.id];
 };
 
+const createDocumentTransactionLink = async ({
+    documentId,
+    transactionId,
+}: {
+    documentId: string;
+    transactionId: string;
+}) => {
+    await db
+        .insert(documentTransactionLinks)
+        .values({
+            id: createId(),
+            documentId,
+            transactionId,
+        })
+        .onConflictDoNothing({
+            target: [
+                documentTransactionLinks.documentId,
+                documentTransactionLinks.transactionId,
+            ],
+        });
+};
+
+const getDocumentPrimaryTransactionId = async (documentId: string) => {
+    const [link] = await db
+        .select({ transactionId: documentTransactionLinks.transactionId })
+        .from(documentTransactionLinks)
+        .where(eq(documentTransactionLinks.documentId, documentId))
+        .limit(1);
+
+    return link?.transactionId ?? null;
+};
+
 const documentLifecycleSchema = z.object({
     reason: z.string().max(500).optional(),
 });
@@ -193,6 +231,21 @@ const getAuthorizedDocument = async ({
             userId,
         );
         return transaction ? doc : null;
+    }
+
+    const linkedTransactions = await db
+        .select({ transactionId: documentTransactionLinks.transactionId })
+        .from(documentTransactionLinks)
+        .where(eq(documentTransactionLinks.documentId, doc.id));
+
+    for (const linkedTransaction of linkedTransactions) {
+        const transaction = await getAuthorizedTransaction(
+            linkedTransaction.transactionId,
+            userId,
+        );
+        if (transaction) {
+            return doc;
+        }
     }
 
     return null;
@@ -351,7 +404,7 @@ const app = new Hono()
             transaction,
             auth.userId,
         );
-        const data = await db
+        const legacyDocuments = await db
             .select({
                 id: documents.id,
                 fileName: documents.fileName,
@@ -381,9 +434,54 @@ const app = new Hono()
                     documentDeletedFilter(deleted),
                 ),
             );
+        const linkedDocuments = await db
+            .select({
+                id: documents.id,
+                fileName: documents.fileName,
+                fileSize: documents.fileSize,
+                mimeType: documents.mimeType,
+                documentTypeId: documents.documentTypeId,
+                documentTypeName: documentTypes.name,
+                uploadedBy: documents.uploadedBy,
+                uploadedAt: documents.uploadedAt,
+                storagePath: documents.storagePath,
+                isDeleted: documents.isDeleted,
+                deletedAt: documents.deletedAt,
+                deletedBy: documents.deletedBy,
+                deleteReason: documents.deleteReason,
+                restoredAt: documents.restoredAt,
+                restoredBy: documents.restoredBy,
+                restoreReason: documents.restoreReason,
+            })
+            .from(documentTransactionLinks)
+            .innerJoin(
+                documents,
+                eq(documentTransactionLinks.documentId, documents.id),
+            )
+            .leftJoin(
+                documentTypes,
+                eq(documents.documentTypeId, documentTypes.id),
+            )
+            .where(
+                and(
+                    inArray(
+                        documentTransactionLinks.transactionId,
+                        documentTransactionIds,
+                    ),
+                    documentDeletedFilter(deleted),
+                ),
+            );
 
         // Generate download URLs
-        const documentsWithUrls = data.map((doc) => ({
+        const documentsById = new Map<
+            string,
+            (typeof legacyDocuments | typeof linkedDocuments)[number]
+        >();
+        for (const doc of [...legacyDocuments, ...linkedDocuments]) {
+            documentsById.set(doc.id, doc);
+        }
+
+        const documentsWithUrls = [...documentsById.values()].map((doc) => ({
             ...doc,
             downloadUrl: generateDownloadUrl(doc.storagePath),
         }));
@@ -545,6 +643,11 @@ const app = new Hono()
                         uploadedBy: auth.userId,
                     })
                     .returning();
+
+                await createDocumentTransactionLink({
+                    documentId: data.id,
+                    transactionId,
+                });
 
                 await writeDocumentAuditEvent({
                     action: 'create',
@@ -983,15 +1086,6 @@ const app = new Hono()
                     return ctx.json({ error: 'Document not found.' }, 404);
                 }
 
-                if (doc.transactionId) {
-                    return ctx.json(
-                        {
-                            error: 'Document is already attached to a transaction.',
-                        },
-                        400,
-                    );
-                }
-
                 // Verify transaction belongs to user
                 const transaction = await getAuthorizedTransaction(
                     transactionId,
@@ -1002,12 +1096,18 @@ const app = new Hono()
                     return ctx.json({ error: 'Transaction not found.' }, 404);
                 }
 
-                // Link the document to the transaction
-                const [updatedDoc] = await db
-                    .update(documents)
-                    .set({ transactionId })
-                    .where(eq(documents.id, id))
-                    .returning();
+                await createDocumentTransactionLink({
+                    documentId: id,
+                    transactionId,
+                });
+
+                const [updatedDoc] = doc.transactionId
+                    ? [doc]
+                    : await db
+                          .update(documents)
+                          .set({ transactionId })
+                          .where(eq(documents.id, id))
+                          .returning();
 
                 await writeDocumentAuditEvent({
                     action: 'link',
@@ -1053,16 +1153,67 @@ const app = new Hono()
                     return ctx.json({ error: 'Document not found.' }, 404);
                 }
 
-                if (!doc.transactionId) {
+                const links = await db
+                    .select()
+                    .from(documentTransactionLinks)
+                    .where(eq(documentTransactionLinks.documentId, id));
+
+                if (!doc.transactionId && links.length === 0) {
                     return ctx.json(
                         { error: 'Document is not attached to a transaction.' },
                         400,
                     );
                 }
 
+                const payload = z
+                    .object({ transactionId: z.string().optional() })
+                    .safeParse(await readJsonPayload(ctx));
+                const transactionId = payload.success
+                    ? payload.data.transactionId
+                    : undefined;
+
+                if (transactionId) {
+                    const transaction = await getAuthorizedTransaction(
+                        transactionId,
+                        auth.userId,
+                    );
+
+                    if (!transaction) {
+                        return ctx.json(
+                            { error: 'Transaction not found.' },
+                            404,
+                        );
+                    }
+
+                    await db
+                        .delete(documentTransactionLinks)
+                        .where(
+                            and(
+                                eq(documentTransactionLinks.documentId, id),
+                                eq(
+                                    documentTransactionLinks.transactionId,
+                                    transactionId,
+                                ),
+                            ),
+                        );
+                } else {
+                    await db
+                        .delete(documentTransactionLinks)
+                        .where(eq(documentTransactionLinks.documentId, id));
+                }
+
+                const nextPrimaryTransactionId = transactionId
+                    ? await getDocumentPrimaryTransactionId(id)
+                    : null;
                 const [updatedDoc] = await db
                     .update(documents)
-                    .set({ transactionId: null })
+                    .set({
+                        transactionId:
+                            !transactionId ||
+                            doc.transactionId === transactionId
+                                ? nextPrimaryTransactionId
+                                : doc.transactionId,
+                    })
                     .where(eq(documents.id, id))
                     .returning();
 

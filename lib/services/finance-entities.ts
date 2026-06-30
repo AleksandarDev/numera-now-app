@@ -22,6 +22,7 @@ import {
     customerIbans,
     customers,
     documents,
+    documentTransactionLinks,
     documentTypes,
     settings,
     tags,
@@ -501,7 +502,13 @@ export const listDocuments = async (
     }
 
     if (input.unattached) {
-        conditions.push(isNull(documents.transactionId));
+        const unattachedFilter = and(
+            isNull(documents.transactionId),
+            isNull(documentTransactionLinks.id),
+        );
+        if (unattachedFilter) {
+            conditions.push(unattachedFilter);
+        }
     }
 
     const query = database
@@ -512,7 +519,9 @@ export const listDocuments = async (
             mimeType: documents.mimeType,
             documentTypeId: documents.documentTypeId,
             documentTypeName: documentTypes.name,
-            transactionId: documents.transactionId,
+            transactionId: sql<
+                string | null
+            >`coalesce(${documentTransactionLinks.transactionId}, ${documents.transactionId})`,
             uploadedBy: documents.uploadedBy,
             uploadedAt: documents.uploadedAt,
             storagePath: documents.storagePath,
@@ -528,18 +537,54 @@ export const listDocuments = async (
         })
         .from(documents)
         .leftJoin(documentTypes, eq(documents.documentTypeId, documentTypes.id))
-        .leftJoin(transactions, eq(documents.transactionId, transactions.id))
+        .leftJoin(
+            documentTransactionLinks,
+            eq(documentTransactionLinks.documentId, documents.id),
+        )
+        .leftJoin(
+            transactions,
+            eq(
+                transactions.id,
+                sql`coalesce(${documentTransactionLinks.transactionId}, ${documents.transactionId})`,
+            ),
+        )
         .where(and(...conditions))
         .orderBy(desc(documents.uploadedAt))
         .$dynamic();
 
     const data = await applyLimitOffset(query, input);
+    const documentsById = new Map<
+        string,
+        (typeof data)[number] & {
+            transactionIds: string[];
+            transactionCount: number;
+        }
+    >();
 
-    if (input.includeDownloadUrl === false) {
-        return data;
+    for (const document of data) {
+        const existing = documentsById.get(document.id);
+        const transactionIds = existing?.transactionIds ?? [];
+        if (
+            document.transactionId &&
+            !transactionIds.includes(document.transactionId)
+        ) {
+            transactionIds.push(document.transactionId);
+        }
+
+        documentsById.set(document.id, {
+            ...(existing ?? document),
+            transactionIds,
+            transactionCount: transactionIds.length,
+        });
     }
 
-    return data.map((document) => ({
+    const aggregatedDocuments = [...documentsById.values()];
+
+    if (input.includeDownloadUrl === false) {
+        return aggregatedDocuments;
+    }
+
+    return aggregatedDocuments.map((document) => ({
         ...document,
         downloadUrl: generateDownloadUrl(document.storagePath),
     }));
@@ -735,6 +780,7 @@ export const listTransactions = async (
         ];
         const docsData = await database
             .select({
+                documentId: documents.id,
                 transactionId: documents.transactionId,
                 documentTypeId: documents.documentTypeId,
             })
@@ -745,10 +791,30 @@ export const listTransactions = async (
                     eq(documents.isDeleted, false),
                 ),
             );
+        const linkedDocsData = await database
+            .select({
+                documentId: documents.id,
+                transactionId: documentTransactionLinks.transactionId,
+                documentTypeId: documents.documentTypeId,
+            })
+            .from(documentTransactionLinks)
+            .innerJoin(
+                documents,
+                eq(documentTransactionLinks.documentId, documents.id),
+            )
+            .where(
+                and(
+                    inArray(
+                        documentTransactionLinks.transactionId,
+                        documentTransactionIds,
+                    ),
+                    eq(documents.isDeleted, false),
+                ),
+            );
 
         documentCounts = buildTransactionDocumentCounts(
             documentCountTargets,
-            docsData,
+            [...docsData, ...linkedDocsData],
             requiredDocTypeIds,
         );
     }

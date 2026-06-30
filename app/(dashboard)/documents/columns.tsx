@@ -122,6 +122,15 @@ export const getColumns = ({
         header: 'Transaction',
         cell: ({ row }) => {
             const doc = row.original;
+            if ((doc.transactionCount ?? 0) > 1) {
+                return (
+                    <div className="flex items-center text-sm">
+                        <Link2 className="mr-1 h-3 w-3" />
+                        {doc.transactionCount} transactions
+                    </div>
+                );
+            }
+
             return (
                 <div className="flex items-center">
                     {doc.transactionId ? (

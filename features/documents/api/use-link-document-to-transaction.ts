@@ -30,11 +30,12 @@ export const useLinkDocumentToTransaction = () => {
 
             return await response.json();
         },
-        onSuccess: (_, variables) => {
+        onSuccess: () => {
             toast.success('Document linked to transaction');
             queryClient.invalidateQueries({ queryKey: ['all-documents'] });
+            queryClient.invalidateQueries({ queryKey: ['documents'] });
             queryClient.invalidateQueries({
-                queryKey: ['documents', variables.transactionId],
+                queryKey: ['unattached-documents'],
             });
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
         },

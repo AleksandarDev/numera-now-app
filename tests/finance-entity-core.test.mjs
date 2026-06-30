@@ -67,9 +67,21 @@ test('document counts apply split group documents to every group member', () => 
             { id: 'solo_1', splitGroupId: null },
         ],
         [
-            { transactionId: 'parent_1', documentTypeId: 'invoice' },
-            { transactionId: 'child_1', documentTypeId: 'receipt' },
-            { transactionId: 'solo_1', documentTypeId: 'receipt' },
+            {
+                documentId: 'document_1',
+                transactionId: 'parent_1',
+                documentTypeId: 'invoice',
+            },
+            {
+                documentId: 'document_2',
+                transactionId: 'child_1',
+                documentTypeId: 'receipt',
+            },
+            {
+                documentId: 'document_3',
+                transactionId: 'solo_1',
+                documentTypeId: 'receipt',
+            },
         ],
         ['invoice', 'receipt'],
     );
@@ -87,6 +99,42 @@ test('document counts apply split group documents to every group member', () => 
         requiredTypes: ['invoice', 'receipt'],
     });
     assert.deepEqual(counts.get('solo_1'), {
+        total: 1,
+        requiredTypes: ['receipt'],
+    });
+});
+
+test('document counts dedupe one document linked to multiple split members', () => {
+    const counts = buildTransactionDocumentCounts(
+        [
+            { id: 'parent_1', splitGroupId: 'split_1' },
+            { id: 'child_1', splitGroupId: 'split_1' },
+            { id: 'child_2', splitGroupId: 'split_1' },
+        ],
+        [
+            {
+                documentId: 'document_1',
+                transactionId: 'child_1',
+                documentTypeId: 'receipt',
+            },
+            {
+                documentId: 'document_1',
+                transactionId: 'child_2',
+                documentTypeId: 'receipt',
+            },
+        ],
+        ['receipt'],
+    );
+
+    assert.deepEqual(counts.get('parent_1'), {
+        total: 1,
+        requiredTypes: ['receipt'],
+    });
+    assert.deepEqual(counts.get('child_1'), {
+        total: 1,
+        requiredTypes: ['receipt'],
+    });
+    assert.deepEqual(counts.get('child_2'), {
         total: 1,
         requiredTypes: ['receipt'],
     });
