@@ -2,13 +2,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { client } from '@/lib/hono';
 import {
+    type ParsedInvoice,
     parseInvoiceZip,
     type ZipInvoiceEntry,
 } from '@/lib/invoice-xml-parser';
 import { convertAmountToMiliunits } from '@/lib/utils';
 
+type ImportedInvoiceOutcome = 'created' | 'updated' | 'skipped' | 'failed';
+
 export interface ImportedInvoiceResult {
     success: boolean;
+    outcome: ImportedInvoiceOutcome;
     transactionId?: string;
     invoiceNumber: string;
     error?: string;
@@ -49,6 +53,7 @@ export const useImportInvoiceZip = (
                 if (!entry.invoice) {
                     results.push({
                         success: false,
+                        outcome: 'failed',
                         invoiceNumber: entry.fileName,
                         error: entry.parseError || 'Failed to parse invoice',
                         documentsUploaded: 0,
@@ -66,6 +71,7 @@ export const useImportInvoiceZip = (
                 } catch (error) {
                     results.push({
                         success: false,
+                        outcome: 'failed',
                         invoiceNumber: entry.invoice.invoiceNumber,
                         error:
                             error instanceof Error
@@ -79,28 +85,37 @@ export const useImportInvoiceZip = (
             return results;
         },
         onSuccess: (results) => {
-            const successCount = results.filter((r) => r.success).length;
-            const errorCount = results.filter((r) => !r.success).length;
+            const importedCount = results.filter((result) =>
+                ['created', 'updated'].includes(result.outcome),
+            ).length;
+            const skippedCount = results.filter(
+                (result) => result.outcome === 'skipped',
+            ).length;
+            const errorCount = results.filter(
+                (result) => result.outcome === 'failed',
+            ).length;
 
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
             queryClient.invalidateQueries({ queryKey: ['summary'] });
             queryClient.invalidateQueries({ queryKey: ['documents'] });
 
-            if (successCount > 0 && errorCount === 0) {
+            if (importedCount > 0 && errorCount === 0) {
                 toast.success(
-                    `Successfully imported ${successCount} invoice${successCount > 1 ? 's' : ''}.`,
+                    `Imported ${importedCount} invoice${importedCount > 1 ? 's' : ''}${skippedCount > 0 ? `, skipped ${skippedCount}` : ''}.`,
                 );
-            } else if (successCount > 0 && errorCount > 0) {
+            } else if (importedCount > 0 && errorCount > 0) {
                 toast.warning(
-                    `Imported ${successCount} invoice${successCount > 1 ? 's' : ''}, ${errorCount} failed.`,
+                    `Imported ${importedCount} invoice${importedCount > 1 ? 's' : ''}, ${errorCount} failed.`,
                 );
+            } else if (skippedCount > 0 && errorCount === 0) {
+                toast.info(`Skipped ${skippedCount} matching invoice import.`);
             } else {
                 toast.error('Failed to import any invoices.');
             }
 
             // Open the first successfully created transaction
             const firstSuccess = results.find(
-                (r) => r.success && r.transactionId,
+                (result) => result.success && result.transactionId,
             );
             if (firstSuccess?.transactionId && onOpen) {
                 onOpen(firstSuccess.transactionId, 'documents');
@@ -129,6 +144,7 @@ async function processInvoiceEntry(
     if (!entry.invoice) {
         return {
             success: false,
+            outcome: 'failed',
             invoiceNumber: entry.fileName,
             error: 'No invoice data found',
             documentsUploaded: 0,
@@ -136,11 +152,110 @@ async function processInvoiceEntry(
     }
 
     const invoice = entry.invoice;
+    const importedValues = buildImportedTransactionValues(
+        invoice,
+        creditAccountId,
+        debitAccountId,
+    );
+    const matchingTransaction = await findMatchingTransaction(
+        invoice.issueDate,
+        importedValues.amount,
+    );
 
-    // Create the transaction
-    const amount = convertAmountToMiliunits(invoice.totalAmount);
+    if (matchingTransaction) {
+        const shouldUpdate = window.confirm(
+            [
+                `A transaction already exists for ${formatDateForQuery(invoice.issueDate)} with amount ${invoice.totalAmount.toFixed(2)}.`,
+                '',
+                'Update the existing transaction with invoice details and attach new documents?',
+                '',
+                'Choose Cancel to skip this invoice import.',
+            ].join('\n'),
+        );
 
-    // Build notes from invoice data
+        if (!shouldUpdate) {
+            return {
+                success: false,
+                outcome: 'skipped',
+                transactionId: matchingTransaction.id,
+                invoiceNumber: invoice.invoiceNumber,
+                documentsUploaded: 0,
+            };
+        }
+
+        await updateMatchingTransaction(matchingTransaction, importedValues);
+        const documentsUploaded = await uploadInvoiceAttachments(
+            entry,
+            matchingTransaction.id,
+        );
+
+        return {
+            success: true,
+            outcome: 'updated',
+            transactionId: matchingTransaction.id,
+            invoiceNumber: invoice.invoiceNumber,
+            documentsUploaded,
+        };
+    }
+
+    const transactionResponse = await client.api.transactions.$post({
+        json: importedValues,
+    });
+
+    if (!transactionResponse.ok) {
+        const error = await transactionResponse.json();
+        throw new Error(
+            (error as { error?: string }).error ||
+                'Failed to create transaction.',
+        );
+    }
+
+    const transactionData = await transactionResponse.json();
+    const transactionId = transactionData.data.id;
+
+    const documentsUploaded = await uploadInvoiceAttachments(
+        entry,
+        transactionId,
+    );
+
+    return {
+        success: true,
+        outcome: 'created',
+        transactionId,
+        invoiceNumber: invoice.invoiceNumber,
+        documentsUploaded,
+    };
+}
+
+type ImportedTransactionValues = {
+    date: Date;
+    payee?: string;
+    notes?: string;
+    creditAccountId?: string;
+    debitAccountId?: string;
+    amount: number;
+    status: 'draft';
+};
+
+type MatchingTransaction = {
+    id: string;
+    date: string | Date;
+    payee?: string | null;
+    payeeCustomerId?: string | null;
+    notes?: string | null;
+    accountId?: string | null;
+    creditAccountId?: string | null;
+    debitAccountId?: string | null;
+    amount: number;
+    status?: string | null;
+    splitType?: string | null;
+};
+
+const buildImportedTransactionValues = (
+    invoice: ParsedInvoice,
+    creditAccountId: string | undefined,
+    debitAccountId: string | undefined,
+): ImportedTransactionValues => {
     const noteParts: string[] = [];
     if (invoice.invoiceNumber) {
         noteParts.push(`Invoice #${invoice.invoiceNumber}`);
@@ -158,34 +273,145 @@ async function processInvoiceEntry(
         noteParts.push(invoice.notes);
     }
 
-    // Create transaction
-    const transactionResponse = await client.api.transactions.$post({
-        json: {
-            date: invoice.issueDate,
-            payee: invoice.supplierName || undefined,
-            notes: noteParts.join(' | ') || undefined,
-            creditAccountId: creditAccountId || undefined,
-            debitAccountId: debitAccountId || undefined,
-            amount,
-            status: 'draft',
+    return {
+        date: invoice.issueDate,
+        payee: invoice.supplierName || undefined,
+        notes: noteParts.join(' | ') || undefined,
+        creditAccountId: creditAccountId || undefined,
+        debitAccountId: debitAccountId || undefined,
+        amount: convertAmountToMiliunits(invoice.totalAmount),
+        status: 'draft',
+    };
+};
+
+const formatDateForQuery = (date: Date) => date.toISOString().slice(0, 10);
+
+const findMatchingTransaction = async (
+    date: Date,
+    amount: number,
+): Promise<MatchingTransaction | null> => {
+    const dateQuery = formatDateForQuery(date);
+    const response = await client.api.transactions.$get({
+        query: {
+            from: dateQuery,
+            to: dateQuery,
         },
     });
 
-    if (!transactionResponse.ok) {
-        const error = await transactionResponse.json();
-        throw new Error(
-            (error as { error?: string }).error ||
-                'Failed to create transaction.',
-        );
+    if (!response.ok) {
+        throw new Error('Failed to check for existing matching transactions.');
     }
 
-    const transactionData = await transactionResponse.json();
-    const transactionId = transactionData.data.id;
+    const { data } = await response.json();
+    return (
+        data.find(
+            (transaction) =>
+                transaction.splitType !== 'parent' &&
+                Number(transaction.amount) === amount,
+        ) ?? null
+    );
+};
 
-    // Upload attachments
+const mergeNotes = (
+    existingNotes?: string | null,
+    importedNotes?: string | null,
+) => {
+    if (!importedNotes) {
+        return existingNotes || undefined;
+    }
+
+    if (!existingNotes) {
+        return importedNotes;
+    }
+
+    return existingNotes.includes(importedNotes)
+        ? existingNotes
+        : `${existingNotes} | ${importedNotes}`;
+};
+
+const updateMatchingTransaction = async (
+    transaction: MatchingTransaction,
+    importedValues: ImportedTransactionValues,
+) => {
+    const canUpdateAccounts =
+        transaction.status !== 'completed' &&
+        transaction.status !== 'reconciled';
+    const response = await client.api.transactions[':id'].$patch({
+        param: { id: transaction.id },
+        json: {
+            date: new Date(transaction.date),
+            amount: transaction.amount,
+            status: normalizeTransactionStatus(transaction.status),
+            payeeCustomerId: transaction.payeeCustomerId ?? undefined,
+            payee: transaction.payee || importedValues.payee,
+            notes: mergeNotes(transaction.notes, importedValues.notes),
+            accountId: transaction.accountId ?? undefined,
+            creditAccountId:
+                transaction.creditAccountId ||
+                (canUpdateAccounts
+                    ? importedValues.creditAccountId
+                    : undefined),
+            debitAccountId:
+                transaction.debitAccountId ||
+                (canUpdateAccounts ? importedValues.debitAccountId : undefined),
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(
+            (error as { error?: string }).error ||
+                'Failed to update existing transaction.',
+        );
+    }
+};
+
+const normalizeTransactionStatus = (
+    status?: string | null,
+): 'draft' | 'pending' | 'completed' | 'reconciled' => {
+    if (
+        status === 'draft' ||
+        status === 'pending' ||
+        status === 'completed' ||
+        status === 'reconciled'
+    ) {
+        return status;
+    }
+
+    return 'draft';
+};
+
+const getDocumentKey = (fileName: string, fileSize: number) =>
+    `${fileName}:${fileSize}`;
+
+const getExistingDocumentKeys = async (transactionId: string) => {
+    const response = await client.api.documents.transaction[
+        ':transactionId'
+    ].$get({
+        param: { transactionId },
+    });
+
+    if (!response.ok) {
+        return new Set<string>();
+    }
+
+    const { data } = await response.json();
+    return new Set(
+        data.map((document) =>
+            getDocumentKey(document.fileName, document.fileSize),
+        ),
+    );
+};
+
+const uploadInvoiceAttachments = async (
+    entry: ZipInvoiceEntry,
+    transactionId: string,
+) => {
     let documentsUploaded = 0;
 
     if (entry.attachments.length > 0) {
+        const existingDocumentKeys =
+            await getExistingDocumentKeys(transactionId);
         // Get document types
         const docTypesResponse = await client.api['document-types'].$get();
         let defaultDocTypeId: string | undefined;
@@ -204,6 +430,14 @@ async function processInvoiceEntry(
         if (defaultDocTypeId) {
             for (const attachment of entry.attachments) {
                 try {
+                    const documentKey = getDocumentKey(
+                        attachment.fileName,
+                        attachment.data.size,
+                    );
+                    if (existingDocumentKeys.has(documentKey)) {
+                        continue;
+                    }
+
                     // Create File object from Blob
                     const file = new File(
                         [attachment.data],
@@ -273,6 +507,7 @@ async function processInvoiceEntry(
 
                     if (saveResponse.ok) {
                         documentsUploaded++;
+                        existingDocumentKeys.add(documentKey);
                     }
                 } catch (error) {
                     console.error(
@@ -285,10 +520,5 @@ async function processInvoiceEntry(
         }
     }
 
-    return {
-        success: true,
-        transactionId,
-        invoiceNumber: invoice.invoiceNumber,
-        documentsUploaded,
-    };
-}
+    return documentsUploaded;
+};
