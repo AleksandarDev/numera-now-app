@@ -21,6 +21,7 @@ const formSchema = insertCustomerSchema.omit({
     userId: true,
     id: true,
     isComplete: true,
+    avatarImage: true,
 });
 
 type FormValues = z.input<typeof formSchema>;
@@ -93,6 +94,23 @@ export const CustomerForm = ({
                                 Optional short name displayed in the app instead
                                 of the full name.
                             </FormDescription>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    name="website"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Website</FormLabel>
+                            <FormControl>
+                                <Input
+                                    disabled={disabled}
+                                    placeholder="example.com"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                />
+                            </FormControl>
                         </FormItem>
                     )}
                 />

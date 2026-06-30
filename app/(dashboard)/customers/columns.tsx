@@ -7,9 +7,11 @@ import type { InferResponseType } from 'hono';
 import {
     ArrowUpDown,
     Building2,
+    ExternalLink,
     MoreHorizontal,
     TriangleAlert,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
@@ -99,6 +101,39 @@ const ActionsCell = ({ row }: { row: { original: ResponseType } }) => {
     );
 };
 
+const CustomerAvatar = ({ customer }: { customer: ResponseType }) => {
+    const displayName = customer.friendlyName || customer.name;
+    const initial = displayName.trim().charAt(0).toUpperCase() || '?';
+
+    if (customer.avatarImage) {
+        return (
+            <Image
+                src={customer.avatarImage}
+                alt={`${displayName} favicon`}
+                width={24}
+                height={24}
+                className="size-6 shrink-0 rounded-sm border bg-background object-contain"
+                unoptimized
+            />
+        );
+    }
+
+    return (
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-sm border bg-muted text-xs font-medium text-muted-foreground">
+            {initial}
+        </span>
+    );
+};
+
+const formatWebsiteLabel = (website: string) => {
+    try {
+        const url = new URL(website);
+        return `${url.hostname}${url.pathname === '/' ? '' : url.pathname}`;
+    } catch {
+        return website;
+    }
+};
+
 export const columns: ColumnDef<ResponseType>[] = [
     {
         id: 'select',
@@ -137,24 +172,51 @@ export const columns: ColumnDef<ResponseType>[] = [
             );
         },
         cell: ({ row }) => {
+            const displayName = row.original.friendlyName || row.original.name;
+
             return (
-                <div className="flex items-center gap-2">
-                    {!row.original.isComplete && (
-                        <Badge variant="destructive" className="text-xs">
-                            <TriangleAlert className="size-4 mr-2" />
-                            Incomplete
-                        </Badge>
-                    )}
-                    {row.original.isOwnFirm && (
-                        <Badge variant="secondary" className="text-xs">
-                            <Building2 className="size-4 mr-2" />
-                            Own Firm
-                        </Badge>
-                    )}
-                    <span>
-                        {row.original.friendlyName || row.getValue('name')}
-                    </span>
+                <div className="flex min-w-0 items-center gap-3">
+                    <CustomerAvatar customer={row.original} />
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {!row.original.isComplete && (
+                            <Badge variant="destructive" className="text-xs">
+                                <TriangleAlert className="size-4 mr-2" />
+                                Incomplete
+                            </Badge>
+                        )}
+                        {row.original.isOwnFirm && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Building2 className="size-4 mr-2" />
+                                Own Firm
+                            </Badge>
+                        )}
+                        <span className="truncate">{displayName}</span>
+                    </div>
                 </div>
+            );
+        },
+    },
+    {
+        accessorKey: 'website',
+        header: 'Website',
+        cell: ({ row }) => {
+            const website = row.getValue('website') as string | null;
+            if (!website) {
+                return <div>-</div>;
+            }
+
+            return (
+                <a
+                    href={website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex max-w-48 items-center gap-1 truncate text-sm text-blue-600 hover:underline"
+                >
+                    <span className="truncate">
+                        {formatWebsiteLabel(website)}
+                    </span>
+                    <ExternalLink className="size-3 shrink-0" />
+                </a>
             );
         },
     },

@@ -1,6 +1,8 @@
 export const CUSTOMER_PROFILE_REVERT_FIELDS = [
     'name',
     'friendlyName',
+    'website',
+    'avatarImage',
     'vatNumber',
     'address',
     'contactEmail',
