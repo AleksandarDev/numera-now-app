@@ -94,7 +94,7 @@ export const useGetTransactions = () => {
              * @returns A summary object containing:
              *   - status: The lowest status among all children (draft < pending < completed < reconciled)
              *   - tags: Unique tags collected from all children
-             *   - documentCount: Total count of documents across all children
+             *   - documentCount: Effective document count for the split group
              *   - hasAllRequiredDocuments: True only if all children have required documents
              *   - creditAccounts/debitAccounts/singleAccounts: Unique accounts aggregated from children
              *   - customers: Unique customer names from all children
@@ -150,7 +150,10 @@ export const useGetTransactions = () => {
                         }
                     }
 
-                    documentCount += child.documentCount ?? 0;
+                    documentCount = Math.max(
+                        documentCount,
+                        child.documentCount ?? 0,
+                    );
                     hasAllRequiredDocuments =
                         hasAllRequiredDocuments &&
                         (child.hasAllRequiredDocuments ?? true);

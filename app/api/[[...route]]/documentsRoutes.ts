@@ -1,7 +1,7 @@
 import { clerkMiddleware, getAuth } from '@hono/clerk-auth';
 import { zValidator } from '@hono/zod-validator';
 import { createId } from '@paralleldrive/cuid2';
-import { aliasedTable, and, eq, isNull, or } from 'drizzle-orm';
+import { aliasedTable, and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 
@@ -31,7 +31,10 @@ const getAuthorizedTransaction = async (
     const debitAccounts = aliasedTable(accounts, 'debitAccounts');
 
     const [transaction] = await db
-        .select({ id: transactions.id })
+        .select({
+            id: transactions.id,
+            splitGroupId: transactions.splitGroupId,
+        })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.id))
         .leftJoin(
@@ -61,6 +64,54 @@ const getAuthorizedTransaction = async (
         );
 
     return transaction;
+};
+
+const getDocumentTransactionIds = async (
+    transaction: NonNullable<
+        Awaited<ReturnType<typeof getAuthorizedTransaction>>
+    >,
+    userId: string,
+) => {
+    if (!transaction.splitGroupId) {
+        return [transaction.id];
+    }
+
+    const creditAccounts = aliasedTable(accounts, 'documentCreditAccounts');
+    const debitAccounts = aliasedTable(accounts, 'documentDebitAccounts');
+
+    const splitGroupMembers = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .leftJoin(
+            creditAccounts,
+            eq(transactions.creditAccountId, creditAccounts.id),
+        )
+        .leftJoin(
+            debitAccounts,
+            eq(transactions.debitAccountId, debitAccounts.id),
+        )
+        .where(
+            and(
+                eq(transactions.splitGroupId, transaction.splitGroupId),
+                or(
+                    eq(accounts.userId, userId),
+                    eq(creditAccounts.userId, userId),
+                    eq(debitAccounts.userId, userId),
+                    and(
+                        isNull(transactions.accountId),
+                        isNull(transactions.creditAccountId),
+                        isNull(transactions.debitAccountId),
+                        eq(transactions.statusChangedBy, userId),
+                    ),
+                ),
+                isNull(transactions.deletedAt),
+            ),
+        );
+
+    return splitGroupMembers.length > 0
+        ? splitGroupMembers.map((member) => member.id)
+        : [transaction.id];
 };
 
 const documentLifecycleSchema = z.object({
@@ -296,6 +347,10 @@ const app = new Hono()
             return ctx.json({ error: 'Transaction not found.' }, 404);
         }
 
+        const documentTransactionIds = await getDocumentTransactionIds(
+            transaction,
+            auth.userId,
+        );
         const data = await db
             .select({
                 id: documents.id,
@@ -322,7 +377,7 @@ const app = new Hono()
             )
             .where(
                 and(
-                    eq(documents.transactionId, transactionId),
+                    inArray(documents.transactionId, documentTransactionIds),
                     documentDeletedFilter(deleted),
                 ),
             );

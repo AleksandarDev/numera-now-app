@@ -31,6 +31,7 @@ import {
 import { normalizeAuditEventSource } from '@/lib/audit-query';
 import { generateDownloadUrl } from '@/lib/azure-storage';
 import {
+    buildTransactionDocumentCounts,
     type DeletedMode,
     escapeLikePattern,
     normalizeEntityDate,
@@ -669,12 +670,69 @@ export const listTransactions = async (
 
     const data = await applyLimitOffset(query, input);
     const transactionIds = data.map((transaction) => transaction.id);
-    const documentCounts: Map<
-        string,
-        { total: number; requiredTypes: string[] }
-    > = new Map();
+    const splitGroupIds = [
+        ...new Set(
+            data
+                .map((transaction) => transaction.splitGroupId)
+                .filter((id): id is string => Boolean(id)),
+        ),
+    ];
+    let documentCountTargets = data.map((transaction) => ({
+        id: transaction.id,
+        splitGroupId: transaction.splitGroupId,
+    }));
+    let documentCounts = buildTransactionDocumentCounts(
+        documentCountTargets,
+        [],
+        requiredDocTypeIds,
+    );
 
     if (transactionIds.length > 0) {
+        if (splitGroupIds.length > 0) {
+            const memberCreditAccounts = aliasedTable(
+                accounts,
+                'memberCreditAccounts',
+            );
+            const memberDebitAccounts = aliasedTable(
+                accounts,
+                'memberDebitAccounts',
+            );
+            const splitGroupMembers = await database
+                .select({
+                    id: transactions.id,
+                    splitGroupId: transactions.splitGroupId,
+                })
+                .from(transactions)
+                .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+                .leftJoin(
+                    memberCreditAccounts,
+                    eq(transactions.creditAccountId, memberCreditAccounts.id),
+                )
+                .leftJoin(
+                    memberDebitAccounts,
+                    eq(transactions.debitAccountId, memberDebitAccounts.id),
+                )
+                .where(
+                    and(
+                        inArray(transactions.splitGroupId, splitGroupIds),
+                        createTransactionAccessFilter(
+                            input.userId,
+                            memberCreditAccounts,
+                            memberDebitAccounts,
+                        ),
+                        transactionDeletedFilter(input.deleted),
+                    ),
+                );
+
+            documentCountTargets = [
+                ...documentCountTargets,
+                ...splitGroupMembers,
+            ];
+        }
+
+        const documentTransactionIds = [
+            ...new Set(documentCountTargets.map((target) => target.id)),
+        ];
         const docsData = await database
             .select({
                 transactionId: documents.transactionId,
@@ -683,27 +741,16 @@ export const listTransactions = async (
             .from(documents)
             .where(
                 and(
-                    inArray(documents.transactionId, transactionIds),
+                    inArray(documents.transactionId, documentTransactionIds),
                     eq(documents.isDeleted, false),
                 ),
             );
 
-        for (const document of docsData) {
-            if (!document.transactionId) continue;
-
-            const existing = documentCounts.get(document.transactionId) ?? {
-                total: 0,
-                requiredTypes: [],
-            };
-            existing.total++;
-            if (
-                requiredDocTypeIds.includes(document.documentTypeId) &&
-                !existing.requiredTypes.includes(document.documentTypeId)
-            ) {
-                existing.requiredTypes.push(document.documentTypeId);
-            }
-            documentCounts.set(document.transactionId, existing);
-        }
+        documentCounts = buildTransactionDocumentCounts(
+            documentCountTargets,
+            docsData,
+            requiredDocTypeIds,
+        );
     }
 
     const transactionTagsMap: Map<
