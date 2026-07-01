@@ -3,6 +3,15 @@ const nextConfig = {
     experimental: {
         // reactCompiler: true
     },
+    async redirects() {
+        return [
+            {
+                source: '/audit',
+                destination: '/settings?section=audit',
+                permanent: false,
+            },
+        ];
+    },
     images: {
         remotePatterns: [
             {
