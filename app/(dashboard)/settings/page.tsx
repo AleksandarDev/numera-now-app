@@ -7,8 +7,15 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@signalco/ui-primitives/Tabs';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import { Loader2, Plus } from 'lucide-react';
+import { parseAsString, useQueryState } from 'nuqs';
 import { Suspense, useState } from 'react';
 import { BankIntegrationCard } from '@/components/bank-integration-card';
 import { CountrySelect } from '@/components/country-select';
@@ -22,12 +29,41 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AccountingPeriodsSettingsCard } from '@/features/accounting-periods/components/accounting-periods-settings-card';
 import { YearClosingWizard } from '@/features/accounting-periods/components/year-closing-wizard';
+import { AuditSettingsSection } from '@/features/audit/components/audit-settings-section';
 import { useGetSettings } from '@/features/settings/api/use-get-settings';
 import { useUpdateSettings } from '@/features/settings/api/use-update-settings';
 import { useBulkDeleteTags } from '@/features/tags/api/use-bulk-delete-tags';
 import { useGetTags } from '@/features/tags/api/use-get-tags';
 import { useNewTag } from '@/features/tags/hooks/use-new-tag';
 import { tagColumns } from './tag-columns';
+
+const settingsSectionValues = [
+    'general',
+    'accounting',
+    'automation',
+    'integrations',
+    'documents',
+    'audit',
+] as const;
+
+type SettingsSection = (typeof settingsSectionValues)[number];
+
+const settingsSections: Array<{
+    value: SettingsSection;
+    label: string;
+}> = [
+    { value: 'general', label: 'General' },
+    { value: 'accounting', label: 'Accounting' },
+    { value: 'automation', label: 'Automation' },
+    { value: 'integrations', label: 'Integrations' },
+    { value: 'documents', label: 'Documents' },
+    { value: 'audit', label: 'Audit' },
+];
+
+const getSettingsSection = (value: string): SettingsSection =>
+    settingsSectionValues.includes(value as SettingsSection)
+        ? (value as SettingsSection)
+        : 'general';
 
 function DoubleEntrySettings() {
     const settingsQuery = useGetSettings();
@@ -200,9 +236,66 @@ function TagsSection() {
     );
 }
 
+function SettingsSections() {
+    const [sectionParam, setSectionParam] = useQueryState(
+        'section',
+        parseAsString.withDefault('general'),
+    );
+    const selectedSection = getSettingsSection(sectionParam);
+
+    const handleSectionChange = (value: string) => {
+        const nextSection = getSettingsSection(value);
+        void setSectionParam(nextSection === 'general' ? null : nextSection);
+    };
+
+    return (
+        <Tabs
+            value={selectedSection}
+            onValueChange={handleSectionChange}
+            className="space-y-4"
+        >
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 lg:inline-flex lg:w-auto">
+                {settingsSections.map((section) => (
+                    <TabsTrigger
+                        key={section.value}
+                        value={section.value}
+                        className="w-full lg:w-auto"
+                    >
+                        {section.label}
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+
+            <TabsContent value="general" className="mt-0 space-y-4">
+                <DefaultCustomerCountrySettings />
+                <TagsSection />
+            </TabsContent>
+            <TabsContent value="accounting" className="mt-0 space-y-4">
+                <DoubleEntrySettings />
+                <AccountingPeriodsSettingsCard />
+            </TabsContent>
+            <TabsContent value="automation" className="mt-0 space-y-4">
+                <TransactionStatusAutomationSettings />
+                <ReconciliationSettingsCard />
+            </TabsContent>
+            <TabsContent value="integrations" className="mt-0 space-y-4">
+                <StripeIntegrationCard />
+                <BankIntegrationCard />
+                <OpenFinancesSettingsCard />
+            </TabsContent>
+            <TabsContent value="documents" className="mt-0 space-y-4">
+                <DocumentTypesSettingsCard />
+            </TabsContent>
+            <TabsContent value="audit" className="mt-0">
+                <AuditSettingsSection />
+            </TabsContent>
+        </Tabs>
+    );
+}
+
 export default function SettingsPage() {
     return (
-        <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10 space-y-4">
+        <div className="mx-auto -mt-12 lg:-mt-24 w-full max-w-screen-2xl pb-10">
             <Suspense
                 fallback={
                     <div className="flex h-[500px] w-full items-center justify-center">
@@ -210,16 +303,7 @@ export default function SettingsPage() {
                     </div>
                 }
             >
-                <DoubleEntrySettings />
-                <TransactionStatusAutomationSettings />
-                <DefaultCustomerCountrySettings />
-                <AccountingPeriodsSettingsCard />
-                <StripeIntegrationCard />
-                <BankIntegrationCard />
-                <OpenFinancesSettingsCard />
-                <DocumentTypesSettingsCard />
-                <ReconciliationSettingsCard />
-                <TagsSection />
+                <SettingsSections />
             </Suspense>
             <YearClosingWizard />
         </div>
