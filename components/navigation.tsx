@@ -5,7 +5,6 @@ import {
     ArrowLeftRight,
     BarChart3,
     FileText,
-    History,
     Landmark,
     LayoutDashboard,
     Menu,
@@ -52,11 +51,6 @@ const routes = [
         icon: Users,
     },
     {
-        href: '/audit',
-        label: 'Audit',
-        icon: History,
-    },
-    {
         href: '/accounts',
         label: 'Accounts',
         icon: Landmark,
@@ -75,6 +69,7 @@ const settingsRoute = {
 };
 
 const mobileRoutes = [routes[0], routes[1]]; // Only show Overview and Transactions on mobile
+const mobileSheetRoutes = [...routes, settingsRoute];
 
 export const Navigation = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -111,7 +106,7 @@ export const Navigation = () => {
                             </SheetDescription>
                         </SheetHeader>
                         <nav className="flex flex-col gap-y-2 pt-6">
-                            {routes.map((route) => (
+                            {mobileSheetRoutes.map((route) => (
                                 <Link
                                     key={route.href}
                                     href={{
