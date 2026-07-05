@@ -25,6 +25,7 @@ import {
 import { validateDateNotInClosedPeriod } from '../accounting-periods.ts';
 import { writeAuditEvent } from '../audit.ts';
 import { verifyStoragePathOwnership } from '../azure-storage.ts';
+import { buildExternalIngestAuditSourceMetadata } from '../external-ingest-controls.ts';
 import { convertAmountToMiliunits } from '../utils.ts';
 
 export type ReceiptInvoiceDocumentKind = 'invoice' | 'receipt';
@@ -47,7 +48,9 @@ export type ReceiptInvoiceSourceContext = {
     actorUserId: string | null;
     actorType: 'user' | 'integration';
     apiKeyId?: string | null;
+    sourceSystem?: string | null;
     externalId?: string | null;
+    ingestEventId?: string | null;
     requestId?: string | null;
 };
 
@@ -651,11 +654,23 @@ const writeIngestionAuditEvent = async ({
         resourceLabel,
         before,
         after,
-        sourceMetadata: {
-            source: sourceContext.source,
-            apiKeyId: sourceContext.apiKeyId ?? null,
-            externalId: sourceContext.externalId ?? null,
-        },
+        sourceMetadata:
+            sourceContext.actorType === 'integration'
+                ? buildExternalIngestAuditSourceMetadata({
+                      apiKeyId: sourceContext.apiKeyId,
+                      sourceSystem: sourceContext.sourceSystem,
+                      externalId: sourceContext.externalId,
+                      ingestEventId: sourceContext.ingestEventId,
+                      requestId: sourceContext.requestId,
+                  })
+                : {
+                      source: sourceContext.source,
+                      apiKeyId: sourceContext.apiKeyId ?? null,
+                      sourceSystem: sourceContext.sourceSystem ?? null,
+                      externalId: sourceContext.externalId ?? null,
+                      ingestEventId: sourceContext.ingestEventId ?? null,
+                      requestId: sourceContext.requestId ?? null,
+                  },
         requestId: sourceContext.requestId ?? null,
     });
 

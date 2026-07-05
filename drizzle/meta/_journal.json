@@ -351,6 +351,13 @@
       "when": 1783251464701,
       "tag": "0049_soft_ma_gnuci",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1783253018231,
+      "tag": "0050_omniscient_glorian",
+      "breakpoints": true
     }
   ]
 }
