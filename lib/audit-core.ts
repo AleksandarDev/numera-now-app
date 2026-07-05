@@ -63,10 +63,16 @@ const sensitiveKeyPatterns = [
     /api[_-]?key/i,
     /access[_-]?token/i,
     /refresh[_-]?token/i,
+    /authorization/i,
     /secret/i,
     /password/i,
     /credential/i,
     /webhook/i,
+    /signed[_-]?url/i,
+    /upload[_-]?url/i,
+    /file[_-]?(body|bytes|content|contents)/i,
+    /content[_-]?base64/i,
+    /raw[_-]?body/i,
 ];
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {

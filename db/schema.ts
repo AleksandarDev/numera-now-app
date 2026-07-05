@@ -289,6 +289,63 @@ export const apiKeys = pgTable(
 
 export const insertApiKeySchema = createInsertSchema(apiKeys);
 
+export const externalIngestIdempotencyRecords = pgTable(
+    'external_ingest_idempotency_records',
+    {
+        id: text('id').primaryKey(),
+        userId: text('user_id').notNull(),
+        apiKeyId: text('api_key_id').notNull(),
+        idempotencyKey: text('idempotency_key').notNull(),
+        method: text('method').notNull(),
+        path: text('path').notNull(),
+        requestHash: text('request_hash').notNull(),
+        sourceSystem: text('source_system'),
+        externalId: text('external_id'),
+        requestId: text('request_id'),
+        status: text('status', {
+            enum: ['processing', 'completed', 'failed'],
+        })
+            .notNull()
+            .default('processing'),
+        responseStatus: integer('response_status'),
+        responseBody: jsonb('response_body'),
+        expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('external_ingest_idempotency_scope_idx').on(
+            table.apiKeyId,
+            table.method,
+            table.path,
+            table.idempotencyKey,
+        ),
+        uniqueIndex('external_ingest_externalid_idx').on(
+            table.userId,
+            table.sourceSystem,
+            table.externalId,
+            table.method,
+            table.path,
+        ),
+        index('external_ingest_userid_idx').on(table.userId),
+        index('external_ingest_apikeyid_idx').on(table.apiKeyId),
+        index('external_ingest_expiresat_idx').on(table.expiresAt),
+        index('external_ingest_requestid_idx').on(table.requestId),
+        check(
+            'external_ingest_status_check',
+            sql`${table.status} in ('processing', 'completed', 'failed')`,
+        ),
+    ],
+);
+
+export const insertExternalIngestIdempotencyRecordSchema = createInsertSchema(
+    externalIngestIdempotencyRecords,
+);
+
 // Document types table - predefined types for documents
 export const documentTypes = pgTable(
     'document_types',

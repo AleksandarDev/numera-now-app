@@ -373,8 +373,16 @@ Semantics:
   the existing ingest result or `409 duplicate_external_id` depending on whether
   the payload is compatible.
 
-Retention for idempotency records is implemented in #163. The contract requires
-retention long enough for normal external retry windows and support debugging.
+Idempotency records are retained for 30 days by default. Deployments may adjust
+that window with `EXTERNAL_INGEST_IDEMPOTENCY_RETENTION_DAYS`. Expired records
+may be deleted after the retention window; the shared DB store deletes expired
+records before reserving new external ingest requests, and scheduled cleanup can
+call the same cleanup helper.
+
+Stored idempotency records contain the idempotency key, request fingerprint,
+source identifiers, status, response status, and response body needed for safe
+retry responses. They must not contain uploaded file bytes, signed upload URLs,
+plaintext API keys, or raw request bodies.
 
 ## Audit and Source Tracking
 
@@ -398,7 +406,11 @@ contents, or full request bodies.
 ## Rate Limiting
 
 External ingest must be rate-limited by API key or authenticated user, not only
-by IP address. Rate-limit responses should include:
+by IP address. The default shared limiter allows 120 requests per API key per
+minute. Deployments may tune this with `EXTERNAL_INGEST_RATE_LIMIT_MAX` and
+`EXTERNAL_INGEST_RATE_LIMIT_WINDOW_MS`.
+
+Rate-limit responses should include:
 
 ```http
 Retry-After: 60
