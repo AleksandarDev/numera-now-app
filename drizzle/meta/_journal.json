@@ -344,6 +344,13 @@
       "when": 1782862223324,
       "tag": "0048_customer_website_favicon",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1783251464701,
+      "tag": "0049_soft_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }
