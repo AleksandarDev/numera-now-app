@@ -257,6 +257,38 @@ export const settings = pgTable(
 
 export const insertSettingsSchema = createInsertSchema(settings);
 
+export const apiKeys = pgTable(
+    'api_keys',
+    {
+        id: text('id').primaryKey(),
+        userId: text('user_id').notNull(),
+        name: text('name').notNull(),
+        keyHash: text('key_hash').notNull(),
+        keyPrefix: text('key_prefix').notNull(),
+        keySuffix: text('key_suffix').notNull(),
+        scopes: jsonb('scopes').$type<string[]>().notNull(),
+        expiresAt: timestamp('expires_at', { mode: 'date' }),
+        revokedAt: timestamp('revoked_at', { mode: 'date' }),
+        lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
+        lastUsedIp: text('last_used_ip'),
+        lastUsedUserAgent: text('last_used_user_agent'),
+        createdAt: timestamp('created_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp('updated_at', { mode: 'date' })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('api_keys_keyhash_idx').on(table.keyHash),
+        index('api_keys_userid_idx').on(table.userId),
+        index('api_keys_revokedat_idx').on(table.revokedAt),
+        index('api_keys_expiresat_idx').on(table.expiresAt),
+    ],
+);
+
+export const insertApiKeySchema = createInsertSchema(apiKeys);
+
 // Document types table - predefined types for documents
 export const documentTypes = pgTable(
     'document_types',

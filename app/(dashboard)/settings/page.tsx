@@ -17,6 +17,7 @@ import type { ColumnFiltersState } from '@tanstack/react-table';
 import { Loader2, Plus } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Suspense, useState } from 'react';
+import { ApiKeysSettingsCard } from '@/components/api-keys-settings-card';
 import { BankIntegrationCard } from '@/components/bank-integration-card';
 import { CountrySelect } from '@/components/country-select';
 import { DataTable } from '@/components/data-table';
@@ -279,6 +280,7 @@ function SettingsSections() {
                 <ReconciliationSettingsCard />
             </TabsContent>
             <TabsContent value="integrations" className="mt-0 space-y-4">
+                <ApiKeysSettingsCard />
                 <StripeIntegrationCard />
                 <BankIntegrationCard />
                 <OpenFinancesSettingsCard />
