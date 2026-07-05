@@ -8,6 +8,7 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 - **Categorize Transactions:** Organize your transactions by categories for better clarity.
 - **Account Management:** Assign transactions to specific accounts.
 - **CSV Import:** Import transactions from CSV files for quick data entry.
+- **External Ingestion API:** Submit receipts and invoices from external systems with API-key authentication.
 - **Open Finances:** Share selected financial metrics publicly with customizable embeddable transparency pages.
 - (Planned) **Bank Integration:** Connect to your bank account using Plaid.
 - (Planned) **Monetization:** Monetize your platform using Lemon Squeezy.
@@ -79,11 +80,15 @@ Welcome to my Finance Platform project! This platform is designed to help you ma
 
    - Share selected financial metrics publicly with an embeddable transparency page. Configure what data to expose from Settings, and embed the page on your website to demonstrate financial transparency. See [Open Finances Documentation](docs/OPEN_FINANCES.md) for details.
 
-6. (Planned) **Bank Integration:**
+6. **External Ingestion API:**
+
+   - Generate API keys from Settings -> Integrations -> API Keys, then submit receipts and invoices through the versioned external API. See [External Ingestion API Documentation](docs/external-ingest-api.md) and the [OpenAPI specification](docs/openapi/external-ingest.json).
+
+7. (Planned) **Bank Integration:**
 
    - Connect your bank account using Plaid to automatically import and sync transactions.
 
-7. (Planned) **Monetization:**
+8. (Planned) **Monetization:**
 
    - Monetize your platform by integrating Lemon Squeezy for payment processing.
 

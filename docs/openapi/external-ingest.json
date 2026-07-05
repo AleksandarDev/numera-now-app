@@ -1,0 +1,982 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Numera External Receipt and Invoice Ingestion API",
+        "version": "1.0.0",
+        "description": "Server-to-server API for creating receipt and invoice draft transactions and attaching uploaded document metadata."
+    },
+    "servers": [
+        {
+            "url": "https://app.example.com/api/external/v1",
+            "description": "Replace app.example.com with your Numera deployment host."
+        },
+        {
+            "url": "/api/external/v1",
+            "description": "Same-origin deployment path."
+        }
+    ],
+    "security": [
+        {
+            "BearerApiKey": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "Uploads",
+            "description": "Create short-lived upload URLs for receipt and invoice files."
+        },
+        {
+            "name": "Ingestion",
+            "description": "Submit receipt and invoice metadata after optional file upload."
+        }
+    ],
+    "paths": {
+        "/uploads": {
+            "post": {
+                "tags": ["Uploads"],
+                "operationId": "createExternalIngestUpload",
+                "summary": "Create an upload URL for an external document file",
+                "description": "Returns a short-lived signed upload URL and an uploadId. Upload the file bytes directly to the URL, then reference uploadId from POST /invoices or POST /receipts. Upload URL responses are not persisted in idempotency records because they contain signed URLs.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XRequestId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadRequest"
+                            },
+                            "examples": {
+                                "pdf": {
+                                    "summary": "PDF invoice file",
+                                    "value": {
+                                        "fileName": "invoice-2026-0001.pdf",
+                                        "mimeType": "application/pdf",
+                                        "fileSize": 482113,
+                                        "sha256": "2f1c1e1c9f5f9b4f9e8c4a3a1f0d6c9d2f1c1e1c9f5f9b4f9e8c4a3a1f0d6c9d"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Upload URL created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/InvalidRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/FileTooLarge"
+                    },
+                    "415": {
+                        "$ref": "#/components/responses/UnsupportedMediaType"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationFailed"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/invoices": {
+            "post": {
+                "tags": ["Ingestion"],
+                "operationId": "ingestInvoice",
+                "summary": "Ingest one external invoice",
+                "description": "Creates, updates, or attaches to a draft transaction using invoice metadata and optional uploaded document references.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    },
+                    {
+                        "$ref": "#/components/parameters/XRequestId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IngestRequest"
+                            },
+                            "examples": {
+                                "invoice": {
+                                    "$ref": "#/components/examples/InvoiceIngestRequest"
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Invoice ingested and a draft transaction was created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IngestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Invoice matched or attached to an existing transaction, or a completed idempotent replay was returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IngestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/InvalidRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/FileTooLarge"
+                    },
+                    "415": {
+                        "$ref": "#/components/responses/UnsupportedMediaType"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationFailed"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        },
+        "/receipts": {
+            "post": {
+                "tags": ["Ingestion"],
+                "operationId": "ingestReceipt",
+                "summary": "Ingest one external receipt",
+                "description": "Creates, updates, or attaches to a draft transaction using receipt metadata and optional uploaded document references.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    },
+                    {
+                        "$ref": "#/components/parameters/XRequestId"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IngestRequest"
+                            },
+                            "examples": {
+                                "receipt": {
+                                    "$ref": "#/components/examples/ReceiptIngestRequest"
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Receipt ingested and a draft transaction was created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IngestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Receipt matched or attached to an existing transaction, or a completed idempotent replay was returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IngestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/InvalidRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/FileTooLarge"
+                    },
+                    "415": {
+                        "$ref": "#/components/responses/UnsupportedMediaType"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationFailed"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/RateLimited"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/InternalError"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerApiKey": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "Numera API key"
+            }
+        },
+        "parameters": {
+            "IdempotencyKey": {
+                "name": "Idempotency-Key",
+                "in": "header",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                },
+                "description": "Unique retry key scoped to API key, HTTP method, and endpoint path."
+            },
+            "XRequestId": {
+                "name": "X-Request-Id",
+                "in": "header",
+                "required": false,
+                "schema": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                },
+                "description": "Optional caller request ID used for audit/support correlation."
+            }
+        },
+        "schemas": {
+            "UploadRequest": {
+                "type": "object",
+                "required": ["fileName", "mimeType", "fileSize"],
+                "additionalProperties": false,
+                "properties": {
+                    "fileName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "mimeType": {
+                        "type": "string",
+                        "enum": [
+                            "application/pdf",
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp",
+                            "application/xml",
+                            "text/xml"
+                        ]
+                    },
+                    "fileSize": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10485760,
+                        "description": "Maximum default file size is 10 MiB unless deployment configuration changes it."
+                    },
+                    "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Optional lowercase SHA-256 hex digest."
+                    }
+                }
+            },
+            "UploadResponse": {
+                "type": "object",
+                "required": ["data"],
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "required": [
+                            "uploadId",
+                            "uploadUrl",
+                            "expiresAt",
+                            "requiredHeaders"
+                        ],
+                        "properties": {
+                            "uploadId": {
+                                "type": "string",
+                                "description": "Opaque upload identifier to pass as attachment.uploadId."
+                            },
+                            "uploadUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "Short-lived signed URL for direct file upload."
+                            },
+                            "expiresAt": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "requiredHeaders": {
+                                "type": "object",
+                                "required": ["x-ms-blob-type", "Content-Type"],
+                                "properties": {
+                                    "x-ms-blob-type": {
+                                        "type": "string",
+                                        "const": "BlockBlob"
+                                    },
+                                    "Content-Type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "IngestRequest": {
+                "type": "object",
+                "required": [
+                    "externalId",
+                    "sourceSystem",
+                    "document",
+                    "transaction"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "externalId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "sourceSystem": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "document": {
+                        "$ref": "#/components/schemas/DocumentInput"
+                    },
+                    "counterparty": {
+                        "$ref": "#/components/schemas/CounterpartyInput"
+                    },
+                    "transaction": {
+                        "$ref": "#/components/schemas/TransactionInput"
+                    },
+                    "matching": {
+                        "$ref": "#/components/schemas/MatchingInput"
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "maxItems": 10,
+                        "items": {
+                            "$ref": "#/components/schemas/AttachmentInput"
+                        },
+                        "default": []
+                    }
+                }
+            },
+            "DocumentInput": {
+                "type": "object",
+                "required": ["issueDate", "totalAmount"],
+                "additionalProperties": false,
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": ["invoice", "receipt"],
+                        "description": "Optional. If present, it must match the endpoint path."
+                    },
+                    "documentTypeId": {
+                        "type": ["string", "null"]
+                    },
+                    "number": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "issueDate": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "dueDate": {
+                        "type": ["string", "null"],
+                        "format": "date",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3,
+                        "default": "EUR"
+                    },
+                    "totalAmount": {
+                        "$ref": "#/components/schemas/PositiveDecimalString"
+                    },
+                    "taxAmount": {
+                        "$ref": "#/components/schemas/NullableDecimalString"
+                    },
+                    "netAmount": {
+                        "$ref": "#/components/schemas/NullableDecimalString"
+                    },
+                    "paymentReference": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "notes": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    }
+                }
+            },
+            "CounterpartyInput": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                    },
+                    "vatNumber": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "iban": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "address": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "country": {
+                        "type": ["string", "null"],
+                        "minLength": 2,
+                        "maxLength": 2
+                    },
+                    "externalId": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "createIfMissing": {
+                        "type": "boolean",
+                        "default": false
+                    }
+                }
+            },
+            "TransactionInput": {
+                "type": "object",
+                "required": ["mode"],
+                "additionalProperties": false,
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "createDraft",
+                            "attachToExisting",
+                            "matchOrCreateDraft"
+                        ]
+                    },
+                    "transactionId": {
+                        "type": ["string", "null"],
+                        "description": "Required when mode is attachToExisting."
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Defaults to document.issueDate when omitted."
+                    },
+                    "amount": {
+                        "$ref": "#/components/schemas/DecimalString"
+                    },
+                    "payee": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "notes": {
+                        "type": ["string", "null"],
+                        "maxLength": 1000
+                    },
+                    "accountId": {
+                        "type": ["string", "null"]
+                    },
+                    "creditAccountId": {
+                        "type": ["string", "null"]
+                    },
+                    "debitAccountId": {
+                        "type": ["string", "null"]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["draft", "pending", "completed", "reconciled"],
+                        "default": "draft"
+                    },
+                    "tagIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "default": []
+                    }
+                }
+            },
+            "MatchingInput": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "strategy": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "dateAmountCounterparty",
+                            "externalId"
+                        ],
+                        "default": "none"
+                    }
+                },
+                "default": {
+                    "strategy": "none"
+                }
+            },
+            "AttachmentInput": {
+                "type": "object",
+                "required": ["uploadId", "fileName", "mimeType", "fileSize"],
+                "additionalProperties": false,
+                "properties": {
+                    "uploadId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The uploadId returned by POST /uploads."
+                    },
+                    "fileName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "mimeType": {
+                        "type": "string",
+                        "enum": [
+                            "application/pdf",
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp",
+                            "application/xml",
+                            "text/xml"
+                        ]
+                    },
+                    "fileSize": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10485760
+                    },
+                    "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "documentTypeId": {
+                        "type": ["string", "null"]
+                    }
+                }
+            },
+            "IngestResponse": {
+                "type": "object",
+                "required": ["data"],
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "required": [
+                            "ingestEventId",
+                            "idempotentReplay",
+                            "outcome",
+                            "transaction",
+                            "documents",
+                            "skippedDuplicateDocuments"
+                        ],
+                        "properties": {
+                            "ingestEventId": {
+                                "type": "string"
+                            },
+                            "idempotentReplay": {
+                                "type": "boolean"
+                            },
+                            "outcome": {
+                                "type": "string",
+                                "enum": ["created", "updated", "attached"]
+                            },
+                            "transaction": {
+                                "$ref": "#/components/schemas/TransactionSummary"
+                            },
+                            "documents": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/DocumentSummary"
+                                }
+                            },
+                            "skippedDuplicateDocuments": {
+                                "type": "integer",
+                                "minimum": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "TransactionSummary": {
+                "type": "object",
+                "required": ["id", "status"],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["draft", "pending", "completed", "reconciled"]
+                    }
+                }
+            },
+            "DocumentSummary": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "fileName",
+                    "mimeType",
+                    "fileSize",
+                    "documentTypeId"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "fileName": {
+                        "type": "string"
+                    },
+                    "mimeType": {
+                        "type": "string"
+                    },
+                    "fileSize": {
+                        "type": "integer"
+                    },
+                    "documentTypeId": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "required": ["error"],
+                "properties": {
+                    "error": {
+                        "type": "object",
+                        "required": ["code", "message"],
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "examples": [
+                                    "invalid_request",
+                                    "validation_failed",
+                                    "idempotency_conflict",
+                                    "duplicate_external_id",
+                                    "rate_limited"
+                                ]
+                            },
+                            "message": {
+                                "type": "string"
+                            },
+                            "requestId": {
+                                "type": ["string", "null"]
+                            },
+                            "details": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/ErrorDetail"
+                                }
+                            },
+                            "retryAfterSeconds": {
+                                "type": "integer",
+                                "minimum": 1
+                            },
+                            "resetAt": {
+                                "type": "string",
+                                "format": "date-time"
+                            }
+                        }
+                    }
+                }
+            },
+            "ErrorDetail": {
+                "type": "object",
+                "required": ["path", "message"],
+                "properties": {
+                    "path": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DecimalString": {
+                "type": "string",
+                "pattern": "^-?\\d+(\\.\\d{1,3})?$",
+                "description": "Decimal string in major currency units. Up to 3 decimal places are accepted and converted to integer miliunits."
+            },
+            "PositiveDecimalString": {
+                "type": "string",
+                "pattern": "^\\d+(\\.\\d{1,3})?$",
+                "description": "Positive decimal string in major currency units."
+            },
+            "NullableDecimalString": {
+                "type": ["string", "null"],
+                "pattern": "^-?\\d+(\\.\\d{1,3})?$"
+            }
+        },
+        "responses": {
+            "InvalidRequest": {
+                "description": "Malformed JSON, missing idempotency key, or endpoint/body mismatch.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "Unauthorized": {
+                "description": "Missing, malformed, expired, revoked, or invalid API key.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "examples": {
+                            "missing": {
+                                "value": {
+                                    "error": {
+                                        "code": "missing_api_key",
+                                        "message": "Missing API key."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "The API key lacks the ingest:write scope.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Referenced transaction, account, document type, or other resource was not found.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "Idempotency key or external ID conflict.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "examples": {
+                            "idempotencyConflict": {
+                                "value": {
+                                    "error": {
+                                        "code": "idempotency_conflict",
+                                        "message": "Idempotency-Key was already used with a different request.",
+                                        "requestId": "req_123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "FileTooLarge": {
+                "description": "File exceeds the configured maximum size.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "UnsupportedMediaType": {
+                "description": "File MIME type is not allowed.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "ValidationFailed": {
+                "description": "Request JSON was syntactically valid but failed field validation.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "RateLimited": {
+                "description": "Per API key or user rate limit exceeded. Response includes Retry-After.",
+                "headers": {
+                    "Retry-After": {
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "description": "Seconds to wait before retrying."
+                    },
+                    "X-RateLimit-Limit": {
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    "X-RateLimit-Remaining": {
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    "X-RateLimit-Reset": {
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Unix epoch seconds when the current window resets."
+                    }
+                },
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "InternalError": {
+                "description": "Unexpected server failure.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "examples": {
+            "InvoiceIngestRequest": {
+                "summary": "Create draft invoice transaction with one uploaded PDF",
+                "value": {
+                    "externalId": "erp-invoice-2026-0001",
+                    "sourceSystem": "acme-erp",
+                    "document": {
+                        "kind": "invoice",
+                        "number": "2026-0001",
+                        "issueDate": "2026-07-05",
+                        "currency": "EUR",
+                        "totalAmount": "125.40",
+                        "paymentReference": "HR00 2026-0001"
+                    },
+                    "counterparty": {
+                        "name": "Example Supplier d.o.o.",
+                        "vatNumber": "HR12345678901",
+                        "createIfMissing": false
+                    },
+                    "transaction": {
+                        "mode": "createDraft",
+                        "payee": "Example Supplier d.o.o."
+                    },
+                    "matching": {
+                        "strategy": "none"
+                    },
+                    "attachments": [
+                        {
+                            "uploadId": "users/user_123/standalone/invoice-2026-0001.pdf",
+                            "fileName": "invoice-2026-0001.pdf",
+                            "mimeType": "application/pdf",
+                            "fileSize": 482113
+                        }
+                    ]
+                }
+            },
+            "ReceiptIngestRequest": {
+                "summary": "Create draft receipt transaction without an attachment",
+                "value": {
+                    "externalId": "pos-receipt-2026-0001",
+                    "sourceSystem": "store-pos",
+                    "document": {
+                        "kind": "receipt",
+                        "number": "R-2026-0001",
+                        "issueDate": "2026-07-05",
+                        "currency": "EUR",
+                        "totalAmount": "18.99"
+                    },
+                    "transaction": {
+                        "mode": "createDraft"
+                    },
+                    "attachments": []
+                }
+            }
+        }
+    }
+}
