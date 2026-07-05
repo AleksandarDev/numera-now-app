@@ -3,7 +3,7 @@ import { type Context, Hono } from 'hono';
 import { handle } from 'hono/vercel';
 
 import { auditMutationMiddleware } from '@/lib/audit-hono';
-
+import { createExternalIngestRedisRateLimitStore } from '@/lib/external-ingest-controls';
 import accountingPeriodsRoutes from './accountingPeriodsRoutes';
 import accountsRoutes from './accountsRoutes';
 import apiKeysRoutes from './apiKeysRoutes';
@@ -13,6 +13,7 @@ import customersRoutes from './customersRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import documentsRoutes from './documentsRoutes';
 import documentTypesRoutes from './documentTypesRoutes';
+import { createExternalIngestRoutes } from './externalIngestRoutes';
 import openFinancesRoutes from './openFinancesRoutes';
 import reportsRoutes from './reportsRoutes';
 import settingsRoutes from './settingsRoutes';
@@ -34,6 +35,11 @@ const redisClient =
     redisUrl && redisToken
         ? new Redis({ url: redisUrl, token: redisToken })
         : null;
+const externalIngestRoutes = createExternalIngestRoutes({
+    rateLimitStore: redisClient
+        ? createExternalIngestRedisRateLimitStore(redisClient)
+        : undefined,
+});
 const inMemoryStore = new Map<string, { count: number; resetAt: number }>();
 
 const getClientKey = (ctx: Context) => {
@@ -103,6 +109,7 @@ const routes = app
     .route('/settings', settingsRoutes)
     .route('/documents', documentsRoutes)
     .route('/document-types', documentTypesRoutes)
+    .route('/external/v1', externalIngestRoutes)
     .route('/stripe', stripeRoutes)
     .route('/banking', bankingRoutes)
     .route('/tags', tagsRoutes)
