@@ -1,12 +1,12 @@
-import type { db } from '../db/drizzle';
-import { auditEvents } from '../db/schema';
+import type { db } from '../db/drizzle.ts';
+import { auditEvents } from '../db/schema.ts';
 import {
     type AuditEventInput,
     buildAuditEventValues,
     runAuditedMutation,
-} from './audit-core';
+} from './audit-core.ts';
 
-export * from './audit-core';
+export * from './audit-core.ts';
 
 type AuditDb = typeof db;
 

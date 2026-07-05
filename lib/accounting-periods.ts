@@ -1,6 +1,6 @@
 import { and, eq, gte, lte } from 'drizzle-orm';
-import { db } from '@/db/drizzle';
-import { accountingPeriods } from '@/db/schema';
+import { db } from '../db/drizzle.ts';
+import { accountingPeriods } from '../db/schema.ts';
 
 /**
  * Check if a date falls within any closed accounting period for a user
