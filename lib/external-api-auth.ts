@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
-import { db } from '../db/drizzle';
-import { apiKeys } from '../db/schema';
+import { db } from '../db/drizzle.ts';
+import { apiKeys } from '../db/schema.ts';
 import {
     type ApiKeyAuthContext,
     type ApiKeyScope,
@@ -9,7 +9,7 @@ import {
     extractBearerApiKey,
     hashApiKey,
     validateApiKeyRecord,
-} from './api-keys';
+} from './api-keys.ts';
 
 const getClientIp = (ctx: Context) => {
     const forwardedFor = ctx.req.header('x-forwarded-for');
@@ -78,8 +78,10 @@ export const createExternalApiAuthMiddleware =
         if (!result.ok) {
             return ctx.json(
                 {
-                    error: result.error,
-                    code: result.code,
+                    error: {
+                        code: result.code,
+                        message: result.error,
+                    },
                 },
                 result.status,
             );
