@@ -51,8 +51,8 @@ Rules:
 - Clients must ignore unknown response fields.
 - Removed enum values, renamed fields, changed required fields, and changed
   idempotency semantics are breaking changes.
-- The OpenAPI specification for this contract should live under `docs/openapi`
-  when #164 is implemented.
+- The OpenAPI specification for this contract lives at
+  [`docs/openapi/external-ingest.json`](openapi/external-ingest.json).
 
 ## Authentication
 
@@ -75,7 +75,7 @@ Requirements:
 | Header | Required | Description |
 | --- | --- | --- |
 | `Authorization` | Yes | Bearer API key. |
-| `Idempotency-Key` | Yes for write endpoints | Unique key for safe retries, scoped to API key, method, and path. |
+| `Idempotency-Key` | Yes for invoice/receipt writes | Unique key for safe retries, scoped to API key, method, and path. |
 | `Content-Type` | Yes | `application/json` for API requests. Azure upload URLs use the file MIME type. |
 | `X-Request-Id` | No | Caller-provided request ID for audit and support correlation. |
 | `User-Agent` | Recommended | Caller application identity. |
@@ -91,7 +91,10 @@ feed the same ingestion service.
 | `POST /api/external/v1/uploads` | Create a short-lived upload URL for a document file. |
 | `POST /api/external/v1/invoices` | Ingest one invoice and optional uploaded files. |
 | `POST /api/external/v1/receipts` | Ingest one receipt and optional uploaded files. |
-| `GET /api/external/v1/ingest-events/{id}` | Fetch the status/result of a prior ingest request. |
+
+`GET /api/external/v1/ingest-events/{id}` is not exposed in the current v1
+implementation. Ingest results are returned directly from the original write or
+from idempotent replay.
 
 Bulk ingestion is intentionally out of scope for v1. Callers should submit one
 receipt or invoice per request so idempotency and audit records stay precise.
@@ -111,7 +114,6 @@ two-step upload flow that mirrors the existing Azure blob upload pattern.
 ```http
 POST /api/external/v1/uploads
 Authorization: Bearer nn_live_...
-Idempotency-Key: upload-2026-0001
 Content-Type: application/json
 ```
 
@@ -140,9 +142,10 @@ Response:
 }
 ```
 
-The final ingest endpoint must verify that each `uploadId` belongs to the
-authenticated user/API key, is not expired, and has not already been consumed by
-an incompatible request.
+The final ingest endpoint verifies that each `uploadId` belongs to the
+authenticated user. The signed upload URL enforces the upload window. Invoice and
+receipt idempotency prevents incompatible retries from creating duplicate Numera
+records.
 
 ## Ingest Invoice or Receipt
 
@@ -359,7 +362,7 @@ Standard status codes:
 
 ## Idempotency and Duplicate Handling
 
-Write endpoints require `Idempotency-Key`.
+Invoice and receipt write endpoints require `Idempotency-Key`.
 
 Semantics:
 
@@ -383,6 +386,10 @@ Stored idempotency records contain the idempotency key, request fingerprint,
 source identifiers, status, response status, and response body needed for safe
 retry responses. They must not contain uploaded file bytes, signed upload URLs,
 plaintext API keys, or raw request bodies.
+
+Upload URL responses include signed URLs and are not stored in idempotency
+records. Clients should apply idempotency to the final `/invoices` or
+`/receipts` write.
 
 ## Audit and Source Tracking
 
