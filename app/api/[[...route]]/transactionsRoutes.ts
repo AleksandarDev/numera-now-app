@@ -29,6 +29,7 @@ import {
     transactionTags,
 } from '@/db/schema';
 import { writeAuditEvent } from '@/lib/audit';
+import { getOwnedAccountReferences } from '@/lib/services/account-ownership';
 import { listTransactions } from '@/lib/services/finance-entities';
 import {
     createTransactionRestorePatch,
@@ -1849,36 +1850,19 @@ const app = new Hono()
                 values.creditAccountId,
                 values.debitAccountId,
             ].filter(Boolean) as string[];
-            const accountMap = new Map<
-                string,
-                {
-                    id: string;
-                    name: string;
-                    isReadOnly: boolean;
-                    accountType: string;
-                }
-            >();
+            const { accountMap, missingAccountIds } =
+                await getOwnedAccountReferences({
+                    accountIds,
+                    userId: auth.userId,
+                });
             if (accountIds.length > 0) {
-                const accountsToCheck = await db
-                    .select({
-                        id: accounts.id,
-                        name: accounts.name,
-                        isReadOnly: accounts.isReadOnly,
-                        accountType: accounts.accountType,
-                    })
-                    .from(accounts)
-                    .where(
-                        and(
-                            inArray(accounts.id, accountIds),
-                            eq(accounts.userId, auth.userId),
-                        ),
-                    );
-
-                for (const acc of accountsToCheck) {
-                    accountMap.set(acc.id, acc);
+                if (missingAccountIds.length > 0) {
+                    const error = `Account(s) not found or not owned by user: ${missingAccountIds.join(', ')}`;
+                    console.error('[PATCH /transactions/:id]', error);
+                    return ctx.json({ error }, 400);
                 }
 
-                const readOnlyAccounts = accountsToCheck.filter(
+                const readOnlyAccounts = [...accountMap.values()].filter(
                     (acc) => acc.isReadOnly,
                 );
                 if (readOnlyAccounts.length > 0) {
@@ -2554,33 +2538,31 @@ const app = new Hono()
                 }
             }
 
-            const splitAccountIds = splits
-                .flatMap((s) => [s.creditAccountId, s.debitAccountId])
-                .filter(Boolean) as string[];
+            const splitAccountIds = [
+                parentTransaction.accountId,
+                parentTransaction.creditAccountId,
+                parentTransaction.debitAccountId,
+                ...splits.flatMap((split) => [
+                    split.accountId,
+                    split.creditAccountId,
+                    split.debitAccountId,
+                ]),
+            ];
+            const {
+                accountMap: splitAccountMap,
+                missingAccountIds: missingSplitAccountIds,
+            } = await getOwnedAccountReferences({
+                accountIds: splitAccountIds,
+                userId: auth.userId,
+            });
 
-            const splitAccountMap = new Map<
-                string,
-                { id: string; name: string; accountType: string }
-            >();
-
-            if (splitAccountIds.length > 0) {
-                const accountsToCheck = await db
-                    .select({
-                        id: accounts.id,
-                        name: accounts.name,
-                        accountType: accounts.accountType,
-                    })
-                    .from(accounts)
-                    .where(
-                        and(
-                            inArray(accounts.id, splitAccountIds),
-                            eq(accounts.userId, auth.userId),
-                        ),
-                    );
-
-                for (const acc of accountsToCheck) {
-                    splitAccountMap.set(acc.id, acc);
-                }
+            if (missingSplitAccountIds.length > 0) {
+                return ctx.json(
+                    {
+                        error: `Account(s) not found or not owned by user: ${missingSplitAccountIds.join(', ')}`,
+                    },
+                    400,
+                );
             }
 
             if (doubleEntryMode) {
@@ -2880,33 +2862,26 @@ const app = new Hono()
                 }
             }
 
-            const splitAccountIds = splits
-                .flatMap((s) => [s.creditAccountId, s.debitAccountId])
-                .filter(Boolean) as string[];
+            const splitAccountIds = splits.flatMap((split) => [
+                split.accountId,
+                split.creditAccountId,
+                split.debitAccountId,
+            ]);
+            const {
+                accountMap: splitAccountMap,
+                missingAccountIds: missingSplitAccountIds,
+            } = await getOwnedAccountReferences({
+                accountIds: splitAccountIds,
+                userId: auth.userId,
+            });
 
-            const splitAccountMap = new Map<
-                string,
-                { id: string; name: string; accountType: string }
-            >();
-
-            if (splitAccountIds.length > 0) {
-                const accountsToCheck = await db
-                    .select({
-                        id: accounts.id,
-                        name: accounts.name,
-                        accountType: accounts.accountType,
-                    })
-                    .from(accounts)
-                    .where(
-                        and(
-                            inArray(accounts.id, splitAccountIds),
-                            eq(accounts.userId, auth.userId),
-                        ),
-                    );
-
-                for (const acc of accountsToCheck) {
-                    splitAccountMap.set(acc.id, acc);
-                }
+            if (missingSplitAccountIds.length > 0) {
+                return ctx.json(
+                    {
+                        error: `Account(s) not found or not owned by user: ${missingSplitAccountIds.join(', ')}`,
+                    },
+                    400,
+                );
             }
 
             if (doubleEntryMode) {

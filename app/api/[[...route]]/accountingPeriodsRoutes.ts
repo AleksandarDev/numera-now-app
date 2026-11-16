@@ -11,6 +11,7 @@ import {
     insertAccountingPeriodSchema,
     transactions,
 } from '@/db/schema';
+import { getOwnedAccountReferences } from '@/lib/services/account-ownership';
 
 const app = new Hono()
     .get('/', clerkMiddleware(), async (ctx) => {
@@ -494,6 +495,40 @@ const app = new Hono()
 
             if (!period) {
                 return ctx.json({ error: 'Period not found.' }, 404);
+            }
+
+            const {
+                accountMap: closingAccountMap,
+                missingAccountIds: missingClosingAccountIds,
+            } = await getOwnedAccountReferences({
+                accountIds: [
+                    profitAndLossAccountId,
+                    retainedEarningsAccountId,
+                ],
+                userId: auth.userId,
+            });
+
+            if (
+                missingClosingAccountIds.includes(profitAndLossAccountId) ||
+                !closingAccountMap.has(profitAndLossAccountId)
+            ) {
+                return ctx.json(
+                    { error: 'Profit and loss account not found.' },
+                    404,
+                );
+            }
+
+            if (
+                retainedEarningsAccountId &&
+                (missingClosingAccountIds.includes(
+                    retainedEarningsAccountId,
+                ) ||
+                    !closingAccountMap.has(retainedEarningsAccountId))
+            ) {
+                return ctx.json(
+                    { error: 'Retained earnings account not found.' },
+                    404,
+                );
             }
 
             // Get all income and expense accounts with their balances for the period
